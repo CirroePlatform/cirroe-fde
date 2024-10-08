@@ -1,8 +1,9 @@
 from pydantic import BaseModel
 from . import base_action
+from typing import Tuple
 
 from src.classifier import Classifier
-from src.model.issue import Issue
+from src.model.issue import Issue, IssueType
 
 class HandleIssueAction(base_action.BaseAction):
     """
@@ -10,6 +11,13 @@ class HandleIssueAction(base_action.BaseAction):
     """
     def __init__(self) -> None:
         self.classifier = Classifier()
+        # self.interface = 
+
+    def handle_issue_in_category(self, issue: Issue, category: IssueType) -> Tuple[str, str]:
+        """
+        should return comment, issue_action (this might become optional)
+        """
+        return "", ""
 
     def handle_request(self, request_params: Issue) -> BaseModel:
         """
@@ -37,3 +45,4 @@ class HandleIssueAction(base_action.BaseAction):
             pass
 
         issue_type = self.classifier.get_type(issue)
+        comment, action = self.handle_issue_in_category(issue, issue_type)
