@@ -1,10 +1,10 @@
-from src.model.ticket import Issue, IssueType
+from src.model.issue import Issue, IssueType
 from typeguard import typechecked
 
 @typechecked
 class Classifier:
     """
-    Ticket classifier. Should be able to decipher "dangerous" tickets, or route to relevant teams
+    Issue classifier. Should be able to decipher "dangerous" issues, or route to relevant teams
     """
     def __init__(self) -> None:
         pass

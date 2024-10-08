@@ -1,6 +1,5 @@
 from . import base as prompter
-from . import cot
-from llm.client import base as llm
+from src.llm.client import base as llm
 from enum import Enum
 
 NAVIGATION = """

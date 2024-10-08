@@ -2,11 +2,11 @@ from pydantic import BaseModel
 from . import base_action
 
 from src.classifier import Classifier
-from src.model.ticket import Issue
+from src.model.issue import Issue
 
-class HandleTicketAction(base_action.BaseAction):
+class HandleIssueAction(base_action.BaseAction):
     """
-    All server action wrappers
+    Handles inbound issue actions.
     """
     def __init__(self) -> None:
         self.classifier = Classifier()
@@ -15,20 +15,20 @@ class HandleTicketAction(base_action.BaseAction):
         """
         Handles a request and returns the response.
         
-        def handle_ticket(ticket):
-            if (is_active_or_dangerous(ticket)); then loop in engineer with humanlayer async
+        def handle_issue(issue):
+            if (is_active_or_dangerous(issue)); then loop in engineer with humanlayer async
 
-            category = categorize(ticket)
+            category = categorize(issue)
 
             # This should allocate different knowledge bases depending on the 
             # availability of integrations, and the category type.
-            comment, ticket_action = handle_based_on_category(ticket, category)
+            comment, issue_action = handle_based_on_category(issue, category)
 
-            add_comment_to_ticket(ticket, comment)
+            add_comment_to_issue(issue, comment)
 
             # action refers to switching it to a different queue, closing 
-            # it, raising severity, etc. any ticket change.
-            perform_action_on_ticket(ticket, ticket_action)
+            # it, raising severity, etc. any issue change.
+            perform_action_on_issue(issue, issue_action)
         """
         issue = request_params
 

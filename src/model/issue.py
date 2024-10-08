@@ -11,7 +11,7 @@ class Comment(BaseModel):
 
 class Issue(BaseModel):
     """
-    Model for a customer issue, could be ticket, slack thread, etc.
+    Model for a customer issue, could be issue, slack thread, etc.
     """
     tid: int
     problem_description: str
