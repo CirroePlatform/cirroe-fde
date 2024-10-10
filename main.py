@@ -1,10 +1,7 @@
-# def handle_ticket(ticket):
-# 	if (is_active_or_dangerous(ticket)); then loop in engineer with humanlayer async
+from src.sutils.handle_issue_action import HandleIssueAction
+from src.model.issue import Issue, Comment
 
-# 	category = categorize(ticket)
-# 	comment, ticket_action = handle_based_on_category(ticket, category) // This should allocate different knowledge bases depending on the availability of integrations, and the category type.
+action = HandleIssueAction(1)
 
-# 	add_comment_to_ticket(ticket, comment)
-# 	perform_action_on_ticket(ticket, ticket_action) // action refers to switching it to a different queue, closing it, raising severity, etc. any ticket change.
-
-
+comments=[Comment(requestor_id=1, content="b", ts=1)]
+print(action.handle_request(Issue(tid=1, problem_description="b", comments=comments)))
