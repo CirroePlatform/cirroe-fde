@@ -17,8 +17,3 @@ class Issue(BaseModel):
     problem_description: str
     comments: List[Comment]
 
-class IssueType(BaseModel):
-    """
-    Issue type. used for classification purposes.
-    """
-    name: str
