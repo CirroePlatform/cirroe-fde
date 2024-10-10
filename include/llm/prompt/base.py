@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from src.llm.client import base as llm
+from include.llm.client import base as llm
 
 
 class Prompter(ABC):

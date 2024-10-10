@@ -4,6 +4,8 @@ from uuid import UUID
 
 from src.model.issue import Issue
 
+from src.runbook import RunBookExecutor
+
 class HandleIssueAction(base_action.BaseAction):
     """
     Handles inbound issue actions for one particular user.
@@ -11,15 +13,17 @@ class HandleIssueAction(base_action.BaseAction):
 
     def __init__(self, user_id: UUID) -> None:
         self.user_id = user_id
-        self.rb_client = None # fetch based on user
-        self.rb_executor = None # fetch based on user
+        self.db_client = None # fetch based on user
+        self.rb_executor = RunBookExecutor()
 
     def handle_request(self, request_params: Issue) -> BaseModel:
         """
         Handles a single request from fastapi frontend.
         """
         # 1. Find runbook for issue. Need to do classification here.
-        # runbook = self.rb_client.get_runbook_for_issue(issue.problem_description)
+
+        # top_k_similar_runbooks = self.db_client.get_top_k(issue.problem_description)
+        # runbook = self.rb_executor.get_runbook_for_issue(issue, top_k_similar_runbooks)
 
         # 2. if runbook exists, call the runbook executor to run the book.
         # response = self.rb_client.run_book(runbook)
