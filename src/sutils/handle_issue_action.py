@@ -20,8 +20,9 @@ class HandleIssueAction(base_action.BaseAction):
         """
         Handles a single request from fastapi frontend.
         """
+
         # 1. Find runbook for issue.
-        # top_k_similar_runbooks = self.db_client.get_top_k(issue.problem_description)
+        # top_k_similar_runbooks = self.db_client.get_top_k(request_params)
         top_k_similar_runbooks = []
         runbook = self.rb_executor.get_runbook_for_issue(request_params, top_k_similar_runbooks)
 
