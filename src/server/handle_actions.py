@@ -34,7 +34,7 @@ def handle_new_issue(new_issue_request: OpenIssueRequest):
     top_k_similar_runbooks = []
 
     # 1. Find runbook for issue.
-    runbook = rb_executor.get_runbook_for_issue(request_params, top_k_similar_runbooks)
+    runbook = rb_executor.get_runbook_for_issue(new_issue_request.issue, top_k_similar_runbooks)
 
     # 2. if runbook exists, call the runbook executor to run the book.
     response = rb_executor.run_book(runbook) # This will block at certain points via humanlayer

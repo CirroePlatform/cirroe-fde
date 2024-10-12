@@ -1,4 +1,4 @@
-from pymilvus import DataType, CollectionSchema, FieldSchema, Collection
+from pymilvus import DataType, CollectionSchema, FieldSchema
 from pymilvus import MilvusClient
 from sentence_transformers import SentenceTransformer
 from typing import List, Tuple, Any
@@ -8,6 +8,7 @@ from openai import OpenAI
 import os
 
 from src.model.runbook import Runbook
+from src.model.issue import Issue
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
@@ -99,6 +100,14 @@ class VectorDB:
         # Embed the runbook description using SentenceTransformer
         return self.model.encode(runbook.description)
 
+    def embed_issue(self, issue: Issue) -> List[float]:
+        """
+        embed an issue and return the resulting vector
+        
+        TODO add comments in there as some nice string formatted thing.
+        """
+        return self.model.encode(issue.problem_description)
+
     def add_runbook(self, runbook: Runbook):
         """
         Add a new runbook to the vector db
@@ -123,14 +132,15 @@ class VectorDB:
         self.client.insert(self.collection_name, data=entity)
         print("Successfully added new runbook")
 
-    def get_top_k(self, runbook: Runbook, k: int) -> List[Tuple[UUID, float]]:
+    def get_top_k(self, query_vector: List[float], k: int) -> List[Tuple[UUID, float]]:
         """
         Top k similar runbooks and their distances.
         
         returns a list: [(runbook_id, distance score)]
         """
-        # Embed the description for similarity search
-        query_vector = self.embed_runbook(runbook.description)
+        # ensure dimensionality
+        if len(query_vector) != self.dimension:
+            raise f"Can't compare incorrect dimension vector, expected {self.dimension} got {len(query_vector)}"
 
         # Perform the search using cosine similarity
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
