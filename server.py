@@ -22,7 +22,7 @@ def upload_runbook(
     background_tasks.add_task(handle_new_runbook, runbook_req)
 
 
-@app.post("issue")
+@app.post("/issue")
 def new_issue(issue_open: OpenIssueRequest):
     return handle_new_issue(issue_open)
 

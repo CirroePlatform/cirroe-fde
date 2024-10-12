@@ -148,7 +148,7 @@ class VectorDB:
             return  # Runbook already exists, just continue.
 
         # Embed the description
-        vector = self.embed_runbook(runbook)
+        vector = self.embed_runbook(runbook, debug=False)
 
         # get step ids for db insert
         step_ids = [str(step.sid) for step in runbook.steps]
@@ -188,18 +188,19 @@ class VectorDB:
             collection_name=self.collection_name,
             data=[query_vector],
             anns_field="vector",
-            param=search_params,
+            search_params=search_params,
             limit=k,
+            output_fields=["vector", "description", "steps"]
         )
 
         # Format and return the results
         top_k_runbooks = []
         for result in results[0]:
-            runbook_id = result.id
-            vector = result.vector
-            description = result.description
-            step_ids = result.steps
-            score = result.distance
+            runbook_id = result['id']
+            vector = result['entity']['vector']
+            description = result['entity']['description']
+            step_ids = list(result['entity']['steps'])
+            score = result['distance']
 
             # TODO Fetch all step objects given the step ids
             steps = self.supa_client.get_steps_for_runbook(step_ids)

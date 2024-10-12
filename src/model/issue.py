@@ -1,28 +1,16 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Tuple
 from uuid import UUID
-
-
-class Comment(BaseModel):
-    """
-    Model for a comment on an issue
-    """
-
-    requestor_id: int
-    content: str
-    ts: int  # might need to change this to time class
-
 
 class Issue(BaseModel):
     """
     Model for a customer issue, could be issue, slack thread, etc.
     """
 
-    tid: int
+    tid: UUID
     problem_description: str
-    comments: List[Comment]
-
+    comments: List[Tuple[str, str]] # a list of (requestor_name, comment) objects
 
 class OpenIssueRequest(BaseModel):
-    requestor: UUID
+    requestor: str
     issue: Issue

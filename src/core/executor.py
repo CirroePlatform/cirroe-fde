@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 from humanlayer import HumanLayer
 from openai import OpenAI
 import subprocess
@@ -9,9 +9,10 @@ import json
 hl = HumanLayer()
 
 from src.model.runbook import Runbook, Step
+from src.model.issue import Issue
 
 EXECUTE_STEP_PROMPT_FILE = "include/prompts/execute_step.txt"
-
+COALESCE_RESPONSE_FILE = "include/prompts/coalesce_response.txt"
 
 @hl.require_approval()
 def execute(cmd: str) -> Tuple[str, bool]:
@@ -78,7 +79,6 @@ class RunBookExecutor:
         Executes a step and returns any potential output as well
         the success of the execution
         """
-        success = False
         response = ""
         prompt = ""
         messages = []
@@ -154,23 +154,30 @@ class RunBookExecutor:
                 model="gpt-4o",
                 messages=messages,
                 tools=shell_tools_openai,
+                response_format={"type": "json_object"}
             )
 
-        return success, response.choices[0].message.content
+        # Not sure if im forgetting something here, might need further investigation on 
+        # how HL chaining works.
+        return True, json.loads(response.choices[0].message.content)
 
-    def run_book(self, rb: Runbook) -> Tuple[bool, str]:
+    def run_book(self, rb: Runbook) -> Tuple[bool, List[str]]:
         """
-        Executes a runbook and returns the final response.
+        Executes a runbook and returns a all the responses and a boolean indicating success
 
         returns a tuple of (whether the runbook executed successfully, str response to send to the user)
         """
+        responses = []
+        success = False
 
         for step in rb.steps:
             # 1. execute step.
             success, response = self.execute_step(step)
             print(response)
-
+            
             if not success:
                 success, response = self.bailout(step, response)
 
-        return "Done"
+            responses.append(response)
+
+        return success, responses

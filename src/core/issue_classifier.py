@@ -23,7 +23,7 @@ class IssueClassifier:
         relevant.
         """
         # 1. Vectorize the issue description
-        issue_vector = self.vector_db.embed_issue(issue)
+        issue_vector = self.vector_db.embed_issue(issue, debug=False)
 
         # 2. run top k on the issue against the runbook rb
         vectors_and_sims = self.vector_db.get_top_k(issue_vector, k)

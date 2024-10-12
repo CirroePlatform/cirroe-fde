@@ -53,8 +53,8 @@ class SupaClient:
         response = self.steps.select("*").eq("sid", str(sid)).single().execute()
 
         # Check if the query was successful and data is returned
-        if response.get("status_code") == 200 and response.get("data"):
-            data = response["data"]
+        if len(response.data) > 0:
+            data = response.data
 
             # Deserialize the allowed_cmds and alt_conditions fields
             allowed_cmds = json.loads(data["allowed_cmds"])
