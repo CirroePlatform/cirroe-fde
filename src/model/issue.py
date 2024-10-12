@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+from uuid import UUID
 
 class Comment(BaseModel):
     """
@@ -17,3 +18,6 @@ class Issue(BaseModel):
     problem_description: str
     comments: List[Comment]
 
+class OpenIssueRequest(BaseModel):
+    requestor: UUID
+    issue: Issue

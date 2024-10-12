@@ -103,9 +103,12 @@ class VectorDB:
         """
         Add a new runbook to the vector db
         """
+        prev_data = self.client.get(self.collection_name, runbook.rid)
+        if len(prev_data) > 0:
+            return # Runbook already exists, just continue.
+
         # Embed the description
-        # vector = self.embed_runbook(runbook)
-        vector = [0.0] * self.dimension
+        vector = self.embed_runbook(runbook)
 
         # Insert the runbook data into Milvus
         entity = [
@@ -118,6 +121,7 @@ class VectorDB:
         ]
 
         self.client.insert(self.collection_name, data=entity)
+        print("Successfully added new runbook")
 
     def get_top_k(self, runbook: Runbook, k: int) -> List[Tuple[UUID, float]]:
         """

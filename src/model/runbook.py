@@ -16,6 +16,11 @@ class Runbook(BaseModel):
     """
     Model representing a runbook defined by the user
     """
+    uid: UUID
     rid: UUID
     description: str
     first_step_id: UUID
+
+class UploadRunbookRequest(BaseModel):
+    upload_user_id: UUID
+    runbook: Runbook
