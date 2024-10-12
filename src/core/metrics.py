@@ -6,12 +6,14 @@ from typing import List, Dict, Tuple, Any
 import logging
 from logger import logger
 
+DEFAULT="default"
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class SpikeDetector:
-    def __init__(self, profile_name: str):
+    def __init__(self, profile_name: str = DEFAULT):
         logger.info(f"Initializing SpikeDetector with profile: {profile_name}")
         self.session = boto3.Session(profile_name=profile_name)
         self.cloudwatch = self.session.client('cloudwatch', config=Config(retries={'max_attempts': 10, 'mode': 'standard'}))
@@ -22,19 +24,19 @@ class SpikeDetector:
         
         metrics = []
         paginator = self.cloudwatch.get_paginator('list_metrics')
-        
+
         for page in paginator.paginate():
             metrics.extend(page['Metrics'])
-        
+
         logger.info(f"Found {len(metrics)} metrics")
         return metrics
 
     def get_metric_data(self, namespace: str, metric_name: str, dimensions: List[Dict[str, str]], 
                         start_time: datetime, end_time: datetime, period: int = 300) -> List[float]:
         """Retrieve metric data for a given time range."""
-        
+
         logger.info(f"Retrieving metric data for {namespace}:{metric_name}")
-        
+
         response = self.cloudwatch.get_metric_data(
             MetricDataQueries=[
                 {

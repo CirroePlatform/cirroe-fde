@@ -4,12 +4,14 @@ from faker import Faker
 from src.storage.vector import VectorDB
 
 from src.core.executor import RunBookExecutor
-
+from src.core.metrics import SpikeDetector
 
 fake = Faker()
 
 db = VectorDB()
 rbe = RunBookExecutor()
+
+sd = SpikeDetector()
 
 rbs = []
 
@@ -41,5 +43,13 @@ def generate_fake_runbooks():
     for rb in rbs:
         rbe.run_book(rb)
 
+# generate_fake_runbooks()
 
-generate_fake_runbooks()
+from datetime import datetime, timedelta
+
+end_time = datetime.utcnow()
+start_time = end_time - timedelta(hours=24)  # Last 24 hours
+
+# Generate and print the report
+sd.generate_report(start_time, end_time, threshold=2.5)
+
