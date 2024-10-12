@@ -55,7 +55,7 @@ class EmbeddingModel:
         else:
             raise f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
 
-# VectorDB class wrapping Milvus client and sentence transformer model
+# VectorDB class wrapping Milvus client and an embedding model
 class VectorDB:
     """
     Wrapper around vector db interactions
@@ -77,28 +77,24 @@ class VectorDB:
         self.dimension = dimension
         self.create_runbook_collection()
 
-    def create_runbook_collection(self) -> Collection:
-        """
-        creates a runbook table if dne. Returns the collection regardless.
-        """
-        # Define the fields in the collection (aligned with your schema)
+    def create_runbook_collection(self):
         fields = [
-            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
+            FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=36),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
-            FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=self.dimension),
-            FieldSchema(name="first_step", dtype=DataType.INT64),
+            FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),  # Adjust max_length as needed
+            FieldSchema(name="first_step", dtype=DataType.VARCHAR, max_length=36),
         ]
         schema = CollectionSchema(fields=fields, description="Runbook collection")
 
-        # Check if collection exists, otherwise create it
         if not self.client.has_collection(self.collection_name):
-            self.client.create_collection(self.collection_name, self.dimension, schema=schema)
+            self.client.create_collection(self.collection_name, schema=schema)
+            # self.client.create_index(self.collection_name, ) # todo
 
-    def embed_runbook(self, runbook: Runbook) -> List[List[float]]:
+    def embed_runbook(self, runbook: Runbook) -> List[float]:
         """
         Embed a runbook description and return it.
 
-        Will be an array of size [1, 4096]
+        Will be an array of size self.dimension
         """
         # Embed the runbook description using SentenceTransformer
         return self.model.encode(runbook.description)
@@ -108,25 +104,20 @@ class VectorDB:
         Add a new runbook to the vector db
         """
         # Embed the description
-        vector = self.embed_runbook(runbook)
+        # vector = self.embed_runbook(runbook)
+        vector = [0.0] * self.dimension
 
         # Insert the runbook data into Milvus
-        entities = [
-            {"name": "id", "type": DataType.INT64, "values": [int(runbook.rid.int)]},
-            {"name": "vector", "type": DataType.FLOAT_VECTOR, "values": [vector]},
+        entity = [
             {
-                "name": "description",
-                "type": DataType.VARCHAR,
-                "values": [runbook.description],
-            },
-            {
-                "name": "first_step",
-                "type": DataType.INT64,
-                "values": [int(runbook.first_step_id.int)],
-            },
+                "id": str(runbook.rid),
+                "vector": vector,
+                "description": runbook.description,
+                "first_step": str(runbook.first_step_id)
+            }
         ]
 
-        self.client.insert(self.collection_name, entities)
+        self.client.insert(self.collection_name, data=entity)
 
     def get_top_k(self, runbook: Runbook, k: int) -> List[Tuple[UUID, float]]:
         """
