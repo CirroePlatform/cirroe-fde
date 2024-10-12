@@ -51,5 +51,5 @@ end_time = datetime.utcnow()
 start_time = end_time - timedelta(hours=24)  # Last 24 hours
 
 # Generate and print the report
-sd.generate_report(start_time, end_time, threshold=2.5)
+sd.generate_report(start_time, end_time, threshold=2.5, sort_key="DBInstanceIdentifier", sort_val="hatch-prod")
 
