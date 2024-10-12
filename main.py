@@ -1,7 +1,21 @@
-from src.sutils.handle_issue_action import HandleIssueAction
-from src.model.issue import Issue, Comment
+from src.model.runbook import Runbook
+import uuid
+from faker import Faker
+from src.storage.vector import VectorDB
 
-action = HandleIssueAction(1)
+fake = Faker()
 
-comments=[Comment(requestor_id=1, content="b", ts=1)]
-print(action.handle_request(Issue(tid=1, problem_description="b", comments=comments)))
+db = VectorDB()
+
+# Generate 10 fake runbooks
+def generate_fake_runbooks(n=10):
+    for _ in range(n):
+        runbook = Runbook(
+            rid=uuid.uuid4(),
+            description=fake.sentence(),
+            first_step_id=uuid.uuid4()
+        )
+        print(runbook.description)    
+        db.add_runbook(runbook)
+
+generate_fake_runbooks()
