@@ -14,17 +14,19 @@ from src.model.issue import Issue
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
 OPENAI_EMBED = "text-embedding-3-small"
 SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
-DIMENSION=1536
+DIMENSION = 1536
 
-RUNBOOK="runbook"
+RUNBOOK = "runbook"
 
 load_dotenv()
+
 
 class EmbeddingModel:
     """
     Wrapper around embedding model so we can switch between diff ones
     easily
     """
+
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
         self.client = self.get_client(model_name)
@@ -48,13 +50,14 @@ class EmbeddingModel:
             response = self.client.embeddings.create(
                 model=self.model_name,
                 input="The food was delicious and the waiter...",
-                encoding_format="float"
+                encoding_format="float",
             )
             return response.data[0].embedding
         elif self.model_name.lower() == NVIDIA_EMBED:
             return self.client.encode([text])[0]
         else:
             raise f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
+
 
 # VectorDB class wrapping Milvus client and an embedding model
 class VectorDB:
@@ -63,15 +66,14 @@ class VectorDB:
     """
 
     def __init__(
-        self,
-        embedding_model_name: str = OPENAI_EMBED,
-        dimension: int = DIMENSION
+        self, embedding_model_name: str = OPENAI_EMBED, dimension: int = DIMENSION
     ):
         self.collection_name = RUNBOOK
         self.client = MilvusClient(
-                    uri=os.environ.get("MILVUS_URL"),
-                    token=os.environ.get("MILVUS_TOKEN"),
-                    user=os.environ.get("MILVUS_USERNAME"))
+            uri=os.environ.get("MILVUS_URL"),
+            token=os.environ.get("MILVUS_TOKEN"),
+            user=os.environ.get("MILVUS_USERNAME"),
+        )
 
         self.embedding_model_name = embedding_model_name
         self.model = EmbeddingModel(embedding_model_name)
@@ -80,9 +82,13 @@ class VectorDB:
 
     def create_runbook_collection(self):
         fields = [
-            FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=36),
+            FieldSchema(
+                name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=36
+            ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
-            FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),  # Adjust max_length as needed
+            FieldSchema(
+                name="description", dtype=DataType.VARCHAR, max_length=65535
+            ),  # Adjust max_length as needed
             FieldSchema(name="first_step", dtype=DataType.VARCHAR, max_length=36),
         ]
         schema = CollectionSchema(fields=fields, description="Runbook collection")
@@ -103,7 +109,7 @@ class VectorDB:
     def embed_issue(self, issue: Issue) -> List[float]:
         """
         embed an issue and return the resulting vector
-        
+
         TODO add comments in there as some nice string formatted thing.
         """
         return self.model.encode(issue.problem_description)
@@ -114,7 +120,7 @@ class VectorDB:
         """
         prev_data = self.client.get(self.collection_name, runbook.rid)
         if len(prev_data) > 0:
-            return # Runbook already exists, just continue.
+            return  # Runbook already exists, just continue.
 
         # Embed the description
         vector = self.embed_runbook(runbook)
@@ -125,7 +131,7 @@ class VectorDB:
                 "id": str(runbook.rid),
                 "vector": vector,
                 "description": runbook.description,
-                "first_step": str(runbook.first_step_id)
+                "first_step": str(runbook.first_step_id),
             }
         ]
 
@@ -135,7 +141,7 @@ class VectorDB:
     def get_top_k(self, query_vector: List[float], k: int) -> List[Tuple[UUID, float]]:
         """
         Top k similar runbooks and their distances.
-        
+
         returns a list: [(runbook_id, distance score)]
         """
         # ensure dimensionality

@@ -37,6 +37,7 @@ dm_with_ceo = ContactChannel(
     )
 )
 
+
 class LinkedInMessage(BaseModel):
     from_name: str
     date: str

@@ -6,18 +6,20 @@ from src.storage.vector import VectorDB
 from src.model.issue import Issue
 from src.model.runbook import Runbook
 
-SIM_THRESHOLD=0.6
+SIM_THRESHOLD = 0.6
+
 
 class IssueClassifier:
     """
     A class to help classify runbooks based on inbound issues.
     """
+
     def __init__(self, vector_db: VectorDB) -> None:
         self.vector_db = vector_db
 
     def classify(self, issue: Issue, k: int = 3) -> List[UUID]:
         """
-        Returns a list of runbook ids sorted from most to least 
+        Returns a list of runbook ids sorted from most to least
         relevant.
         """
         # 1. Vectorize the issue description
