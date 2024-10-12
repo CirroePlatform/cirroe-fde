@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List, Tuple, Optional
 from uuid import UUID
 
+
 class Step(BaseModel):
     """
     A single step to execute in a runbook.
@@ -17,7 +18,7 @@ class Step(BaseModel):
 class Runbook(BaseModel):
     """
     Model representing a runbook defined by the user
-    
+
     ALERT this is different from the vector db schema, in the vector db
     we just store a list of uuids for the steps instead of the steps. The actual
     steps are in the supabase table called 'steps'

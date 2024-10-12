@@ -10,23 +10,32 @@ hl = HumanLayer()
 
 from src.model.runbook import Runbook, Step
 
-EXECUTE_STEP_PROMPT_FILE="include/prompts/execute_step.txt"
+EXECUTE_STEP_PROMPT_FILE = "include/prompts/execute_step.txt"
+
 
 @hl.require_approval()
 def execute(cmd: str) -> Tuple[str, bool]:
     """
-    executes a bash comand and returns the output as 
+    executes a bash comand and returns the output as
     well as whether the command succeeded or not
     """
     try:
         # Execute the command
-        result = subprocess.run(cmd, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
 
         # Return stdout, stderr, and success status (True if successful)
         return f"stdout: {result.stdout}\nstderr: {result.stderr}", True
     except subprocess.CalledProcessError as e:
         # Return stdout, stderr, and failure status (False if failed)
         return f"stdout: {e.stdout}\nstderr: {e.stderr}", True
+
 
 shell_tools_openai = [
     {
@@ -45,24 +54,28 @@ shell_tools_openai = [
     },
 ]
 
+
 class RunBookExecutor:
     """
     Class to execute runbooks.
     """
+
     def __init__(self) -> None:
         self.client = OpenAI()
 
-    def bailout(self, step: Step, execution_output: str, num_retries: int = 3) -> Tuple[bool, str]:
+    def bailout(
+        self, step: Step, execution_output: str, num_retries: int = 3
+    ) -> Tuple[bool, str]:
         """
         Debug the failed step given the schema and execution_output.
-        
+
         returns a success and expected output. Will execute num_retries times
         """
         return False, execution_output
 
     def execute_step(self, step: Step) -> Tuple[bool, str]:
         """
-        Executes a step and returns any potential output as well 
+        Executes a step and returns any potential output as well
         the success of the execution
         """
         success = False
@@ -86,7 +99,7 @@ class RunBookExecutor:
             model="gpt-4o",
             messages=messages,
             tools=shell_tools_openai,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
         )
 
         while response.choices[0].finish_reason != "stop":
@@ -94,11 +107,16 @@ class RunBookExecutor:
             tool_calls = response_message.tool_calls
 
             if tool_calls:
-                messages.append(response_message)  # extend conversation with assistant's reply
+                messages.append(
+                    response_message
+                )  # extend conversation with assistant's reply
                 logger.info(
                     "last message led to %s tool calls: %s",
                     len(tool_calls),
-                    [(tool_call.function.name, tool_call.function.arguments) for tool_call in tool_calls],
+                    [
+                        (tool_call.function.name, tool_call.function.arguments)
+                        for tool_call in tool_calls
+                    ],
                 )
 
                 for tool_call in tool_calls:

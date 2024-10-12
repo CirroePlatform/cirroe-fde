@@ -21,11 +21,11 @@ def upload_runbook(
     """
     background_tasks.add_task(handle_new_runbook, runbook_req)
 
+
 @app.post("issue")
-def new_issue(
-    issue_open: OpenIssueRequest
-):
+def new_issue(issue_open: OpenIssueRequest):
     return handle_new_issue(issue_open)
+
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000)

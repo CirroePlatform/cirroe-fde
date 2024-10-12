@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from src.model.runbook import Runbook, Step
 
+
 @typechecked
 class SupaClient:
     """
@@ -52,18 +53,18 @@ class SupaClient:
         response = self.steps.select("*").eq("sid", str(sid)).single().execute()
 
         # Check if the query was successful and data is returned
-        if response.get('status_code') == 200 and response.get('data'):
-            data = response['data']
+        if response.get("status_code") == 200 and response.get("data"):
+            data = response["data"]
 
             # Deserialize the allowed_cmds and alt_conditions fields
-            allowed_cmds = json.loads(data['allowed_cmds'])
+            allowed_cmds = json.loads(data["allowed_cmds"])
 
             # Bundle the data into a Step object
             step = Step(
-                sid=UUID(data['sid']),
-                description=data['description'],
+                sid=UUID(data["sid"]),
+                description=data["description"],
                 allowed_cmds=allowed_cmds,
-                next=UUID(data['next'])
+                next=UUID(data["next"]),
             )
 
             return step
@@ -77,10 +78,14 @@ class SupaClient:
         """
         for step in runbook.steps:
             data = {
-                "sid": str(step.sid),  # Assuming sid can be converted to a string if needed
+                "sid": str(
+                    step.sid
+                ),  # Assuming sid can be converted to a string if needed
                 "description": step.description,
-                "allowed_cmds": json.dumps(step.allowed_cmds),  # Supabase accepts JSON strings
-                "next": str(step.next)
+                "allowed_cmds": json.dumps(
+                    step.allowed_cmds
+                ),  # Supabase accepts JSON strings
+                "next": str(step.next),
             }
 
             self.steps.insert(data).execute()

@@ -82,7 +82,9 @@ class VectorDB:
         self.model = EmbeddingModel(embedding_model_name)
         self.dimension = dimension
 
-        self.supa_client = SupaClient(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")) # Hardcoded for now, not actually used
+        self.supa_client = SupaClient(
+            UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
+        )  # Hardcoded for now, not actually used
         self.create_runbook_collection()
 
     def create_runbook_collection(self):
@@ -98,7 +100,13 @@ class VectorDB:
             FieldSchema(
                 name="description", dtype=DataType.VARCHAR, max_length=65535
             ),  # Adjust max_length as needed
-            FieldSchema(name="steps", dtype=DataType.ARRAY, max_capacity=36, element_type=DataType.VARCHAR, max_length=65535),
+            FieldSchema(
+                name="steps",
+                dtype=DataType.ARRAY,
+                max_capacity=36,
+                element_type=DataType.VARCHAR,
+                max_length=65535,
+            ),
         ]
         schema = CollectionSchema(fields=fields, description="Runbook collection")
 
@@ -162,7 +170,9 @@ class VectorDB:
 
         print("Successfully added new runbook")
 
-    def get_top_k(self, query_vector: List[float], k: int) -> List[Tuple[Runbook, float]]:
+    def get_top_k(
+        self, query_vector: List[float], k: int
+    ) -> List[Tuple[Runbook, float]]:
         """
         Top k similar runbooks and their distances.
 
@@ -194,7 +204,9 @@ class VectorDB:
             # TODO Fetch all step objects given the step ids
             steps = self.supa_client.get_steps_for_runbook(step_ids)
 
-            rb = Runbook(rid=runbook_id, description=description, steps=steps, vector=vector)
+            rb = Runbook(
+                rid=runbook_id, description=description, steps=steps, vector=vector
+            )
             top_k_runbooks.append((rb, score))
 
         return top_k_runbooks

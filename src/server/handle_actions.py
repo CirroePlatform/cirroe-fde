@@ -17,6 +17,7 @@ rb_executor = RunBookExecutor()
 
 issue_classifier = IssueClassifier(vector_db)
 
+
 class IssueUpdateRequest(BaseModel):
     issue: Issue
     new_comment: Tuple[UUID, str]
@@ -33,7 +34,7 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
 def handle_new_issue(new_issue_request: OpenIssueRequest):
     """
     Handle a new inbound issue filed.
-    
+
     Returns some message to send to the user. Might take actions.
     """
     # 1. Find potential runbooks for issue.
