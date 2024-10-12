@@ -17,7 +17,7 @@ class IssueClassifier:
     def __init__(self, vector_db: VectorDB) -> None:
         self.vector_db = vector_db
 
-    def classify(self, issue: Issue, k: int = 3) -> List[UUID]:
+    def classify(self, issue: Issue, k: int = 3) -> List[Runbook]:
         """
         Returns a list of runbook ids sorted from most to least
         relevant.
@@ -31,11 +31,11 @@ class IssueClassifier:
         # 3. get top k above some threshold, and return a list of runbooks, sorted from
         # most to least useful.
         rv = []
-        for rid, sim in vectors_and_sims:
+        for rb, sim in vectors_and_sims:
             if sim >= SIM_THRESHOLD:
-                rv.append(rid)
+                rv.append(rb)
 
         if len(rv) != 0:
             return rv
 
-        # 4. Uh oh, need to alert a human here.
+        # 4. TODO Uh oh, need to alert a human here.

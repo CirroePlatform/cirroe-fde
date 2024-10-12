@@ -6,7 +6,8 @@ from src.storage.vector import VectorDB
 from src.model.runbook import Runbook, UploadRunbookRequest
 from src.model.issue import Issue, OpenIssueRequest
 
-from src.core.runbook import RunBookExecutor
+from src.core.executor import RunBookExecutor
+from src.core.issue_classifier import IssueClassifier
 
 
 RUNBOOKS = {}  # {rid: runbook}
@@ -14,6 +15,7 @@ RUNBOOKS = {}  # {rid: runbook}
 vector_db = VectorDB()
 rb_executor = RunBookExecutor()
 
+issue_classifier = IssueClassifier(vector_db)
 
 class IssueUpdateRequest(BaseModel):
     issue: Issue
@@ -31,24 +33,22 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
 def handle_new_issue(new_issue_request: OpenIssueRequest):
     """
     Handle a new inbound issue filed.
+    
+    Returns some message to send to the user. Might take actions.
     """
-    # top_k_similar_runbooks = self.db_client.get_top_k(issue.problem_description)
-    top_k_similar_runbooks = []
+    # 1. Find potential runbooks for issue.
+    potential_runbooks = issue_classifier.classify(new_issue_request.issue)
 
-    # 1. Find runbook for issue.
-    runbook = rb_executor.get_runbook_for_issue(
-        new_issue_request.issue, top_k_similar_runbooks
-    )
+    # 2. Call the runbook executor to run the book.
+    for rb in potential_runbooks:
+        success, response = rb_executor.run_book(
+            rb
+        )  # This will block at certain points via humanlayer
 
-    # 2. if runbook exists, call the runbook executor to run the book.
-    response = rb_executor.run_book(
-        runbook
-    )  # This will block at certain points via humanlayer
+        if success:
+            return response
 
-    # 3. If dne, alert some person with the correct background to handle the issue.
-    if response is None:
-        return "Couldn't run book"
-
+    # 3. If we're here, we should guardrail this response to send to a human
     return response
 
 

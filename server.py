@@ -1,10 +1,10 @@
 from fastapi import FastAPI, BackgroundTasks
 import uvicorn
 
-from src.server.handle_actions import handle_new_runbook
+from src.server.handle_actions import handle_new_runbook, handle_new_issue
 
 from src.model.runbook import UploadRunbookRequest
-from src.model.issue import IssueReq
+from src.model.issue import OpenIssueRequest
 
 app = FastAPI()
 
@@ -21,8 +21,11 @@ def upload_runbook(
     """
     background_tasks.add_task(handle_new_runbook, runbook_req)
 
-
-# def handle_new_issue(issue_req: )
+@app.post("issue")
+def new_issue(
+    issue_open: OpenIssueRequest
+):
+    return handle_new_issue(issue_open)
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000)

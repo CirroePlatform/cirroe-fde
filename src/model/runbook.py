@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from uuid import UUID
 
 
@@ -12,18 +12,22 @@ class Step(BaseModel):
     sid: UUID
     description: str
     allowed_cmds: List[str]
-    next_steps: Tuple[str, UUID]  # A tuple of the next step condition, step to go to.
+    alt_condition: Optional[Tuple[str, UUID]] = None  # A tuple of the next step condition, step to go to.
 
 
 class Runbook(BaseModel):
     """
     Model representing a runbook defined by the user
+    
+    ALERT this is different from the vector db schema, in the vector db
+    we just store a list of uuids for the steps instead of the steps. The actual
+    steps are in the supabase table called 'steps'
     """
 
-    uid: UUID
     rid: UUID
     description: str
-    first_step_id: UUID
+    steps: List[Step]
+    vector: Optional[List[float]] = None
 
 
 class UploadRunbookRequest(BaseModel):
