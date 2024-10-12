@@ -1,5 +1,6 @@
 from pymilvus import DataType, CollectionSchema, FieldSchema
 from pymilvus import MilvusClient
+from pymilvus.milvus_client.index import IndexParams
 from sentence_transformers import SentenceTransformer
 from typing import List, Tuple, Any
 from uuid import UUID
@@ -9,6 +10,8 @@ import os
 
 from src.model.runbook import Runbook
 from src.model.issue import Issue
+
+from src.storage.supa import SupaClient
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
@@ -78,9 +81,15 @@ class VectorDB:
         self.embedding_model_name = embedding_model_name
         self.model = EmbeddingModel(embedding_model_name)
         self.dimension = dimension
+
+        self.supa_client = SupaClient(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")) # Hardcoded for now, not actually used
         self.create_runbook_collection()
 
     def create_runbook_collection(self):
+        """
+        Create a runbook collection if doesn't exist, and load it into memory. If exists in db
+        already, then we just load into memory
+        """
         fields = [
             FieldSchema(
                 name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=36
@@ -89,29 +98,37 @@ class VectorDB:
             FieldSchema(
                 name="description", dtype=DataType.VARCHAR, max_length=65535
             ),  # Adjust max_length as needed
-            FieldSchema(name="first_step", dtype=DataType.VARCHAR, max_length=36),
+            FieldSchema(name="steps", dtype=DataType.ARRAY, max_capacity=36, element_type=DataType.VARCHAR, max_length=65535),
         ]
         schema = CollectionSchema(fields=fields, description="Runbook collection")
 
         if not self.client.has_collection(self.collection_name):
             self.client.create_collection(self.collection_name, schema=schema)
-            # self.client.create_index(self.collection_name, ) # todo
+            self.client.create_index(self.collection_name, IndexParams("vector"))
 
-    def embed_runbook(self, runbook: Runbook) -> List[float]:
+        self.client.load_collection(self.collection_name)
+
+    def embed_runbook(self, runbook: Runbook, debug: bool = True) -> List[float]:
         """
         Embed a runbook description and return it.
 
         Will be an array of size self.dimension
         """
         # Embed the runbook description using SentenceTransformer
+        if debug:
+            return [0.0] * self.dimension
+
         return self.model.encode(runbook.description)
 
-    def embed_issue(self, issue: Issue) -> List[float]:
+    def embed_issue(self, issue: Issue, debug: bool = True) -> List[float]:
         """
         embed an issue and return the resulting vector
 
         TODO add comments in there as some nice string formatted thing.
         """
+        if debug:
+            return [0.0] * self.dimension
+
         return self.model.encode(issue.problem_description)
 
     def add_runbook(self, runbook: Runbook):
@@ -125,20 +142,27 @@ class VectorDB:
         # Embed the description
         vector = self.embed_runbook(runbook)
 
+        # get step ids for db insert
+        step_ids = [str(step.sid) for step in runbook.steps]
+
         # Insert the runbook data into Milvus
         entity = [
             {
                 "id": str(runbook.rid),
                 "vector": vector,
                 "description": runbook.description,
-                "first_step": str(runbook.first_step_id),
+                "steps": step_ids,
             }
         ]
 
         self.client.insert(self.collection_name, data=entity)
+
+        # TODO Add steps to step unstructured collection
+        self.supa_client.add_steps_for_runbook(runbook)
+
         print("Successfully added new runbook")
 
-    def get_top_k(self, query_vector: List[float], k: int) -> List[Tuple[UUID, float]]:
+    def get_top_k(self, query_vector: List[float], k: int) -> List[Tuple[Runbook, float]]:
         """
         Top k similar runbooks and their distances.
 
@@ -162,7 +186,15 @@ class VectorDB:
         top_k_runbooks = []
         for result in results[0]:
             runbook_id = result.id
+            vector = result.vector
+            description = result.description
+            step_ids = result.steps
             score = result.distance
-            top_k_runbooks.append((runbook_id, score))
+
+            # TODO Fetch all step objects given the step ids
+            steps = self.supa_client.get_steps_for_runbook(step_ids)
+
+            rb = Runbook(rid=runbook_id, description=description, steps=steps, vector=vector)
+            top_k_runbooks.append((rb, score))
 
         return top_k_runbooks
