@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import List, Tuple, Optional
 from uuid import UUID
 
-
 class Step(BaseModel):
     """
     A single step to execute in a runbook.
@@ -12,7 +11,7 @@ class Step(BaseModel):
     sid: UUID
     description: str
     allowed_cmds: List[str]
-    alt_condition: Optional[Tuple[str, UUID]] = None  # A tuple of the next step condition, step to go to.
+    next: Optional[UUID] = None
 
 
 class Runbook(BaseModel):

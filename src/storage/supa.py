@@ -57,18 +57,13 @@ class SupaClient:
 
             # Deserialize the allowed_cmds and alt_conditions fields
             allowed_cmds = json.loads(data['allowed_cmds'])
-            alt_condition = json.loads(data['alt_conditions']) if data['alt_conditions'] else None
-            
-            # If alt_condition is present, deserialize it to a tuple
-            if alt_condition:
-                alt_condition = (alt_condition[0], UUID(alt_condition[1]))
 
             # Bundle the data into a Step object
             step = Step(
                 sid=UUID(data['sid']),
                 description=data['description'],
                 allowed_cmds=allowed_cmds,
-                alt_condition=alt_condition
+                next=UUID(data['next'])
             )
 
             return step
@@ -81,12 +76,11 @@ class SupaClient:
         Given a runbook, adds all of its steps to the supa db 'steps'.
         """
         for step in runbook.steps:
-            step_ser_cond = json.dumps((step.alt_condition[0], str(step.alt_condition[1]))) if step.alt_condition else None
             data = {
                 "sid": str(step.sid),  # Assuming sid can be converted to a string if needed
                 "description": step.description,
                 "allowed_cmds": json.dumps(step.allowed_cmds),  # Supabase accepts JSON strings
-                "alt_condition": step_ser_cond
+                "next": str(step.next)
             }
 
             self.steps.insert(data).execute()
