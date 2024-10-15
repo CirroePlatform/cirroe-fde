@@ -41,7 +41,8 @@ class SupaClient:
 
     def retrieve_step(self, sid: UUID) -> Optional[Step]:
         """
-        Retrieves a step object from Supabase given the sid and bundles it into a Python Step object.
+        Retrieves a step object from Supabase given the sid and 
+        bundles it into a Python Step object.
 
         Args:
             sid (UUID): The UUID of the step to retrieve.
@@ -64,8 +65,10 @@ class SupaClient:
                 sid=UUID(data["sid"]),
                 description=data["description"],
                 allowed_cmds=allowed_cmds,
-                next=UUID(data["next"]),
             )
+
+            if data["next"] is not None:
+                step.next = UUID(data["next"])
 
             return step
         else:
@@ -85,10 +88,12 @@ class SupaClient:
                 "allowed_cmds": json.dumps(
                     step.allowed_cmds
                 ),  # Supabase accepts JSON strings
-                "next": str(step.next),
             }
 
-            self.steps.insert(data).execute()
+            if step.next is not None:
+                data["next"] = str(step.next)
+
+            self.steps.upsert(data).execute()
 
     def get_steps_for_runbook(self, step_ids: List[str]) -> List[Step]:
         """

@@ -67,7 +67,7 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
         vector_db.add_runbook(runbook_req.runbook)
 
 
-def handle_new_issue(new_issue_request: OpenIssueRequest):
+def handle_new_issue(new_issue_request: OpenIssueRequest) -> str:
     """
     Handle a new inbound issue filed.
 
