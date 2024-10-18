@@ -6,9 +6,16 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from supabase.client import ClientOptions
 from typing import List, Optional
+from enum import StrEnum
 
 from src.model.runbook import Runbook, Step
 
+class Table(StrEnum):
+    USERS = "UserMetadata"
+    CHAT_SESSIONS = "ChatSessions"
+    CHATS = "Chats"
+
+USER_ID = "user_id"
 
 @typechecked
 class SupaClient:
@@ -23,6 +30,7 @@ class SupaClient:
         url: str = os.environ.get("SUPABASE_URL")
         key: str = os.environ.get("SUPABASE_API_KEY")
         self.supabase: Client = None
+        self.user_data = {}
 
         try:
             self.supabase = create_client(
@@ -107,3 +115,18 @@ class SupaClient:
             steps.append(step)
 
         return steps
+
+    def get_user_data(self, *columns):
+        """
+        Gets user data based on requested columns
+        """
+        response = (
+            self.supabase.table(Table.USERS)
+            .select(*columns)
+            .eq(USER_ID, str(self.user_id))
+            .execute()
+        ).data[0]
+
+        self.user_data.update(response)
+
+        return response

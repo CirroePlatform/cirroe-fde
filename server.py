@@ -2,9 +2,11 @@ from fastapi import FastAPI, BackgroundTasks
 import uvicorn
 
 from src.server.handle_actions import handle_new_runbook, handle_new_issue
+from src.integrations.merge import create_link_token
 
 from src.model.runbook import UploadRunbookRequest
 from src.model.issue import OpenIssueRequest
+from src.model.auth import GetLinkTokenRequest
 
 app = FastAPI()
 
@@ -30,6 +32,14 @@ def new_issue(
     Returns a response to send to the user.
     """
     return handle_new_issue(issue_open)
+
+@app.get("/link_token")
+def get_link_token(request: GetLinkTokenRequest):
+    """
+    Returns a new link token for a brand new integration.
+    """
+    return create_link_token(request)
+
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000)
