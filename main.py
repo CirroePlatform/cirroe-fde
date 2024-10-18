@@ -1,23 +1,10 @@
-from faker import Faker
-from src.storage.vector import VectorDB
+import merge
+from merge.client import Merge
+from dotenv import load_dotenv
+import os
 
-from src.core.executor import RunBookExecutor
-from src.core.metrics import SpikeDetector
+load_dotenv()
 
-fake = Faker()
+client = Merge(api_key=os.environ.get("MERGE_ACCESS_KEY"), account_token=os.environ.get("JIRA_TEST_TOKEN"))
 
-db = VectorDB()
-rbe = RunBookExecutor()
-
-sd = SpikeDetector()
-
-# handle_new_issue(
-#     OpenIssueRequest(
-#         requestor="james",
-#         issue=Issue(
-#             tid=uuid.uuid4(),
-#             problem_description="We noticed that there were some spikes in cpu utilization in some instances we are using. We cannot identify which one, and we also are having troble stopping it. Can you help here?",
-#             comments=[],
-#         ),
-#     )
-# )
+print(client.ticketing.tickets.list())
