@@ -2,11 +2,11 @@ from fastapi import FastAPI, BackgroundTasks
 import uvicorn
 
 from src.server.handle_actions import handle_new_runbook, handle_new_issue
-from src.integrations.merge import create_link_token
+from src.integrations.merge import create_link_token, retrieve_account_token
 
 from src.model.runbook import UploadRunbookRequest
 from src.model.issue import OpenIssueRequest
-from src.model.auth import GetLinkTokenRequest
+from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 
 app = FastAPI()
 
@@ -40,6 +40,13 @@ def get_link_token(request: GetLinkTokenRequest):
     """
     return create_link_token(request)
 
+@app.post("/account_token")
+def create_account_token(request: GetAccountTokenRequest):
+    """
+    Swaps out a public token for an account token. Should 
+    be stored securely on backend.
+    """
+    return retrieve_account_token(request)
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000)

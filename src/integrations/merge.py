@@ -6,7 +6,8 @@ from merge.client import Merge
 from dotenv import load_dotenv
 import os
 
-from src.model.auth import GetLinkTokenRequest
+from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
+from src.storage.supa import SupaClient
 
 load_dotenv()
 
@@ -35,14 +36,18 @@ def create_link_token(user: GetLinkTokenRequest, api_key: str = API_KEY) -> str:
 
     return link_token
 
-def retrieve_account_token(public_token: str, api_key: str = API_KEY) -> str:
+def retrieve_account_token(public_token_req: GetAccountTokenRequest, api_key: str = API_KEY) -> str:
     """
-    Get an account token provided with the short term public token.
+    Get an account token provided with the short term public token. Sets value in db.
     """
     headers = {"Authorization": f"Bearer {api_key}"}
 
-    account_token_url = "https://api.merge.dev/api/integrations/account-token/{}".format(public_token)
+    account_token_url = "https://api.merge.dev/api/integrations/account-token/{}".format(public_token_req.public_token)
     account_token_result = requests.get(account_token_url, headers=headers)
 
     account_token = account_token_result.json().get("account_token")
+
+    dbclient = SupaClient(public_token_req.uid)
+    dbclient.set_user_data(account_token=account_token)
+
     return account_token  # Save this in your database

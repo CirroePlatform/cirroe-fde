@@ -16,6 +16,7 @@ class Table(StrEnum):
     CHATS = "Chats"
 
 USER_ID = "user_id"
+ACCOUNT_TOKEN = "account_token"
 
 @typechecked
 class SupaClient:
@@ -126,6 +127,21 @@ class SupaClient:
             .eq(USER_ID, str(self.user_id))
             .execute()
         ).data[0]
+
+        self.user_data.update(response)
+
+        return response
+
+    def set_user_data(self, **kwargs):
+        """
+        Sets user data based on provided kwargs.
+        """
+        response = (
+            self.supabase.table(Table.USERS)
+            .update(kwargs)
+            .eq(USER_ID, str(self.user_id))
+            .execute()
+        )
 
         self.user_data.update(response)
 
