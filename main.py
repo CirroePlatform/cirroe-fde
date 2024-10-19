@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.server.handle_actions import handle_new_runbook, handle_new_issue
 from src.integrations.merge import create_link_token, retrieve_account_token
@@ -8,6 +9,14 @@ from src.model.issue import OpenIssueRequest
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mapping of issue ids to handler objects
 ISSUE_HANDLERS = {}
