@@ -6,3 +6,4 @@ hypercorn==0.14.4
 humanlayer
 pymilvus
 python-dotenv
+sentence_transformers
