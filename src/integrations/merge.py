@@ -31,6 +31,7 @@ def create_link_token(user: GetLinkTokenRequest, api_key: str = API_KEY) -> str:
     headers = {"Authorization": f"Bearer {api_key}"}
 
     link_token_result = requests.post(LINK_TOKEN_URL, data=body, headers=headers, timeout=10)
+    print(f"link token response: {link_token_result}")
     link_token = link_token_result.json().get("link_token")
     # integration_name = link_token_result.json().get("integration_name") # TODO might need this to categorize different integrations.
 
@@ -44,10 +45,11 @@ def retrieve_account_token(public_token_req: GetAccountTokenRequest, api_key: st
 
     account_token_url = "https://api.merge.dev/api/integrations/account-token/{}".format(public_token_req.public_token)
     account_token_result = requests.get(account_token_url, headers=headers)
+    print(f"account response: {account_token_result}")
 
     account_token = account_token_result.json().get("account_token")
 
     dbclient = SupaClient(public_token_req.uid)
     dbclient.set_user_data(account_token=account_token)
 
-    return account_token  # Save this in your database
+    return account_token

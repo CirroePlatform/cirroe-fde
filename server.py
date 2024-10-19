@@ -38,6 +38,7 @@ def get_link_token(request: GetLinkTokenRequest):
     """
     Returns a new link token for a brand new integration.
     """
+    print("Entered link token request")
     return create_link_token(request)
 
 @app.post("/account_token")
@@ -46,6 +47,7 @@ def create_account_token(request: GetAccountTokenRequest):
     Swaps out a public token for an account token. Should 
     be stored securely on backend.
     """
+    print("Entered retrieve acct token request")
     return retrieve_account_token(request)
 
 if __name__ == "__main__":

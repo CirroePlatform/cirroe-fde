@@ -142,6 +142,7 @@ class SupaClient:
             .eq(USER_ID, str(self.user_id))
             .execute()
         )
+        print(f"setting user data result: {response}")
 
         self.user_data.update(response)
 
