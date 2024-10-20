@@ -6,7 +6,7 @@ from src.server.handle_actions import handle_new_runbook, handle_new_issue
 from src.integrations.merge import create_link_token, retrieve_account_token
 
 from src.model.runbook import UploadRunbookRequest
-from src.model.issue import OpenIssueRequest
+from src.model.issue import OpenIssueRequest, WebhookPayload, Issue
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 
 app = FastAPI()
@@ -33,14 +33,27 @@ def upload_runbook(
 
 @app.post("/issue")
 def new_issue(
-    issue_open: OpenIssueRequest
+    payload: WebhookPayload
 ):
     """
     Handles the case of a new issue being created.
-    
+
     Returns a response to send to the user.
     """
-    return handle_new_issue(issue_open)
+    requestor = payload.data.end_user.email_address
+    tid = payload.hook.id
+
+    # TODO Need to look into passing more data rather than just this basic stuff here...
+    problem_description = payload.data.error_description
+
+    issue = Issue(tid=tid, problem_description=problem_description, comments=[])
+
+    req = OpenIssueRequest(
+        requestor=requestor,
+        issue=issue
+    )
+
+    return handle_new_issue(req)
 
 @app.get("/link_token/{uid}/{org_name}/{email}")
 def get_link_token(uid: UUID, org_name: str, email: str):
