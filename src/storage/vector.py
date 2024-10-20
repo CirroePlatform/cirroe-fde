@@ -2,10 +2,12 @@ from pymilvus import DataType, CollectionSchema, FieldSchema
 from pymilvus import MilvusClient
 from pymilvus.milvus_client.index import IndexParams
 from sentence_transformers import SentenceTransformer
-from typing import List, Tuple, Any
+from openai import OpenAI
+
+from logger import logger
+from typing import List, Any, Dict
 from uuid import UUID
 from dotenv import load_dotenv
-from openai import OpenAI
 import os
 
 from src.model.runbook import Runbook
@@ -18,8 +20,6 @@ NVIDIA_EMBED = "nvidia/NV-Embed-v2"
 OPENAI_EMBED = "text-embedding-3-small"
 SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
 DIMENSION = 1536
-
-RUNBOOK = "runbook"
 
 load_dotenv()
 
@@ -128,17 +128,6 @@ class VectorDB:
 
         return self.model.encode(runbook.description)
 
-    def embed_issue(self, issue: Issue, debug: bool = True) -> List[float]:
-        """
-        embed an issue and return the resulting vector
-
-        TODO add comments in there as some nice string formatted thing.
-        """
-        if debug:
-            return [0.0] * self.dimension
-
-        return self.model.encode(issue.problem_description)
-
     def add_runbook(self, runbook: Runbook):
         """
         Add a new runbook to the vector db
@@ -170,22 +159,16 @@ class VectorDB:
 
         print("Successfully added new runbook")
 
-    def get_top_k(
-        self, query_vector: List[float], k: int
-    ) -> List[Tuple[Runbook, float]]:
+    def get_top_k_runbooks(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """
-        Top k similar runbooks and their distances.
-
-        returns a list: [(runbook_id, distance score)]
+        Gets top k runbooks.
         """
-        # ensure dimensionality
-        if len(query_vector) != self.dimension:
-            raise f"Can't compare incorrect dimension vector, expected {self.dimension} got {len(query_vector)}"
+        top_k_runbooks = {}
+        top_k_runbooks[RUNBOOK] = []
 
-        # Perform the search using cosine similarity
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
         results = self.client.search(
-            collection_name=self.collection_name,
+            collection_name=RUNBOOK,
             data=[query_vector],
             anns_field="vector",
             search_params=search_params,
@@ -194,7 +177,6 @@ class VectorDB:
         )
 
         # Format and return the results
-        top_k_runbooks = []
         for result in results[0]:
             runbook_id = result['id']
             vector = result['entity']['vector']
@@ -208,6 +190,7 @@ class VectorDB:
             rb = Runbook(
                 rid=runbook_id, description=description, steps=steps, vector=vector
             )
-            top_k_runbooks.append((rb, score))
+
+            top_k_runbooks[RUNBOOK].append({"similarity": score, "metadata": rb.model_dump_json()})
 
         return top_k_runbooks

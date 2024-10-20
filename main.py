@@ -2,12 +2,14 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 
-from src.server.handle_actions import handle_new_runbook, handle_new_issue
+from src.server.handle_actions import handle_new_runbook
 from src.integrations.merge import create_link_token, retrieve_account_token
 
 from src.model.runbook import UploadRunbookRequest
 from src.model.issue import OpenIssueRequest, WebhookPayload, Issue
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
+
+from src.core.handle_issue import debug_issue
 
 app = FastAPI()
 
@@ -54,7 +56,7 @@ def new_issue(
         requestor=requestor,
         issue=issue
     )
-    background_tasks.add_task(handle_new_issue, req)
+    background_tasks.add_task(debug_issue, req)
 
 @app.get("/link_token/{uid}/{org_name}/{email}")
 def get_link_token(uid: UUID, org_name: str, email: str):
