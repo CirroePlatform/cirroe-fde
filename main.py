@@ -1,5 +1,6 @@
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from uuid import UUID
 
 from src.server.handle_actions import handle_new_runbook, handle_new_issue
 from src.integrations.merge import create_link_token, retrieve_account_token
@@ -41,11 +42,13 @@ def new_issue(
     """
     return handle_new_issue(issue_open)
 
-@app.get("/link_token")
-def get_link_token(request: GetLinkTokenRequest):
+@app.get("/link_token/{uid}/{org_name}/{email}")
+def get_link_token(uid: UUID, org_name: str, email: str):
     """
     Returns a new link token for a brand new integration.
     """
+    request = GetLinkTokenRequest(uid=uid, org_name=org_name, email=email)
+
     print("Entered link token request")
     return create_link_token(request)
 
