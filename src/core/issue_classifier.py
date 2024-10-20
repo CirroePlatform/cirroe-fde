@@ -39,3 +39,4 @@ class IssueClassifier:
             return rv
 
         # 4. TODO Uh oh, need to alert a human here.
+        return []

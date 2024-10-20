@@ -33,13 +33,15 @@ def upload_runbook(
 
 @app.post("/issue")
 def new_issue(
-    payload: WebhookPayload
+    payload: WebhookPayload, background_tasks: BackgroundTasks
 ):
     """
     Handles the case of a new issue being created.
 
-    Returns a response to send to the user.
+    Triggered from a webhook, so TODO need to send message to user via 
+    slack or something.
     """
+
     requestor = payload.data.end_user.email_address
     tid = payload.hook.id
 
@@ -52,8 +54,7 @@ def new_issue(
         requestor=requestor,
         issue=issue
     )
-
-    return handle_new_issue(req)
+    background_tasks.add_task(handle_new_issue, req)
 
 @app.get("/link_token/{uid}/{org_name}/{email}")
 def get_link_token(uid: UUID, org_name: str, email: str):
@@ -73,3 +74,8 @@ def create_account_token(request: GetAccountTokenRequest):
     """
     print("Entered retrieve acct token request")
     return retrieve_account_token(request)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app")

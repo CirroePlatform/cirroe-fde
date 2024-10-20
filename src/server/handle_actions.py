@@ -27,11 +27,14 @@ class IssueUpdateRequest(BaseModel):
     new_comment: Tuple[UUID, str]
 
 # humanlayer this with an option for the slack mf to change up the data sent back to the user.
-def coalesce_stepwide_responses(responses: List[str], rb: Runbook, issue_req: OpenIssueRequest) -> str:
+def coalesce_stepwide_responses(responses: List[str], rb: Runbook, issue_req: OpenIssueRequest, debug: bool = False) -> str:
     """
     Given a set of responses from executing some runbook, the issue from the user,
     and the runbook used, coalesce one final response to the user.
     """
+    if debug:
+        return "Nothing for now..."
+
     with open(COALESCE_RESPONSE_FILE, "r", encoding="utf8") as fp:
         sysprompt = fp.read()
 
@@ -67,7 +70,7 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
         vector_db.add_runbook(runbook_req.runbook)
 
 
-def handle_new_issue(new_issue_request: OpenIssueRequest) -> str:
+def handle_new_issue(new_issue_request: OpenIssueRequest):
     """
     Handle a new inbound issue filed.
 
@@ -83,7 +86,9 @@ def handle_new_issue(new_issue_request: OpenIssueRequest) -> str:
         )  # This will block at certain points via humanlayer
 
         if success:
-            return coalesce_stepwide_responses(responses, rb, new_issue_request)
+            response = coalesce_stepwide_responses(responses, rb, new_issue_request)
+
+            # TODO need to use merge here to add a new comment on the ticket
 
     # 3. If we're here, we failed to execute. tuff.
     raise ValueError("Couldn't figure out user issue")

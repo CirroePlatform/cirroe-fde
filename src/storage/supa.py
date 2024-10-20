@@ -111,9 +111,9 @@ class SupaClient:
         steps = []
         for step in step_ids:
             # ASSUMING THE FIRST STEP IS THE FIRST IN THE LIST
-            step = self.retrieve_step(UUID(step))
+            step_obj = self.retrieve_step(UUID(step))
 
-            steps.append(step)
+            steps.append(step_obj)
 
         return steps
 
