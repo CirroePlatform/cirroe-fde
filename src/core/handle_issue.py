@@ -1,12 +1,19 @@
 from logger import logger
-from typing import Dict, Any
+from merge.resources.ticketing import CommentRequest
+from merge.resources.ticketing import Ticket
+from uuid import UUID
+from typing import Dict, Any, Optional
 import anthropic
+import json
 from dotenv import load_dotenv
 
 from src.storage.vector import VectorDB, DEBUG_ISSUE_TOOLS
 from src.model.issue import Issue, OpenIssueRequest
 
 from src.core.executor import RunBookExecutor
+
+from src.integrations.merge import client as merge_client
+from src.integrations.humanlayer_integration import hl
 
 load_dotenv()
 
@@ -58,8 +65,20 @@ DEBUG_ISSUE_TOOLS = [
             },
         },
     },
-    {},
-    {},
+    {
+        "name": "comment_on_ticket",
+        "description": "A function to add a comment onto the ticket for the provided issue",
+        "input_schema": 
+            {
+                "type": "object", 
+                "properties": {
+                    "comment": {
+                        "type": "string",
+                        "description": "The comment to put on the ticket, can be html formatted."
+                    }
+                }
+            },
+    },
 ]
 
 DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
@@ -70,7 +89,7 @@ client = anthropic.Anthropic()
 from src.storage.vector import VectorDB
 
 
-def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> str:
+def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> Dict[str, Any]:
     """
     Given a set of responses from executing some runbook, the issue from the user,
     and the runbook used, coalesce one final response to the user.
@@ -81,20 +100,78 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> str:
     with open(DEBUG_ISSUE_FILE, "r", encoding="utf8") as fp:
         sysprompt = fp.read()
 
+    messages = [
+        {"role": "system", "content": sysprompt},
+        {"role": "user", "content": issue_req.issue.problem_description},
+    ]
+
+    response = client.messages.create(
+        model="claude-3-5-sonnet-20240620",
+        max_tokens=4096,
+        tools=DEBUG_ISSUE_TOOLS,
+        tool_choice={"type": "any", "name": "solve_issue_with_collections"},
+        messages=messages,
+    )
+
+    while response.choices[0].finish_reason != "stop":
+        response_message = response.choices[0].message
+        tool_calls = response_message.tool_calls
+
+        if tool_calls:
+            messages.append(
+                response_message
+            )  # extend conversation with assistant's reply
+            logger.info(
+                "last message led to %s tool calls: %s",
+                len(tool_calls),
+                [
+                    (tool_call.function.name, tool_call.function.arguments)
+                    for tool_call in tool_calls
+                ],
+            )
+
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
+                function_response_json: str
+
+                logger.info("CALL tool %s with %s", function_name, function_args)
+
+                try:
+                    function_response = function_name(**function_args)
+                    function_response_json = json.dumps(function_response)
+                except Exception as e:
+                    function_response_json = json.dumps(
+                        {
+                            "error": str(e),
+                        }
+                    )
+
+                logger.info(
+                    "tool %s responded with %s",
+                    function_name,
+                    function_response_json[:200],
+                )
+                messages.append(
+                    {
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": function_response_json,
+                    }
+                )  # extend conversation with function response
+
         response = client.messages.create(
             model="claude-3-5-sonnet-20240620",
             max_tokens=4096,
             tools=DEBUG_ISSUE_TOOLS,
-            tool_choice={"type": "any", "name": "solve_issue_with_collections"},
-            messages=[
-                {"role": "system", "content": sysprompt},
-                {"role": "user", "content": issue_req.issue.problem_description},
-            ],
+            messages=messages,
         )
 
-        return response.choices[0].message.content
+    return json.loads(response.choices[0].message.content)
 
 
+# Below are all anthropic tools.
 def solve_issue_with_collections(
     problem_description: str, collection_names: Dict[str, int]
 ) -> Dict[str, Any]:
@@ -137,4 +214,31 @@ def solve_issue_with_collections(
             pass
         elif collection_name == LOGGING:
             pass
+        else:
+            raise ValueError(
+                "Error, passed in an enum for some collection that dne: "
+                + collection_name
+            )
+
     return rv  # TODO make this string formatted? Or json should be ok.
+
+def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
+    """
+    Add a comment to a ticket.
+    """
+    merge_client.ticketing.comments.create(
+        model=CommentRequest(
+            html_body=comment,
+            ticket=Ticket(id=tid)
+        )
+    )
+
+def change_asignee(tid: UUID, new_asignee: UUID):
+    pass
+
+@hl.require_approval()
+def resolve_ticket(comment: Optional[str] = None):
+    """
+    Resolves a ticket, requires engineer approval
+    """
+    pass

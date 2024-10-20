@@ -1,14 +1,10 @@
 """
 Merge API integration functionality.
 """
-
-from uuid import UUID
 import requests
 from merge.client import Merge
-from merge.resources.ticketing import CommentRequest
 from dotenv import load_dotenv
 import os
-from typing import Optional
 
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 from src.storage.supa import SupaClient
@@ -67,23 +63,3 @@ def retrieve_account_token(
     dbclient.set_user_data(account_token=account_token)
 
     return account_token
-
-
-def get_comments_from_ticket(tid: UUID):
-    """
-    Get all comments from a ticket
-    """
-    client.ticketing.comments.retrieve(tid)
-
-
-def add_comment_to_ticket(tid: UUID, message: str, msg_html: Optional[str] = None):
-    """
-    Get all comments from a ticket
-    """
-    client.ticketing.comments.create(
-        model=CommentRequest(
-            ticket=tid,
-            body="When will these integrations be done? You all should use Merge.",
-            html_body="When will these integrations be done? You all should use <b>Merge<b>.",
-        ),
-    )
