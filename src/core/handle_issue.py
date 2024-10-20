@@ -17,11 +17,11 @@ vector_db = VectorDB()
 
 # Knowledge sources
 RUNBOOK = "runbook"
-LOGGING = "logs" # TODO implement
-CODEBASE = "codebase" # TODO implement
-DOCUMENTATION = "documentation" # TODO implement
-ISSUES = "issues" # TODO implement
-METRICS = "metrics" # TODO integrate spike detection here
+LOGGING = "logs"  # TODO implement
+CODEBASE = "codebase"  # TODO implement
+DOCUMENTATION = "documentation"  # TODO implement
+ISSUES = "issues"  # TODO implement
+METRICS = "metrics"  # TODO integrate spike detection here
 
 
 COLLECTION_NAME_DESCRIPTION = f"""
@@ -36,7 +36,7 @@ be a list of runbooks, which contains solution descriptions and commands.
 {ISSUES}: This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from 
 users and engineers, and the whether the issue has been resolved.
 """
-# {METRICS}: A metric knowledge base, will return a list of spiky metrics given the current time and 
+# {METRICS}: A metric knowledge base, will return a list of spiky metrics given the current time and
 
 
 DEBUG_ISSUE_TOOLS = [
@@ -48,22 +48,18 @@ DEBUG_ISSUE_TOOLS = [
             "properties": {
                 "issue": {
                     "type": "int",
-                    "description": "The number of chunks to retrieve from the specific knowledge base"
+                    "description": "The number of chunks to retrieve from the specific knowledge base",
                 },
                 "collection_name": {
                     "type": "string",
                     "enum": [RUNBOOK, LOGGING, CODEBASE, DOCUMENTATION, METRICS],
-                    "description": COLLECTION_NAME_DESCRIPTION
-                }
-            }
-        }
+                    "description": COLLECTION_NAME_DESCRIPTION,
+                },
+            },
+        },
     },
-    {
-        
-    },
-    {
-        
-    },
+    {},
+    {},
 ]
 
 DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
@@ -72,6 +68,7 @@ vector_db = VectorDB()
 client = anthropic.Anthropic()
 
 from src.storage.vector import VectorDB
+
 
 def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> str:
     """
@@ -91,27 +88,28 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> str:
             tool_choice={"type": "any", "name": "solve_issue_with_collections"},
             messages=[
                 {"role": "system", "content": sysprompt},
-                {"role": "user", "content": issue_req.issue.problem_description}
+                {"role": "user", "content": issue_req.issue.problem_description},
             ],
         )
 
         return response.choices[0].message.content
 
+
 def solve_issue_with_collections(
     problem_description: str, collection_names: Dict[str, int]
 ) -> Dict[str, Any]:
     """
-    Top k similar knowledge bases and their distances. 
-    
+    Top k similar knowledge bases and their distances.
+
     collection = knowledge base
 
-    Returns a dict like so: 
+    Returns a dict like so:
     ```json
     {
-        "collection_name": 
+        "collection_name":
             [
                 {
-                    "similarity": float, 
+                    "similarity": float,
                     "metadata": {
                         // Some metadata, differs depending on the collection type.
                     }
@@ -139,4 +137,4 @@ def solve_issue_with_collections(
             pass
         elif collection_name == LOGGING:
             pass
-    return rv # TODO make this string formatted? Or json should be ok.
+    return rv  # TODO make this string formatted? Or json should be ok.

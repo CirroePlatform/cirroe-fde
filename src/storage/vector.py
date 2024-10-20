@@ -173,16 +173,16 @@ class VectorDB:
             anns_field="vector",
             search_params=search_params,
             limit=k,
-            output_fields=["vector", "description", "steps"]
+            output_fields=["vector", "description", "steps"],
         )
 
         # Format and return the results
         for result in results[0]:
-            runbook_id = result['id']
-            vector = result['entity']['vector']
-            description = result['entity']['description']
-            step_ids = list(result['entity']['steps'])
-            score = result['distance']
+            runbook_id = result["id"]
+            vector = result["entity"]["vector"]
+            description = result["entity"]["description"]
+            step_ids = list(result["entity"]["steps"])
+            score = result["distance"]
 
             # TODO Fetch all step objects given the step ids
             steps = self.supa_client.get_steps_for_runbook(step_ids)
@@ -191,6 +191,8 @@ class VectorDB:
                 rid=runbook_id, description=description, steps=steps, vector=vector
             )
 
-            top_k_runbooks[RUNBOOK].append({"similarity": score, "metadata": rb.model_dump_json()})
+            top_k_runbooks[RUNBOOK].append(
+                {"similarity": score, "metadata": rb.model_dump_json()}
+            )
 
         return top_k_runbooks

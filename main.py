@@ -24,6 +24,7 @@ app.add_middleware(
 # Mapping of issue ids to handler objects
 ISSUE_HANDLERS = {}
 
+
 @app.post("/runbook")
 def upload_runbook(
     runbook_req: UploadRunbookRequest, background_tasks: BackgroundTasks
@@ -33,14 +34,13 @@ def upload_runbook(
     """
     background_tasks.add_task(handle_new_runbook, runbook_req)
 
+
 @app.post("/issue")
-def new_issue(
-    payload: WebhookPayload, background_tasks: BackgroundTasks
-):
+def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
     """
     Handles the case of a new issue being created.
 
-    Triggered from a webhook, so TODO need to send message to user via 
+    Triggered from a webhook, so TODO need to send message to user via
     slack or something.
     """
 
@@ -52,11 +52,9 @@ def new_issue(
 
     issue = Issue(tid=tid, problem_description=problem_description, comments=[])
 
-    req = OpenIssueRequest(
-        requestor=requestor,
-        issue=issue
-    )
+    req = OpenIssueRequest(requestor=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)
+
 
 @app.get("/link_token/{uid}/{org_name}/{email}")
 def get_link_token(uid: UUID, org_name: str, email: str):
@@ -68,10 +66,11 @@ def get_link_token(uid: UUID, org_name: str, email: str):
     print("Entered link token request")
     return create_link_token(request)
 
+
 @app.post("/account_token")
 def create_account_token(request: GetAccountTokenRequest):
     """
-    Swaps out a public token for an account token. Should 
+    Swaps out a public token for an account token. Should
     be stored securely on backend.
     """
     print("Entered retrieve acct token request")
@@ -80,4 +79,5 @@ def create_account_token(request: GetAccountTokenRequest):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app")

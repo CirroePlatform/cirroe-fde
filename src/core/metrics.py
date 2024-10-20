@@ -93,7 +93,7 @@ class SpikeDetector:
 
         if len(spikes) > 0:
             logger.info(f"Detected {len(spikes)} spikes")
-        
+
         return spikes
 
     def scan_account(
@@ -113,13 +113,12 @@ class SpikeDetector:
             namespace = metric["Namespace"]
             metric_name = metric["MetricName"]
             dimensions = metric["Dimensions"]
-            
+
             # for dim in
-            if sort_key and not any(dim['Name'] == sort_key for dim in dimensions):
+            if sort_key and not any(dim["Name"] == sort_key for dim in dimensions):
                 continue
-            if sort_val and not any(dim['Value'] == sort_val for dim in dimensions):
+            if sort_val and not any(dim["Value"] == sort_val for dim in dimensions):
                 continue
-            
 
             logger.info(
                 f"Analyzing metric {i+1}/{len(metrics)}: {namespace}:{metric_name}"
@@ -143,7 +142,12 @@ class SpikeDetector:
         return report
 
     def generate_report(
-        self, start_time: datetime, end_time: datetime, threshold: float = 2, sort_key: Optional[str] = None, sort_val: Optional[str] = None,
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        threshold: float = 2,
+        sort_key: Optional[str] = None,
+        sort_val: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Generate a report of detected spikes across the account."""
         logger.info("Generating spike detection report")

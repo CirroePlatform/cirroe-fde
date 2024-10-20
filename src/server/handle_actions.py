@@ -18,9 +18,11 @@ RUNBOOKS = {}  # {rid: runbook}
 rb_executor = RunBookExecutor()
 vector_db = VectorDB()
 
+
 class IssueUpdateRequest(BaseModel):
     issue: Issue
     new_comment: Tuple[UUID, str]
+
 
 def handle_new_runbook(runbook_req: UploadRunbookRequest):
     """
@@ -28,6 +30,7 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
     """
     if runbook_req.runbook.rid not in RUNBOOKS:
         vector_db.add_runbook(runbook_req.runbook)
+
 
 def handle_issue_update(issue_update):
     """

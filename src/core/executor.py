@@ -14,6 +14,7 @@ from src.model.issue import Issue
 EXECUTE_STEP_PROMPT_FILE = "include/prompts/execute_step.txt"
 COALESCE_RESPONSE_FILE = "include/prompts/coalesce_response.txt"
 
+
 @hl.require_approval()
 def execute(cmd: str) -> Tuple[str, bool]:
     """
@@ -154,10 +155,10 @@ class RunBookExecutor:
                 model="gpt-4o",
                 messages=messages,
                 tools=shell_tools_openai,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
 
-        # Not sure if im forgetting something here, might need further investigation on 
+        # Not sure if im forgetting something here, might need further investigation on
         # how HL chaining works.
         return True, json.loads(response.choices[0].message.content)
 
@@ -174,7 +175,7 @@ class RunBookExecutor:
             # 1. execute step.
             success, response = self.execute_step(step)
             print(response)
-            
+
             if not success:
                 success, response = self.bailout(step, response)
 

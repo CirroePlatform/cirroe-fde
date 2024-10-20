@@ -10,13 +10,16 @@ from enum import StrEnum
 
 from src.model.runbook import Runbook, Step
 
+
 class Table(StrEnum):
     USERS = "UserMetadata"
     CHAT_SESSIONS = "ChatSessions"
     CHATS = "Chats"
 
+
 USER_ID = "user_id"
 ACCOUNT_TOKEN = "account_token"
+
 
 @typechecked
 class SupaClient:
@@ -50,7 +53,7 @@ class SupaClient:
 
     def retrieve_step(self, sid: UUID) -> Optional[Step]:
         """
-        Retrieves a step object from Supabase given the sid and 
+        Retrieves a step object from Supabase given the sid and
         bundles it into a Python Step object.
 
         Args:
