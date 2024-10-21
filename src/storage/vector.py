@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 import os
 
 from src.model.runbook import Runbook
-from src.model.issue import Issue
 
 from src.storage.supa import SupaClient
 
@@ -20,6 +19,8 @@ NVIDIA_EMBED = "nvidia/NV-Embed-v2"
 OPENAI_EMBED = "text-embedding-3-small"
 SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
 DIMENSION = 1536
+
+RUNBOOK = "runbook"
 
 load_dotenv()
 

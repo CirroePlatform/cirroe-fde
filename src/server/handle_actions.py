@@ -1,15 +1,13 @@
 from pydantic import BaseModel
 from uuid import UUID
-from typing import Tuple, List
-import anthropic
+from typing import Tuple
 from dotenv import load_dotenv
 
-from src.storage.vector import VectorDB, DEBUG_ISSUE_TOOLS
+from src.storage.vector import VectorDB
 from src.model.runbook import UploadRunbookRequest
-from src.model.issue import Issue, OpenIssueRequest
+from src.model.issue import Issue
 
 from src.core.executor import RunBookExecutor
-from src.integrations.merge import client as merge_client, CommentRequest
 
 load_dotenv()
 
@@ -30,7 +28,6 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
     """
     if runbook_req.runbook.rid not in RUNBOOKS:
         vector_db.add_runbook(runbook_req.runbook)
-
 
 def handle_issue_update(issue_update):
     """

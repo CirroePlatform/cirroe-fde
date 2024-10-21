@@ -1,14 +1,15 @@
 from logger import logger
+from typeguard import typechecked
 from merge.resources.ticketing import CommentRequest
 from merge.resources.ticketing import Ticket
 from uuid import UUID
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
 import anthropic
 import json
 from dotenv import load_dotenv
 
-from src.storage.vector import VectorDB, DEBUG_ISSUE_TOOLS
-from src.model.issue import Issue, OpenIssueRequest
+from src.storage.vector import VectorDB, RUNBOOK
+from src.model.issue import OpenIssueRequest
 
 from src.core.executor import RunBookExecutor
 
@@ -23,7 +24,6 @@ rb_executor = RunBookExecutor()
 vector_db = VectorDB()
 
 # Knowledge sources
-RUNBOOK = "runbook"
 LOGGING = "logs"  # TODO implement
 CODEBASE = "codebase"  # TODO implement
 DOCUMENTATION = "documentation"  # TODO implement
@@ -42,9 +42,15 @@ be a list of runbooks, which contains solution descriptions and commands.
 
 {ISSUES}: This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from 
 users and engineers, and the whether the issue has been resolved.
-"""
-# {METRICS}: A metric knowledge base, will return a list of spiky metrics given the current time and
 
+{METRICS}: A metric knowledge base, will return a list of spiky metrics for the provided issue.
+
+{CODEBASE}: A codebase knowledge base. This will return the top k chunks of code from the teams codebase relevant to the issue.
+
+{LOGGING}: A knowledge base of a set of logs from the team's logging system.
+
+{DOCUMENTATION}: Relevant data from the team's documentation will be returned with this collection.
+"""
 
 DEBUG_ISSUE_TOOLS = [
     {
@@ -53,32 +59,41 @@ DEBUG_ISSUE_TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "issue": {
-                    "type": "int",
-                    "description": "The number of chunks to retrieve from the specific knowledge base",
-                },
-                "collection_name": {
+                "problem_description": {
                     "type": "string",
-                    "enum": [RUNBOOK, LOGGING, CODEBASE, DOCUMENTATION, METRICS],
-                    "description": COLLECTION_NAME_DESCRIPTION,
+                    "description": "A description of an issue from a customer on some ticket",
+                },
+                "collection_names": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "minItems": 2,
+                        "maxItems": 2,
+                        "items": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    RUNBOOK,
+                                    LOGGING,
+                                    CODEBASE,
+                                    DOCUMENTATION,
+                                    METRICS,
+                                ],
+                                "description": COLLECTION_NAME_DESCRIPTION,
+                            },
+                            {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "The number of chunks to retrieve from the specific knowledge base",
+                            },
+                        ],
+                    },
+                    "description": "A list of tuples, each containing a collection name and the number of chunks to retrieve",
                 },
             },
+            "required": ["problem_description", "collection_names"],
         },
-    },
-    {
-        "name": "comment_on_ticket",
-        "description": "A function to add a comment onto the ticket for the provided issue",
-        "input_schema": 
-            {
-                "type": "object", 
-                "properties": {
-                    "comment": {
-                        "type": "string",
-                        "description": "The comment to put on the ticket, can be html formatted."
-                    }
-                }
-            },
-    },
+    }
 ]
 
 DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
@@ -86,13 +101,10 @@ DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
 vector_db = VectorDB()
 client = anthropic.Anthropic()
 
-from src.storage.vector import VectorDB
 
-
-def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> Dict[str, Any]:
+def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     """
-    Given a set of responses from executing some runbook, the issue from the user,
-    and the runbook used, coalesce one final response to the user.
+    Uses anthropic function calling to comment on an issue from a ticket a user opens.
     """
     if debug:
         return "Nothing for now..."
@@ -101,15 +113,15 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> Dict[str, A
         sysprompt = fp.read()
 
     messages = [
-        {"role": "system", "content": sysprompt},
         {"role": "user", "content": issue_req.issue.problem_description},
     ]
 
     response = client.messages.create(
         model="claude-3-5-sonnet-20240620",
-        max_tokens=4096,
+        system=sysprompt,
+        max_tokens=2048,
         tools=DEBUG_ISSUE_TOOLS,
-        tool_choice={"type": "any", "name": "solve_issue_with_collections"},
+        tool_choice={"type": "any"},
         messages=messages,
     )
 
@@ -163,17 +175,18 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False) -> Dict[str, A
 
         response = client.messages.create(
             model="claude-3-5-sonnet-20240620",
-            max_tokens=4096,
+            max_tokens=2048,
             tools=DEBUG_ISSUE_TOOLS,
             messages=messages,
         )
 
-    return json.loads(response.choices[0].message.content)
-
+    comment_on_ticket(issue_req.issue.tid, response.choices[0].message.content)
+    logger.info("Comment added to ticket: %s", response.choices[0].message.content)
 
 # Below are all anthropic tools.
+@typechecked
 def solve_issue_with_collections(
-    problem_description: str, collection_names: Dict[str, int]
+    problem_description: str, collection_names: List[Tuple[str, int]]
 ) -> Dict[str, Any]:
     """
     Top k similar knowledge bases and their distances.
@@ -227,10 +240,7 @@ def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     Add a comment to a ticket.
     """
     merge_client.ticketing.comments.create(
-        model=CommentRequest(
-            html_body=comment,
-            ticket=Ticket(id=tid)
-        )
+        model=CommentRequest(html_body=comment, ticket=Ticket(id=tid))
     )
 
 def change_asignee(tid: UUID, new_asignee: UUID):
