@@ -125,53 +125,49 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
         messages=messages,
     )
 
-    while response.choices[0].finish_reason != "stop":
-        response_message = response.choices[0].message
-        tool_calls = response_message.tool_calls
+    while response.stop_reason == "tool_use":
+        response_message = response.content[0].input
+        tool_name = response.content[0].name
+        tool_call_id = response.content[0].id
 
-        if tool_calls:
+        if tool_name:
             messages.append(
                 response_message
             )  # extend conversation with assistant's reply
+            # logger.info(
+            #     "last message led to %s tool calls: %s",
+            #     len(tool_name),
+            #     [
+            #         (tool_call.function.name, tool_call.function.arguments)
+            #         for tool_call in tool_calls
+            #     ],
+            # )
+
+
+            function_name = tool_name
+            function_args = response_message
+            function_response: str
+
+            logger.info("CALL tool %s with %s", function_name, function_args)
+
+            try:
+                function_response = function_name(**function_args)
+            except Exception as e:
+                function_response = str(e)
+
             logger.info(
-                "last message led to %s tool calls: %s",
-                len(tool_calls),
-                [
-                    (tool_call.function.name, tool_call.function.arguments)
-                    for tool_call in tool_calls
-                ],
+                "tool %s responded with %s",
+                function_name,
+                function_response[:200],
             )
-
-            for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
-                function_response_json: str
-
-                logger.info("CALL tool %s with %s", function_name, function_args)
-
-                try:
-                    function_response = function_name(**function_args)
-                    function_response_json = json.dumps(function_response)
-                except Exception as e:
-                    function_response_json = json.dumps(
-                        {
-                            "error": str(e),
-                        }
-                    )
-
-                logger.info(
-                    "tool %s responded with %s",
-                    function_name,
-                    function_response_json[:200],
-                )
-                messages.append(
-                    {
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": function_response_json,
-                    }
-                )  # extend conversation with function response
+            messages.append(
+                {
+                    "tool_call_id": tool_call_id,
+                    "role": "tool",
+                    "name": function_name,
+                    "content": function_response,
+                }
+            )  # extend conversation with function response
 
         response = client.messages.create(
             model="claude-3-5-sonnet-20240620",
