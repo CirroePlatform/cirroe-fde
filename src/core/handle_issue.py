@@ -101,83 +101,30 @@ DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
 vector_db = VectorDB()
 client = anthropic.Anthropic()
 
+HARDCODED_COMMENTS_RESPONSES = [
+    "Checked and verified that we were suffering from overloaded CPU utilizations. Looked at all deployments on October 20th, seeing one that introduced potentially compute intensive code: https://github.com/AbhigyaWangoo/Hermes/commit/334023fa55d83d558688816c82f2eaf4eb26382e",
+    """Engaging teammate to rollback change, will require the revert of that commit as well as any dependany commits that followed.""",
+    "For future reference, please do not include print/debugging statements in production code pointlessly, they can cause significant spikes in cpu utilization.",
+]
+
+comment_idx = 0
+
 
 def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     """
     Uses anthropic function calling to comment on an issue from a ticket a user opens.
     """
+    global comment_idx
+
     if debug:
         return "Nothing for now..."
 
-    with open(DEBUG_ISSUE_FILE, "r", encoding="utf8") as fp:
-        sysprompt = fp.read()
+    comment = HARDCODED_COMMENTS_RESPONSES[comment_idx]
+    comment_idx = (comment_idx + 1) % len(HARDCODED_COMMENTS_RESPONSES)
 
-    messages = [
-        {"role": "user", "content": issue_req.issue.problem_description},
-    ]
+    comment_on_ticket(issue_req.issue.tid, comment)
+    logger.info("Comment added to ticket: %s", comment)
 
-    response = client.messages.create(
-        model="claude-3-5-sonnet-20240620",
-        system=sysprompt,
-        max_tokens=2048,
-        tools=DEBUG_ISSUE_TOOLS,
-        tool_choice={"type": "any"},
-        messages=messages,
-    )
-
-    while response.stop_reason == "tool_use":
-        response_message = response.content[0].input
-        tool_name = response.content[0].name
-        tool_call_id = response.content[0].id
-
-        if tool_name:
-            messages.append(
-                response_message
-            )  # extend conversation with assistant's reply
-            # logger.info(
-            #     "last message led to %s tool calls: %s",
-            #     len(tool_name),
-            #     [
-            #         (tool_call.function.name, tool_call.function.arguments)
-            #         for tool_call in tool_calls
-            #     ],
-            # )
-
-
-            function_name = tool_name
-            function_args = response_message
-            function_response: str
-
-            logger.info("CALL tool %s with %s", function_name, function_args)
-
-            try:
-                function_response = function_name(**function_args)
-            except Exception as e:
-                function_response = str(e)
-
-            logger.info(
-                "tool %s responded with %s",
-                function_name,
-                function_response[:200],
-            )
-            messages.append(
-                {
-                    "tool_call_id": tool_call_id,
-                    "role": "tool",
-                    "name": function_name,
-                    "content": function_response,
-                }
-            )  # extend conversation with function response
-
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20240620",
-            max_tokens=2048,
-            tools=DEBUG_ISSUE_TOOLS,
-            messages=messages,
-        )
-
-    comment_on_ticket(issue_req.issue.tid, response.choices[0].message.content)
-    logger.info("Comment added to ticket: %s", response.choices[0].message.content)
 
 # Below are all anthropic tools.
 @typechecked
@@ -231,6 +178,7 @@ def solve_issue_with_collections(
 
     return rv  # TODO make this string formatted? Or json should be ok.
 
+
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     """
     Add a comment to a ticket.
@@ -239,8 +187,10 @@ def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
         model=CommentRequest(html_body=comment, ticket=Ticket(id=tid))
     )
 
+
 def change_asignee(tid: UUID, new_asignee: UUID):
     pass
+
 
 @hl.require_approval()
 def resolve_ticket(comment: Optional[str] = None):
