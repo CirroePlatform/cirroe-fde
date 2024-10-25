@@ -75,9 +75,3 @@ def create_account_token(request: GetAccountTokenRequest):
     """
     print("Entered retrieve acct token request")
     return retrieve_account_token(request)
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app")
