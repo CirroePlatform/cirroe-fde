@@ -9,14 +9,14 @@ class CloudIntegration:
     def __init__(self, org_id: str):
         """
         Initialize cloud integration with organization ID to fetch credentials.
-        
+
         Args:
             org_id (str): Organization ID to lookup cloud credentials
         """
         self.org_id = org_id
         self.supa_client = SupaClient()
         self.credentials = self._get_credentials()
-        
+
     def _get_credentials(self) -> Dict[str, Dict[str, str]]:
         """
         Retrieve cloud credentials from Supabase for the organization.
@@ -51,7 +51,7 @@ class CloudIntegration:
         """
         if provider not in self.credentials:
             raise ValueError(f"No credentials found for {provider}")
-            
+
         if provider == 'aws':
             os.environ['AWS_ACCESS_KEY_ID'] = self.credentials['aws']['access_key_id']
             os.environ['AWS_SECRET_ACCESS_KEY'] = self.credentials['aws']['secret_access_key']

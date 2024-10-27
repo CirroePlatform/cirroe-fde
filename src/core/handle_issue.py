@@ -46,9 +46,8 @@ users and engineers, and the whether the issue has been resolved.
 {CLOUD}: A cloud knowledge base, will perform a search over the team's cloud environment for relevant metrics, logs, and other data.
 
 {CODEBASE}: A codebase knowledge base. This will return the top k chunks of code from the teams codebase relevant to the issue.
-
-{DOCUMENTATION}: Relevant data from the team's documentation will be returned with this collection.
 """
+# {DOCUMENTATION}: Relevant data from the team's documentation will be returned with this collection.
 
 DEBUG_ISSUE_TOOLS = [
     {
@@ -73,8 +72,9 @@ DEBUG_ISSUE_TOOLS = [
                                 "enum": [
                                     RUNBOOK,
                                     CODEBASE,
-                                    DOCUMENTATION,
+                                    # DOCUMENTATION,
                                     CLOUD,
+                                    ISSUES,
                                 ],
                                 "description": COLLECTION_NAME_DESCRIPTION,
                             },
@@ -217,10 +217,10 @@ def solve_issue_with_collections(
             pass # Pending merge API integration
         elif collection_name == CLOUD:
             execute_cloud_command(problem_description)
-        elif collection_name == DOCUMENTATION:
-            pass # Pending documentation search integration
         elif collection_name == CODEBASE:
             pass # Pending codebase search integration
+        # elif collection_name == DOCUMENTATION:
+        #   pass # Pending documentation search integration
         else:
             raise ValueError(
                 "Error, passed in an enum for some collection that dne: "
@@ -257,6 +257,7 @@ def execute_cloud_command(command: str) -> Dict[str, Any]:
     
     cloud_integration = CloudIntegration(org_id=issue.org_id)
     return cloud_integration.execute_command(provider, command)
+
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     """
     Add a comment to a ticket.
