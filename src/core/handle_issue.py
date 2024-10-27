@@ -1,11 +1,11 @@
 from logger import logger
+from contextvars import ContextVar
 from typeguard import typechecked
 from merge.resources.ticketing import CommentRequest
 from merge.resources.ticketing import Ticket
 from uuid import UUID
 from typing import Dict, Any, Optional, List, Tuple
 import anthropic
-import json
 from dotenv import load_dotenv
 
 from src.storage.vector import VectorDB, RUNBOOK
@@ -13,6 +13,7 @@ from src.model.issue import OpenIssueRequest
 
 from src.core.executor import RunBookExecutor
 
+from src.integrations.cloud import CloudIntegration
 from src.integrations.merge import client as merge_client
 from src.integrations.humanlayer_integration import hl
 
@@ -24,11 +25,10 @@ rb_executor = RunBookExecutor()
 vector_db = VectorDB()
 
 # Knowledge sources
-LOGGING = "logs"  # TODO implement
 CODEBASE = "codebase"  # TODO implement
 DOCUMENTATION = "documentation"  # TODO implement
 ISSUES = "issues"  # TODO implement
-METRICS = "metrics"  # TODO integrate spike detection here
+CLOUD = "cloud"  # TODO integrate cloud search here
 
 
 COLLECTION_NAME_DESCRIPTION = f"""
@@ -43,11 +43,9 @@ be a list of runbooks, which contains solution descriptions and commands.
 {ISSUES}: This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from 
 users and engineers, and the whether the issue has been resolved.
 
-{METRICS}: A metric knowledge base, will return a list of spiky metrics for the provided issue.
+{CLOUD}: A cloud knowledge base, will perform a search over the team's cloud environment for relevant metrics, logs, and other data.
 
 {CODEBASE}: A codebase knowledge base. This will return the top k chunks of code from the teams codebase relevant to the issue.
-
-{LOGGING}: A knowledge base of a set of logs from the team's logging system.
 
 {DOCUMENTATION}: Relevant data from the team's documentation will be returned with this collection.
 """
@@ -74,10 +72,9 @@ DEBUG_ISSUE_TOOLS = [
                                 "type": "string",
                                 "enum": [
                                     RUNBOOK,
-                                    LOGGING,
                                     CODEBASE,
                                     DOCUMENTATION,
-                                    METRICS,
+                                    CLOUD,
                                 ],
                                 "description": COLLECTION_NAME_DESCRIPTION,
                             },
@@ -115,6 +112,10 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     messages = [
         {"role": "user", "content": issue_req.issue.problem_description},
     ]
+
+    # Set the issue context for the duration of this function call
+    issue_context: ContextVar = ContextVar('issue_context')
+    issue_context.set(issue_req)
 
     response = client.messages.create(
         model="claude-3-5-sonnet-20240620",
@@ -204,25 +205,22 @@ def solve_issue_with_collections(
     }
     ```
     """
-
     rv = {}
     for collection_name, k in collection_names:
         logger.info("Agent chose collection %s with %d entries", collection_name, k)
 
         if collection_name == RUNBOOK:
-            query_vector = vector_db.model.encode(problem_description)
-            rv += vector_db.get_top_k_runbooks(k, query_vector)
+            # query_vector = vector_db.model.encode(problem_description)
+            # rv += vector_db.get_top_k_runbooks(k, query_vector)
             pass
         elif collection_name == ISSUES:
-            pass
-        elif collection_name == METRICS:
-            pass
+            pass # Pending merge API integration
+        elif collection_name == CLOUD:
+            execute_cloud_command(problem_description)
         elif collection_name == DOCUMENTATION:
-            pass
+            pass # Pending documentation search integration
         elif collection_name == CODEBASE:
-            pass
-        elif collection_name == LOGGING:
-            pass
+            pass # Pending codebase search integration
         else:
             raise ValueError(
                 "Error, passed in an enum for some collection that dne: "
@@ -231,6 +229,34 @@ def solve_issue_with_collections(
 
     return rv  # TODO make this string formatted? Or json should be ok.
 
+def execute_cloud_command(command: str) -> Dict[str, Any]:
+    """
+    Execute a cloud command. The provider will be automatically determined from the command prefix.
+    The command should start with the provider name, e.g. 'aws ...', 'gcp ...', or 'azure ...'
+    
+    Args:
+        command (str): The cloud command to execute, prefixed with provider name
+        
+    Returns:
+        Dict[str, Any]: Result of command execution with success, output and error fields
+        
+    Raises:
+        ValueError: If command doesn't start with valid provider prefix
+    """
+    # Extract provider from command prefix
+    provider = command.split()[0].lower()
+    if provider not in ['aws', 'gcp', 'azure']:
+        raise ValueError("Command must start with cloud provider: 'aws', 'gcp', or 'azure'")
+        
+    # Remove provider prefix from command
+    command = ' '.join(command.split()[1:])
+    
+    # Get org_id from thread-local context set in debug_issue()
+    issue_context: ContextVar = ContextVar('issue_context')
+    issue = issue_context.get()
+    
+    cloud_integration = CloudIntegration(org_id=issue.org_id)
+    return cloud_integration.execute_command(provider, command)
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     """
     Add a comment to a ticket.
