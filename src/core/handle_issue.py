@@ -258,6 +258,48 @@ def execute_cloud_command(command: str) -> Dict[str, Any]:
     cloud_integration = CloudIntegration(org_id=issue.org_id)
     return cloud_integration.execute_command(provider, command)
 
+def execute_codebase_command(command: str) -> Dict[str, Any]:
+    """
+    Execute a command over git repos.
+
+    command should be one of the following
+    1. Commits - Search commit history and messages
+    2. Code - Search through code content
+    
+    Args:
+        command (str): The search command in format "<type>: <query>"
+                      where type is either "commits" or "code"
+                      
+    Returns:
+        Dict[str, Any]: Results of the search with matches found
+        
+    Raises:
+        ValueError: If command format is invalid or type not recognized
+    """
+    # Parse command type and query
+    try:
+        cmd_type, query = command.split(':', 1)
+        cmd_type = cmd_type.strip().lower()
+        query = query.strip()
+    except ValueError:
+        raise ValueError("Command must be in format: '<type>: <query>'")
+        
+    if cmd_type == 'commits':
+        # Search commit history
+        return {
+            'type': 'commits',
+            'matches': [] # TODO: Implement git commit search
+        }
+    elif cmd_type == 'code':
+        # Search code content
+        return {
+            'type': 'code', 
+            'matches': [] # TODO: Implement code search
+        }
+    else:
+        raise ValueError("Command type must be either 'commits' or 'code'")
+
+
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     """
     Add a comment to a ticket.
