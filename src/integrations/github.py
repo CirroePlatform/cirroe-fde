@@ -2,12 +2,16 @@ import os
 import requests
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
+from pydantic import BaseModel
 
 @dataclass
 class Repository:
     remote: str  # e.g. "github.com"
     repository: str  # e.g. "username/repo"
     branch: str = "main"
+
+class LinkGithubRequest(BaseModel):
+    token: str
 
 class GithubIntegration:
     """
@@ -25,9 +29,47 @@ class GithubIntegration:
         self.api_base = "https://api.greptile.com/v2"
         self.headers = {
             "Authorization": f"Bearer {os.getenv('GREPTILE_API_KEY')}",
-            "X-GitHub-Token": f"{os.getenv('GITHUB_TOKEN')}", # TODO retrieve from user
+            "X-GitHub-Token": f"{os.getenv('GITHUB_TOKEN')}", # TODO retrieve from user. Supabase table should have github token.
             "Content-Type": "application/json"
         }
+
+    def list_repositories(self) -> Dict[str, Repository]:
+        """
+        List all repositories for the organization
+        
+        Returns:
+            Dict mapping repository names to Repository objects
+        """
+        # First get repo list from GitHub API
+        github_api = "https://api.github.com"
+        github_headers = {
+            "Authorization": f"Bearer {os.getenv('GITHUB_TOKEN')}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        # Get org repos from GitHub
+        github_response = requests.get(
+            f"{github_api}/user/repos",
+            headers=github_headers
+        )
+        github_response.raise_for_status()
+        
+        repos = {}
+        for github_repo in github_response.json():
+            # Get detailed repo info from Greptile
+            url = f"{self.api_base}/repositories/{github_repo['id']}"
+            response = requests.get(url, headers=self.headers)
+            
+            if response.status_code == 200:
+                repo_data = response.json()
+                name = repo_data["repository"]
+                repos[name] = Repository(
+                    remote=repo_data["remote"],
+                    repository=name,
+                    branch=repo_data.get("branch", "main")
+                )
+            
+        return repos
 
     def index_repository(self, repository: Repository, reload: bool = False) -> Dict[str, Any]:
         """
@@ -58,8 +100,8 @@ class GithubIntegration:
                    query: str,
                    repositories: List[Repository],
                    session_id: Optional[str] = None,
-                   stream: bool = True,
-                   genius: bool = True) -> Dict[str, Any]:
+                   stream: bool = False,
+                   genius: bool = False) -> Dict[str, Any]:
         """
         Search code repositories with natural language queries
         
@@ -98,25 +140,3 @@ class GithubIntegration:
         response = requests.post(url, json=payload, headers=self.headers)
         response.raise_for_status()
         return response.json()
-
-    def execute_command(self, command_type: str, query: str) -> Dict[str, Any]:
-        """
-        Execute a code search command
-        
-        Args:
-            command_type: Type of search (e.g. "code", "description")
-            query: Search query
-            
-        Returns:
-            Dict with search results
-        """
-        # Default repository for the org
-        default_repo = Repository(
-            remote="github.com",
-            repository=f"{self.org_id}/main-repo"  # Adjust based on org structure
-        )
-        
-        return self.search_code(
-            query=f"{command_type}: {query}",
-            repositories=[default_repo]
-        )
