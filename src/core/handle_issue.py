@@ -46,7 +46,7 @@ users and engineers, and the whether the issue has been resolved.
 {CODEBASE}: A codebase knowledge base. This will return the top k chunks of code from the teams codebase relevant to the issue.
 """
 
-# {RUNBOOK}: A runbook knowledge base that contains engineer defined runbooks that may pertain to some commonly known issues. The response would 
+# {RUNBOOK}: A runbook knowledge base that contains engineer defined runbooks that may pertain to some commonly known issues. The response would
 # be a list of runbooks, which contains solution descriptions and commands.
 # {DOCUMENTATION}: Relevant data from the team's documentation will be returned with this collection.
 
@@ -115,7 +115,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     ]
 
     # Set the issue context for the duration of this function call
-    issue_context: ContextVar = ContextVar('issue_context')
+    issue_context: ContextVar = ContextVar("issue_context")
     issue_context.set(issue_req)
 
     response = client.messages.create(
@@ -144,7 +144,6 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
             #         for tool_call in tool_calls
             #     ],
             # )
-
 
             function_name = tool_name
             function_args = response_message
@@ -181,6 +180,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     comment_on_ticket(issue_req.issue.tid, response.choices[0].message.content)
     logger.info("Comment added to ticket: %s", response.choices[0].message.content)
 
+
 # Below are all anthropic tools.
 @typechecked
 def solve_issue_with_collections(
@@ -215,11 +215,11 @@ def solve_issue_with_collections(
             # rv += vector_db.get_top_k_runbooks(k, query_vector)
             pass
         elif collection_name == ISSUES:
-            pass # Pending merge API integration
+            pass  # Pending merge API integration
         elif collection_name == CLOUD:
             execute_cloud_command(problem_description)
         elif collection_name == CODEBASE:
-            pass # Pending codebase search integration
+            pass  # Pending codebase search integration
         # elif collection_name == DOCUMENTATION:
         #   pass # Pending documentation search integration
         else:
@@ -230,64 +230,69 @@ def solve_issue_with_collections(
 
     return rv  # TODO make this string formatted? Or json should be ok.
 
+
 def execute_cloud_command(command: str) -> Dict[str, Any]:
     """
     Execute a cloud command. The provider will be automatically determined from the command prefix.
     The command should start with the provider name, e.g. 'aws ...', 'gcp ...', or 'azure ...'
-    
+
     Args:
         command (str): The cloud command to execute, prefixed with provider name
-        
+
     Returns:
         Dict[str, Any]: Result of command execution with success, output and error fields
-        
+
     Raises:
         ValueError: If command doesn't start with valid provider prefix
     """
     # Extract provider from command prefix
     provider = command.split()[0].lower()
-    if provider not in ['aws', 'gcp', 'azure']:
-        raise ValueError("Command must start with cloud provider: 'aws', 'gcp', or 'azure'")
-        
+    if provider not in ["aws", "gcp", "azure"]:
+        raise ValueError(
+            "Command must start with cloud provider: 'aws', 'gcp', or 'azure'"
+        )
+
     # Remove provider prefix from command
-    command = ' '.join(command.split()[1:])
-    
+    command = " ".join(command.split()[1:])
+
     # Get org_id from thread-local context set in debug_issue()
-    issue_context: ContextVar = ContextVar('issue_context')
+    issue_context: ContextVar = ContextVar("issue_context")
     issue = issue_context.get()
-    
+
     cloud_integration = CloudIntegration(org_id=issue.org_id)
     return cloud_integration.execute_command(provider, command)
+
 
 def execute_codebase_command(command: str) -> Dict[str, Any]:
     """
     Execute a command over git repos using the Greptile API integration.
-    
+
     Args:
         command (str): The search query in natural language format.
-                      
+
     Returns:
         Dict[str, Any]: Results of the search with matches found
-        
+
     Raises:
         ValueError: If command format is invalid or type not recognized
     """
     # Get org_id from thread-local context set in debug_issue()
-    issue_context: ContextVar = ContextVar('issue_context')
+    issue_context: ContextVar = ContextVar("issue_context")
     issue = issue_context.get()
-    
+
     # Initialize Github integration with org context
     github = GithubIntegration(org_id=issue.org_id)
-    
+
     # Execute search via Greptile API
     try:
         response = github.search_code(command)
         return response
     except Exception as e:
         return {
-            'response': response,
-            'error': str(e),
+            "response": response,
+            "error": str(e),
         }
+
 
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     """
@@ -297,8 +302,10 @@ def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
         model=CommentRequest(html_body=comment, ticket=Ticket(id=tid))
     )
 
+
 def change_asignee(tid: UUID, new_asignee: UUID):
     pass
+
 
 @hl.require_approval()
 def resolve_ticket(comment: Optional[str] = None):

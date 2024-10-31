@@ -35,14 +35,16 @@ def upload_runbook(
     """
     background_tasks.add_task(handle_new_runbook, runbook_req)
 
+
 @app.post("/link_github")
 def link_github(payload: LinkGithubRequest, background_tasks: BackgroundTasks):
     """
-    Accepts a new GitHub user id from the frontend, signifying that a user 
+    Accepts a new GitHub user id from the frontend, signifying that a user
     has linked their GitHub account and it's ready to be indexed.
     """
     github = GithubIntegration(payload.uid)
     background_tasks.add_task(github.index_user, payload.uid)
+
 
 @app.post("/issue")
 def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
