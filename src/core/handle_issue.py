@@ -13,6 +13,7 @@ from src.model.issue import OpenIssueRequest
 
 from src.core.executor import RunBookExecutor
 
+from src.integrations.github import GithubIntegration
 from src.integrations.cloud import CloudIntegration
 from src.integrations.merge import client as merge_client
 from src.integrations.humanlayer_integration import hl
@@ -37,9 +38,6 @@ The type of knowledge base to query over, this specifies which knowledge base we
 The following are descriptions of the various knowledge bases, and the information they contain. Use these descriptions to decide
 which knowledge base to query.
 
-{RUNBOOK}: A runbook knowledge base that contains engineer defined runbooks that may pertain to some commonly known issues. The response would 
-be a list of runbooks, which contains solution descriptions and commands.
-
 {ISSUES}: This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from 
 users and engineers, and the whether the issue has been resolved.
 
@@ -47,6 +45,9 @@ users and engineers, and the whether the issue has been resolved.
 
 {CODEBASE}: A codebase knowledge base. This will return the top k chunks of code from the teams codebase relevant to the issue.
 """
+
+# {RUNBOOK}: A runbook knowledge base that contains engineer defined runbooks that may pertain to some commonly known issues. The response would 
+# be a list of runbooks, which contains solution descriptions and commands.
 # {DOCUMENTATION}: Relevant data from the team's documentation will be returned with this collection.
 
 DEBUG_ISSUE_TOOLS = [
@@ -260,15 +261,10 @@ def execute_cloud_command(command: str) -> Dict[str, Any]:
 
 def execute_codebase_command(command: str) -> Dict[str, Any]:
     """
-    Execute a command over git repos.
-
-    command should be one of the following
-    1. Commits - Search commit history and messages
-    2. Code - Search through code content
+    Execute a command over git repos using the Greptile API integration.
     
     Args:
-        command (str): The search command in format "<type>: <query>"
-                      where type is either "commits" or "code"
+        command (str): The search query in natural language format.
                       
     Returns:
         Dict[str, Any]: Results of the search with matches found
@@ -276,29 +272,22 @@ def execute_codebase_command(command: str) -> Dict[str, Any]:
     Raises:
         ValueError: If command format is invalid or type not recognized
     """
-    # Parse command type and query
+    # Get org_id from thread-local context set in debug_issue()
+    issue_context: ContextVar = ContextVar('issue_context')
+    issue = issue_context.get()
+    
+    # Initialize Github integration with org context
+    github = GithubIntegration(org_id=issue.org_id)
+    
+    # Execute search via Greptile API
     try:
-        cmd_type, query = command.split(':', 1)
-        cmd_type = cmd_type.strip().lower()
-        query = query.strip()
-    except ValueError:
-        raise ValueError("Command must be in format: '<type>: <query>'")
-        
-    if cmd_type == 'commits':
-        # Search commit history
+        response = github.search_code(command)
+        return response
+    except Exception as e:
         return {
-            'type': 'commits',
-            'matches': [] # TODO: Implement git commit search
+            'response': response,
+            'error': str(e),
         }
-    elif cmd_type == 'code':
-        # Search code content
-        return {
-            'type': 'code', 
-            'matches': [] # TODO: Implement code search
-        }
-    else:
-        raise ValueError("Command type must be either 'commits' or 'code'")
-
 
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
     """

@@ -1,17 +1,18 @@
 import os
+from uuid import UUID
 import requests
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from pydantic import BaseModel
 
-@dataclass
-class Repository:
+class Repository(BaseModel):
     remote: str  # e.g. "github.com"
     repository: str  # e.g. "username/repo"
     branch: str = "main"
 
 class LinkGithubRequest(BaseModel):
-    token: str
+    uid: UUID
+    repositories: Optional[List[Repository]] = None
 
 class GithubIntegration:
     """
@@ -32,6 +33,16 @@ class GithubIntegration:
             "X-GitHub-Token": f"{os.getenv('GITHUB_TOKEN')}", # TODO retrieve from user. Supabase table should have github token.
             "Content-Type": "application/json"
         }
+    
+    def index_user(self, uid: UUID):
+        """
+        Index a user's repositories.
+        """
+        # get users' github token from supabase, set the self.headers['X-GitHub-Token']
+        # TODO
+        repos = self.list_repositories()
+        for repo in repos:
+            self.index_repository(repo)
 
     def list_repositories(self) -> Dict[str, Repository]:
         """
