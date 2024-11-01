@@ -1,4 +1,5 @@
 import os
+from logger import logger
 from uuid import UUID
 import requests
 from typing import Dict, Any, List, Optional
@@ -31,11 +32,23 @@ class GithubIntegration:
         """
         self.org_id = org_id
         self.api_base = "https://api.greptile.com/v2"
+        
+        self.gh_token = os.getenv("GITHUB_TEST_TOKEN")
+        if self.gh_token is None:
+            self.gh_token = self.get_github_token(org_id)
+        
         self.headers = {
             "Authorization": f"Bearer {os.getenv('GREPTILE_API_KEY')}",
-            "X-GitHub-Token": f"{os.getenv('GITHUB_TOKEN')}",  # TODO retrieve from user. Supabase table should have github token.
+            "X-GitHub-Token": f"{self.gh_token}",
             "Content-Type": "application/json",
         }
+
+    def get_github_token(self, org_id: str) -> str:
+        """
+        Get the GitHub token for an organization from supabase vault.
+        """
+        # TODO
+        return os.getenv("GITHUB_TEST_TOKEN")
 
     def index_user(self, uid: UUID):
         """
@@ -115,8 +128,9 @@ class GithubIntegration:
         self,
         query: str,
         repositories: List[Repository],
+        k: int,
         session_id: Optional[str] = None,
-        stream: bool = False,
+        do_stream: bool = False,
         genius: bool = False,
     ) -> Dict[str, Any]:
         """
@@ -126,7 +140,7 @@ class GithubIntegration:
             query: Natural language query about the codebase
             repositories: List of repositories to search
             session_id: Optional session ID for continuity
-            stream: Whether to stream results
+            do_stream: Whether to stream results
             genius: Whether to use enhanced search
 
         Returns:
@@ -145,10 +159,13 @@ class GithubIntegration:
                 for repo in repositories
             ],
             "sessionId": session_id,
-            "stream": stream,
+            "stream": do_stream,
             "genius": genius,
         }
 
         response = requests.post(url, json=payload, headers=self.headers)
         response.raise_for_status()
-        return response.json()
+
+        # TODO return top k instead of all results
+        logger.info("Response from github searchq: %s", response.json())
+        return response.json()["results"][:k]
