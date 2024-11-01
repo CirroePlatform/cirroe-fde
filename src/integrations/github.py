@@ -14,8 +14,8 @@ class Repository(BaseModel):
 
 
 class LinkGithubRequest(BaseModel):
-    uid: UUID
-    repositories: Optional[List[Repository]] = None
+    org_id: UUID
+    org_name: str
 
 
 class GithubIntegration:
@@ -23,7 +23,7 @@ class GithubIntegration:
     Integration with Github repositories via Greptile API for code search and analysis.
     """
 
-    def __init__(self, org_id: str):
+    def __init__(self, org_id: str, org_name: str):
         """
         Initialize Github integration for an organization
 
@@ -31,6 +31,7 @@ class GithubIntegration:
             org_id: Organization ID to scope the integration
         """
         self.org_id = org_id
+        self.org_name = org_name
         self.api_base = "https://api.greptile.com/v2"
         
         self.gh_token = os.getenv("GITHUB_TEST_TOKEN")
@@ -50,9 +51,9 @@ class GithubIntegration:
         # TODO
         return os.getenv("GITHUB_TEST_TOKEN")
 
-    def index_user(self, uid: UUID):
+    def index_user(self):
         """
-        Index a user's repositories.
+        Index all of the organization's repositories.
         """
         # get users' github token from supabase, set the self.headers['X-GitHub-Token']
         # TODO
@@ -67,22 +68,17 @@ class GithubIntegration:
         Returns:
             Dict mapping repository names to Repository objects
         """
-        # First get repo list from GitHub API
-        github_api = "https://api.github.com"
+        url = f"https://api.github.com/orgs/{self.org_name}/repos"
         github_headers = {
-            "Authorization": f"Bearer {os.getenv('GITHUB_TOKEN')}",
-            "Accept": "application/vnd.github.v3+json",
+            "Authorization": f"Bearer {self.gh_token}",
+            "Accept": "application/vnd.github+json",
         }
 
-        # Get org repos from GitHub
-        github_response = requests.get(
-            f"{github_api}/user/repos", headers=github_headers
-        )
+        github_response = requests.get(url, headers=github_headers)
         github_response.raise_for_status()
 
         repos = {}
         for github_repo in github_response.json():
-            # Get detailed repo info from Greptile
             url = f"{self.api_base}/repositories/{github_repo['id']}"
             response = requests.get(url, headers=self.headers)
 
@@ -147,6 +143,10 @@ class GithubIntegration:
             Dict containing search results with code references
         """
         url = f"{self.api_base}/query"
+
+        # index by all if empty
+        if len(repositories) == 0:
+            repositories = list(self.list_repositories().values())
 
         payload = {
             "messages": [{"id": "query", "content": query, "role": "user"}],
