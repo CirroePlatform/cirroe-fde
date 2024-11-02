@@ -1,10 +1,10 @@
 from src.integrations.github import GithubIntegration
+from src.integrations.issue_kb import IssueKnowledgeBase
 from uuid import UUID
 from typing import Dict, Any
 from typeguard import typechecked
 
 # TODO implement the rest of the knowledge bases (cloud, documentation, prev issues)
-# ISSUES_TOOL_DESCRIPTION = "This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from users and engineers, and the whether the issue has been resolved."
 
 DEBUG_ISSUE_TOOLS = [
     {
@@ -24,6 +24,24 @@ DEBUG_ISSUE_TOOLS = [
             },
             "required": ["problem_description", "k"],
         },
+    },
+    {
+        "name": "execute_issue_search",
+        "description": "This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from users and engineers, and the whether the issue has been resolved.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A natural language query about previous issues",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "The number of issues to retrieve",
+                }
+            },  
+            "required": ["query", "limit"],
+        },
     }
 ]
 
@@ -35,6 +53,7 @@ class SearchTools:
     def __init__(self, requestor_id: UUID, user_git_org_name: str):
         self.requestor_id = requestor_id
         self.github = GithubIntegration(org_id=self.requestor_id, org_name=user_git_org_name)
+        self.issue_kb = IssueKnowledgeBase(self.requestor_id)
 
     def execute_codebase_search(self, problem_description: str, k: int) -> Dict[str, Any]:
         """
@@ -56,3 +75,9 @@ class SearchTools:
                 "response": response,
                 "error": str(e),
             }
+
+    def execute_issue_search(self, query: str, limit: int) -> Dict[str, Any]:
+        """
+        Execute a search over the teams historical issues.
+        """
+        return self.issue_kb.query(query, limit)
