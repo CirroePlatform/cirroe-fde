@@ -31,5 +31,5 @@ class Runbook(BaseModel):
 
 
 class UploadRunbookRequest(BaseModel):
-    upload_user_id: UUID
+    user_id: UUID
     runbook: Runbook

@@ -71,7 +71,7 @@ class VectorDB:
     """
 
     def __init__(
-        self, embedding_model_name: str = OPENAI_EMBED, dimension: int = DIMENSION
+        self, user_id: UUID, embedding_model_name: str = OPENAI_EMBED, dimension: int = DIMENSION
     ):
         self.client = MilvusClient(
             uri=os.environ.get("MILVUS_URL"),
@@ -84,9 +84,11 @@ class VectorDB:
         self.dimension = dimension
 
         self.supa_client = SupaClient(
-            UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
-        )  # Hardcoded for now, not actually used
+            user_id,
+        )
+
         self.create_runbook_collection()
+        self.create_issue_collection()
 
     def create_runbook_collection(self):
         """
@@ -117,6 +119,31 @@ class VectorDB:
 
         self.client.load_collection(RUNBOOK)
 
+    def create_issue_collection(self):
+        """
+        Create an issue collection if doesn't exist, and load it into memory. If exists in db
+        already, then we just load into memory
+        """
+        fields = [
+            FieldSchema(name="primary_key", dtype=DataType.VARCHAR, is_primary=True, max_length=36),
+            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
+            FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),
+            FieldSchema(name="comments", dtype=DataType.JSON),
+        ]
+        schema = CollectionSchema(fields=fields, description="Issue collection")
+
+        if not self.client.has_collection(ISSUE):
+            self.client.create_collection(ISSUE, schema=schema)
+            self.client.create_index(ISSUE, IndexParams("vector"))
+
+        self.client.load_collection(ISSUE)
+
+    def vanilla_embed(self, text: str) -> List[float]:
+        """
+        Embed a string using the embedding model.
+        """
+        return self.model.encode(text)
+
     def embed_runbook(self, runbook: Runbook, debug: bool = True) -> List[float]:
         """
         Embed a runbook description and return it.
@@ -135,10 +162,13 @@ class VectorDB:
         """
         return issue.problem_description + " " + " ".join(issue.comments.values())
 
-    def embed_issue(self, issue: Issue) -> List[float]:
+    def embed_issue(self, issue: Issue, debug: bool = True) -> List[float]:
         """
         Embed an issue description and return it.
         """
+        if debug:
+            return [0.0] * self.dimension
+
         return self.model.encode(self.issue_to_embeddable_string(issue))
 
     def add_runbook(self, runbook: Runbook):
@@ -178,18 +208,18 @@ class VectorDB:
         """
 
         # Check if issue already exists
-        prev_data = self.client.get(ISSUE, issue.tid)
+        prev_data = self.client.get(ISSUE, issue.primary_key)
 
         if len(prev_data) > 0:
             # compare content TODO need to test this to make sure we're actually doing the comparison properly.
-            prev_data_issue = Issue(**prev_data[0]["entity"])
+            prev_data_issue = Issue(**prev_data[0])
             if self.issue_to_embeddable_string(prev_data_issue) == self.issue_to_embeddable_string(issue):
                 return  # Issue content is the same as existing issue, just continue.
 
         vector = self.embed_issue(issue)
         entity = [
             {
-                "primary_key": str(issue.tid),
+                "primary_key": str(issue.primary_key),
                 "vector": vector,
                 "description": issue.problem_description,
                 "comments": issue.comments,
@@ -202,7 +232,8 @@ class VectorDB:
         """
         Get all issues from the vector db
         """
-        return [Issue(**issue["entity"]) for issue in self.client.get(ISSUE)]
+        issues = self.client.get(ISSUE)
+        return [Issue(**issue) for issue in issues]
 
     def get_top_k_runbooks(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """
@@ -241,3 +272,31 @@ class VectorDB:
             )
 
         return top_k_runbooks
+
+    def get_top_k_issues(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
+        """
+        Get top k issues
+        """
+        search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+        results = self.client.search(
+            collection_name=ISSUE,
+            data=[query_vector],
+            anns_field="vector",
+            search_params=search_params,
+            limit=k,
+            output_fields=["vector", "description", "comments"],
+        )
+        
+        issues = {}
+        for result in results[0]:
+            issue_id = result["id"]
+            distance = result["distance"]
+            problem_description = result["entity"]["description"]
+            comments = result["entity"]["comments"]
+            vector = result["entity"]["vector"]
+
+            issue = Issue(primary_key=issue_id, problem_description=problem_description, comments=comments, vector=vector)
+
+            issues[issue_id] = {"similarity": distance, "metadata": issue.model_dump_json()}
+
+        return issues

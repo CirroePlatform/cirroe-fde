@@ -1,4 +1,4 @@
-import os
+import json
 from typing import Any, Dict, List
 from uuid import UUID
 from merge.resources.ticketing import Ticket
@@ -25,7 +25,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             org_id: Organization ID to scope the knowledge base
         """
         super().__init__(org_id)
-        self.vector_db = VectorDB()
+        self.vector_db = VectorDB(org_id)
         self.indexed_issues: Dict[str, Issue] = {}
 
     async def index(self, data: Any = None) -> bool:
@@ -86,48 +86,25 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             List of KnowledgeBaseResponse objects containing relevant tickets
         """
         try:
+            query_vector = self.vector_db.vanilla_embed(query)
+
+            issues = self.vector_db.get_top_k_issues(limit, query_vector)
+
             results = []
-            
-            # Basic keyword matching for now
-            # TODO: Add proper vector similarity search
-            query_terms = query.lower().split()
+            for issue_id, issue_data in issues.items():
+                # source: str  # Source of the information (e.g. "github", "cloud", "issue")
+                # content: str  # The relevant content
+                # metadata: Dict[str, Any]  # Additional metadata like timestamps, urls, etc
+                # relevance_score: float  # How relevant this piece of information is to the query
 
-            # update indexed issues with issues from vector db
-            issues = self.vector_db.get_all_issues()
-            self.indexed_issues.update({str(issue.tid): issue for issue in issues})
-            
-            for ticket_id, ticket_data in self.indexed_issues.items():
-                score = 0
-                searchable_text = [ticket_data['description']] + ticket_data['comments']
-                if ticket_data['title']:
-                    searchable_text.append(ticket_data['title'])
-                text = ' '.join(searchable_text).lower()
-                
-                for term in query_terms:
-                    if term in text:
-                        score += 1
-                
-                if score > 0:
-                    content = f"""Description: {ticket_data['description']}"""
-                    if ticket_data['title']:
-                        content = f"""Title: {ticket_data['title']}\n{content}"""
-                    if ticket_data['status']:
-                        content += f"\nStatus: {ticket_data['status']}"
-                    if ticket_data['priority']:
-                        content += f"\nPriority: {ticket_data['priority']}"
-                    content += f"\nComments: {' | '.join(ticket_data['comments'])}"
+                results.append(KnowledgeBaseResponse(
+                    content=issue_data["metadata"],
+                    metadata=json.loads(issue_data["metadata"]),
+                    source=f"Ticket #{issue_id}",
+                    relevance_score=issue_data["similarity"]
+                ))
 
-                    results.append(
-                        KnowledgeBaseResponse(
-                            content=content,
-                            source=f"Ticket #{ticket_id}",
-                            score=score/len(query_terms)
-                        )
-                    )
-            
-            # Sort by score and limit results
-            results.sort(key=lambda x: x.score, reverse=True)
-            return results[:limit]
+            return results
 
         except Exception as e:
             logger.error(f"Failed to query issues: {str(e)}")

@@ -95,7 +95,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
         )
         logger.info("Response: %s", response)
 
-    comment_on_ticket(issue_req.issue.tid, response.choices[0].message.content)
+    comment_on_ticket(issue_req.issue.primary_key, response.choices[0].message.content)
     logger.info("Comment added to ticket: %s", response.choices[0].message.content)
 
 
