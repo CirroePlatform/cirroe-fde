@@ -4,8 +4,6 @@ from uuid import UUID
 from typing import Dict, Any, List
 from typeguard import typechecked
 
-# TODO implement the rest of the knowledge bases (cloud, documentation, prev issues)
-
 DEBUG_ISSUE_TOOLS = [
     {
         "name": "execute_codebase_search",

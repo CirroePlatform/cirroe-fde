@@ -1,5 +1,5 @@
 from pydantic import BaseModel, HttpUrl, EmailStr, UUID4
-from typing import Optional, List, Tuple
+from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
 
@@ -11,7 +11,7 @@ class Issue(BaseModel):
 
     tid: UUID
     problem_description: str
-    comments: List[Tuple[str, str]]  # a list of (requestor_name, comment) objects
+    comments: Dict[str, str]  # a dictionary of (requestor_name, comment) objects
 
 
 # Merge models

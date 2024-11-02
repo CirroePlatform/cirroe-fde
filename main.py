@@ -61,7 +61,7 @@ def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
     # TODO Need to look into passing more data rather than just this basic stuff here...
     problem_description = payload.data.error_description
 
-    issue = Issue(tid=tid, problem_description=problem_description, comments=[])
+    issue = Issue(tid=tid, problem_description=problem_description, comments={})
 
     req = OpenIssueRequest(requestor_id=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)

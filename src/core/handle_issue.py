@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 import anthropic
 from dotenv import load_dotenv
 
-from src.model.issue import OpenIssueRequest, Issue
+from src.model.issue import OpenIssueRequest
 from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
 from src.integrations.merge import client as merge_client
 
@@ -67,10 +67,10 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
 
             logger.info("CALL tool %s with %s", function_name, function_args)
 
-            # try:
-            function_response = fn_to_call(**function_args)
-            # except Exception as e:
-                # function_response = str(e)
+            try:
+                function_response = fn_to_call(**function_args)
+            except Exception as e:
+                function_response = str(e)
 
             logger.info(
                 "tool %s responded with %s",

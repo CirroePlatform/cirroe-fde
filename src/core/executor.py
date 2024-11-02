@@ -9,7 +9,6 @@ import json
 hl = HumanLayer()
 
 from src.model.runbook import Runbook, Step
-from src.model.issue import Issue
 
 EXECUTE_STEP_PROMPT_FILE = "include/prompts/execute_step.txt"
 COALESCE_RESPONSE_FILE = "include/prompts/coalesce_response.txt"

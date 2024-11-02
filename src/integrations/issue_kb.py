@@ -3,14 +3,18 @@ from typing import Any, Dict, List
 from uuid import UUID
 from merge.resources.ticketing import Ticket
 from merge.resources.ticketing.types import TicketStatusEnum
+from src.model.issue import Issue
 from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.merge import client as merge_client
+
+from src.storage.vector import VectorDB
+
 from logger import logger
 
 class IssueKnowledgeBase(BaseKnowledgeBase):
     """
     Knowledge base for searching and indexing historical support tickets/issues.
-    Uses Merge.dev API to access ticket data.
+    Handles both Merge.dev API tickets and Issue model representations.
     """
 
     def __init__(self, org_id: UUID):
@@ -21,25 +25,29 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             org_id: Organization ID to scope the knowledge base
         """
         super().__init__(org_id)
-        self.indexed_issues = {}
+        self.vector_db = VectorDB()
+        self.indexed_issues: Dict[str, Issue] = {}
 
     async def index(self, data: Any = None) -> bool:
         """
-        Index all historical tickets/issues via Merge API
+        Index tickets from either Merge API or Issue model representation
         
         Args:
-            data: Optional specific ticket to index, if None indexes all tickets
+            data: Optional specific Issue or Ticket to index, if None indexes all Merge tickets
             
         Returns:
             bool indicating if indexing was successful
         """
         try:
             # If specific ticket provided, just index that one
-            if data and isinstance(data, Ticket):
-                self._index_ticket(data)
+            if data:
+                if isinstance(data, Ticket):
+                    self._index_ticket(data)
+                elif hasattr(data, 'tid'):  # Issue model
+                    self.vector_db.add_issue(data)
                 return True
 
-            # Otherwise index all tickets
+            # Otherwise index all Merge tickets
             tickets = merge_client.ticketing.tickets.list()
             for ticket in tickets:
                 self._index_ticket(ticket)
@@ -51,13 +59,13 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             return False
 
     def _index_ticket(self, ticket: Ticket):
-        """Helper to index a single ticket"""
+        """Helper to index a ticket from Merge API"""
         # Get comments for the ticket
         comments = merge_client.ticketing.comments.list(ticket_id=ticket.id)
         comment_texts = [c.body for c in comments]
 
         # Store indexed ticket data
-        self.indexed_issues[ticket.id] = {
+        self.indexed_issues[str(ticket.id)] = {
             "title": ticket.name,
             "description": ticket.description,
             "status": ticket.status,
@@ -83,21 +91,31 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             # Basic keyword matching for now
             # TODO: Add proper vector similarity search
             query_terms = query.lower().split()
+
+            # update indexed issues with issues from vector db
+            issues = self.vector_db.get_all_issues()
+            self.indexed_issues.update({str(issue.tid): issue for issue in issues})
             
             for ticket_id, ticket_data in self.indexed_issues.items():
                 score = 0
-                text = f"{ticket_data['title']} {ticket_data['description']} {' '.join(ticket_data['comments'])}".lower()
+                searchable_text = [ticket_data['description']] + ticket_data['comments']
+                if ticket_data['title']:
+                    searchable_text.append(ticket_data['title'])
+                text = ' '.join(searchable_text).lower()
                 
                 for term in query_terms:
                     if term in text:
                         score += 1
                 
                 if score > 0:
-                    content = f"""Title: {ticket_data['title']}
-Description: {ticket_data['description']}
-Status: {ticket_data['status']}
-Priority: {ticket_data['priority']}
-Comments: {' | '.join(ticket_data['comments'])}"""
+                    content = f"""Description: {ticket_data['description']}"""
+                    if ticket_data['title']:
+                        content = f"""Title: {ticket_data['title']}\n{content}"""
+                    if ticket_data['status']:
+                        content += f"\nStatus: {ticket_data['status']}"
+                    if ticket_data['priority']:
+                        content += f"\nPriority: {ticket_data['priority']}"
+                    content += f"\nComments: {' | '.join(ticket_data['comments'])}"
 
                     results.append(
                         KnowledgeBaseResponse(

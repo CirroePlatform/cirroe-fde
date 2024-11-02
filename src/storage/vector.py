@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import os
 
 from src.model.runbook import Runbook
+from src.model.issue import Issue
 from src.storage.supa import SupaClient
 
 # Embedding models
@@ -20,6 +21,7 @@ SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
 DIMENSION = 1536
 
 RUNBOOK = "runbook"
+ISSUE = "issue"
 
 load_dotenv()
 
@@ -71,7 +73,6 @@ class VectorDB:
     def __init__(
         self, embedding_model_name: str = OPENAI_EMBED, dimension: int = DIMENSION
     ):
-        self.collection_name = RUNBOOK
         self.client = MilvusClient(
             uri=os.environ.get("MILVUS_URL"),
             token=os.environ.get("MILVUS_TOKEN"),
@@ -110,11 +111,11 @@ class VectorDB:
         ]
         schema = CollectionSchema(fields=fields, description="Runbook collection")
 
-        if not self.client.has_collection(self.collection_name):
-            self.client.create_collection(self.collection_name, schema=schema)
-            self.client.create_index(self.collection_name, IndexParams("vector"))
+        if not self.client.has_collection(RUNBOOK):
+            self.client.create_collection(RUNBOOK, schema=schema)
+            self.client.create_index(RUNBOOK, IndexParams("vector"))
 
-        self.client.load_collection(self.collection_name)
+        self.client.load_collection(RUNBOOK)
 
     def embed_runbook(self, runbook: Runbook, debug: bool = True) -> List[float]:
         """
@@ -127,12 +128,24 @@ class VectorDB:
             return [0.0] * self.dimension
 
         return self.model.encode(runbook.description)
+    
+    def issue_to_embeddable_string(self, issue: Issue) -> str:
+        """
+        Convert an issue to a string that can be embedded
+        """
+        return issue.problem_description + " " + " ".join(issue.comments.values())
+
+    def embed_issue(self, issue: Issue) -> List[float]:
+        """
+        Embed an issue description and return it.
+        """
+        return self.model.encode(self.issue_to_embeddable_string(issue))
 
     def add_runbook(self, runbook: Runbook):
         """
         Add a new runbook to the vector db
         """
-        prev_data = self.client.get(self.collection_name, runbook.rid)
+        prev_data = self.client.get(RUNBOOK, runbook.rid)
         if len(prev_data) > 0:
             return  # Runbook already exists, just continue.
 
@@ -152,12 +165,44 @@ class VectorDB:
             }
         ]
 
-        self.client.insert(self.collection_name, data=entity)
+        self.client.insert(RUNBOOK, data=entity)
 
         # TODO Add steps to step unstructured collection
         self.supa_client.add_steps_for_runbook(runbook)
 
         print("Successfully added new runbook")
+
+    def add_issue(self, issue: Issue):
+        """
+        Add a new issue to the vector db.
+        """
+
+        # Check if issue already exists
+        prev_data = self.client.get(ISSUE, issue.tid)
+
+        if len(prev_data) > 0:
+            # compare content TODO need to test this to make sure we're actually doing the comparison properly.
+            prev_data_issue = Issue(**prev_data[0]["entity"])
+            if self.issue_to_embeddable_string(prev_data_issue) == self.issue_to_embeddable_string(issue):
+                return  # Issue content is the same as existing issue, just continue.
+
+        vector = self.embed_issue(issue)
+        entity = [
+            {
+                "primary_key": str(issue.tid),
+                "vector": vector,
+                "description": issue.problem_description,
+                "comments": issue.comments,
+            }
+        ]
+
+        self.client.upsert(ISSUE, data=entity)
+
+    def get_all_issues(self) -> List[Issue]:
+        """
+        Get all issues from the vector db
+        """
+        return [Issue(**issue["entity"]) for issue in self.client.get(ISSUE)]
 
     def get_top_k_runbooks(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """
