@@ -31,12 +31,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     messages = [
         {"role": "user", "content": issue_req.issue.problem_description},
     ]
-
-    # Set the issue context for the duration of this function call
-    org_id_context: ContextVar[UUID] = ContextVar('org_id')
-    org_id_context.set(issue_req.requestor_id)
-    
-    raise Exception("Not implemented, need to fetch the relevant org name from the integration")
+    org_name = "CirroePlatform" # TODO: fetch this from users' supabase table
 
     response = client.messages.create(
         model=MODEL_LIGHT,
@@ -48,7 +43,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     )
     logger.info("Response: %s", response)
 
-    search_tools = SearchTools(issue_req.requestor_id)
+    search_tools = SearchTools(issue_req.requestor_id, org_name)
     TOOLS_MAP = {
         "execute_codebase_search": search_tools.execute_codebase_search,
     }

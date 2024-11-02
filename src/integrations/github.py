@@ -59,7 +59,7 @@ class GithubIntegration:
         # TODO
         repos = self.list_repositories()
         for repo in repos:
-            self.index_repository(repo)
+            self.index_repository(repos[repo])
 
     def list_repositories(self) -> Dict[str, Repository]:
         """
@@ -71,27 +71,41 @@ class GithubIntegration:
         url = f"https://api.github.com/orgs/{self.org_name}/repos"
         github_headers = {
             "Authorization": f"Bearer {self.gh_token}",
-            "Accept": "application/vnd.github+json",
+            "Accept": "application/vnd.github.v3+json"
         }
+        
+        page = 1
+        repos = []
+        while True:
+            response = requests.get(
+                url,
+                headers=github_headers,
+                params={"per_page": 100, "page": page}
+            )
+            if response.status_code != 200:
+                raise Exception(f"Failed to fetch repositories: {response.status_code} {response.text}")
+            
+            repos.extend(response.json())
+            if len(repos) == 0:
+                break
+            
+            page += 1
 
-        github_response = requests.get(url, headers=github_headers)
-        github_response.raise_for_status()
-
-        repos = {}
-        for github_repo in github_response.json():
+        repos_rv = {}
+        for github_repo in repos:
             url = f"{self.api_base}/repositories/{github_repo['id']}"
             response = requests.get(url, headers=self.headers)
 
             if response.status_code == 200:
                 repo_data = response.json()
                 name = repo_data["repository"]
-                repos[name] = Repository(
+                repos_rv[name] = Repository(
                     remote=repo_data["remote"],
                     repository=name,
                     branch=repo_data.get("branch", "main"),
                 )
 
-        return repos
+        return repos_rv
 
     def index_repository(
         self, repository: Repository, reload: bool = False
@@ -158,10 +172,12 @@ class GithubIntegration:
                 }
                 for repo in repositories
             ],
-            "sessionId": session_id,
             "stream": do_stream,
             "genius": genius,
         }
+
+        if session_id is not None:
+            payload["session_id"] = session_id
 
         response = requests.post(url, json=payload, headers=self.headers)
         response.raise_for_status()

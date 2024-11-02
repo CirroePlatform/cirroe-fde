@@ -42,8 +42,8 @@ def link_github(payload: LinkGithubRequest, background_tasks: BackgroundTasks):
     Accepts a new GitHub user id from the frontend, signifying that a user
     has linked their GitHub account and it's ready to be indexed.
     """
-    github = GithubIntegration(payload.uid)
-    background_tasks.add_task(github.index_user, payload.uid)
+    github = GithubIntegration(payload.org_id, payload.org_name)
+    background_tasks.add_task(github.index_user)
 
 
 @app.post("/issue")
@@ -63,7 +63,7 @@ def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
 
     issue = Issue(tid=tid, problem_description=problem_description, comments=[])
 
-    req = OpenIssueRequest(requestor=requestor, issue=issue)
+    req = OpenIssueRequest(requestor_id=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)
 
 
