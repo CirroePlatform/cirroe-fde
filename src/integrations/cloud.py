@@ -1,12 +1,12 @@
 import subprocess
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List
 from src.storage.supa import SupaClient
 from logger import logger
+from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
-
-class CloudIntegration:
+class CloudIntegration(BaseKnowledgeBase):
     def __init__(self, org_id: str):
         """
         Initialize cloud integration with organization ID to fetch credentials.
@@ -14,7 +14,7 @@ class CloudIntegration:
         Args:
             org_id (str): Organization ID to lookup cloud credentials
         """
-        self.org_id = org_id
+        super().__init__(org_id)
         self.supa_client = SupaClient()
         self.credentials = self._get_credentials()
 
@@ -104,6 +104,18 @@ class CloudIntegration:
             if cred_file and os.path.exists(cred_file):
                 os.remove(cred_file)
             os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
+
+    async def index(self, data: Any) -> bool:
+        """
+        Not implemented for cloud integration.
+        """
+        return False
+
+    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+        """
+        Not implemented for cloud integration.
+        """
+        return []
 
     def execute_command(self, provider: str, command: str) -> Dict[str, Any]:
         """

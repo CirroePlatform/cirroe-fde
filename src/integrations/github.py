@@ -5,7 +5,7 @@ import requests
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from pydantic import BaseModel
-
+from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
 class Repository(BaseModel):
     remote: str  # e.g. "github.com"
@@ -18,19 +18,20 @@ class LinkGithubRequest(BaseModel):
     org_name: str
 
 
-class GithubIntegration:
+class GithubIntegration(BaseKnowledgeBase):
     """
     Integration with Github repositories via Greptile API for code search and analysis.
     """
 
-    def __init__(self, org_id: str, org_name: str):
+    def __init__(self, org_id: UUID, org_name: str):
         """
         Initialize Github integration for an organization
 
         Args:
             org_id: Organization ID to scope the integration
+            org_name: Organization name for GitHub API calls
         """
-        self.org_id = org_id
+        super().__init__(org_id)
         self.org_name = org_name
         self.api_base = "https://api.greptile.com/v2"
         
@@ -107,81 +108,75 @@ class GithubIntegration:
 
         return repos_rv
 
-    def index_repository(
-        self, repository: Repository, reload: bool = False
-    ) -> Dict[str, Any]:
+    async def index(self, repository: Repository) -> bool:
         """
         Index or reindex a repository for searching
 
         Args:
             repository: Repository to index
-            reload: Whether to force reindex if already indexed
 
         Returns:
-            Dict with indexing status and details
+            bool indicating if indexing was successful
         """
-        url = f"{self.api_base}/repositories"
+        try:
+            url = f"{self.api_base}/repositories"
 
-        payload = {
-            "remote": repository.remote,
-            "repository": repository.repository,
-            "branch": repository.branch,
-            "reload": reload,
-            "notify": True,
-        }
+            payload = {
+                "remote": repository.remote,
+                "repository": repository.repository,
+                "branch": repository.branch,
+                "reload": False,
+                "notify": True,
+            }
 
-        response = requests.post(url, json=payload, headers=self.headers)
-        response.raise_for_status()
-        return response.json()
+            response = requests.post(url, json=payload, headers=self.headers)
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to index repository: {str(e)}")
+            return False
 
-    def search_code(
-        self,
-        query: str,
-        repositories: List[Repository],
-        k: int,
-        session_id: Optional[str] = None,
-        do_stream: bool = False,
-        genius: bool = False,
-    ) -> Dict[str, Any]:
+    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Search code repositories with natural language queries
 
         Args:
             query: Natural language query about the codebase
-            repositories: List of repositories to search
-            session_id: Optional session ID for continuity
-            do_stream: Whether to stream results
-            genius: Whether to use enhanced search
+            limit: Maximum number of results to return
 
         Returns:
-            Dict containing search results with code references
+            List of KnowledgeBaseResponse objects containing search results
         """
-        url = f"{self.api_base}/query"
-
-        # index by all if empty
-        if len(repositories) == 0:
+        try:
             repositories = list(self.list_repositories().values())
+            url = f"{self.api_base}/query"
 
-        payload = {
-            "messages": [{"id": "query", "content": query, "role": "user"}],
-            "repositories": [
-                {
-                    "remote": repo.remote,
-                    "repository": repo.repository,
-                    "branch": repo.branch,
-                }
-                for repo in repositories
-            ],
-            "stream": do_stream,
-            "genius": genius,
-        }
+            payload = {
+                "messages": [{"id": "query", "content": query, "role": "user"}],
+                "repositories": [
+                    {
+                        "remote": repo.remote,
+                        "repository": repo.repository,
+                        "branch": repo.branch,
+                    }
+                    for repo in repositories
+                ],
+                "stream": False,
+                "genius": True,
+            }
 
-        if session_id is not None:
-            payload["session_id"] = session_id
-
-        response = requests.post(url, json=payload, headers=self.headers)
-        response.raise_for_status()
-
-        # TODO return top k instead of all results
-        logger.info("Response from github searchq: %s", response.json())
-        return response.json()["results"][:k]
+            response = requests.post(url, json=payload, headers=self.headers)
+            response.raise_for_status()
+            
+            results = response.json()["results"][:limit]
+            return [
+                KnowledgeBaseResponse(
+                    content=result["content"],
+                    source=result["file"],
+                    score=result.get("score", 0.0)
+                )
+                for result in results
+            ]
+        except Exception as e:
+            logger.error(f"Failed to query repositories: {str(e)}")
+            return []
