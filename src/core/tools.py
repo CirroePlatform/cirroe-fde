@@ -1,7 +1,7 @@
 from src.integrations.github import GithubIntegration
-from src.integrations.issue_kb import IssueKnowledgeBase
+from src.integrations.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
 from uuid import UUID
-from typing import Dict, Any
+from typing import Dict, Any, List
 from typeguard import typechecked
 
 # TODO implement the rest of the knowledge bases (cloud, documentation, prev issues)
@@ -50,34 +50,43 @@ DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
 @typechecked
 class SearchTools:
 
-    def __init__(self, requestor_id: UUID, user_git_org_name: str):
+    def __init__(self, requestor_id: UUID):
         self.requestor_id = requestor_id
-        self.github = GithubIntegration(org_id=self.requestor_id, org_name=user_git_org_name)
+        org_name = "CirroePlatform" # TODO: fetch this from users' supabase table
+
+        self.github = GithubIntegration(org_id=self.requestor_id, org_name=org_name)
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
 
-    def execute_codebase_search(self, problem_description: str, k: int) -> Dict[str, Any]:
+    def execute_codebase_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
         """
             Execute a command over git repos using the Greptile API integration.
 
         Args:
-            problem_description (str): The search query in natural language format.
-            k (int): The number of chunks to retrieve from the codebase
+            query (str): The search query in natural language format.
+            limit (int): The number of chunks to retrieve from the codebase
 
         Returns:
-            Dict[str, Any]: Results of the search with matches found
+            List[KnowledgeBaseResponse]: List of codebase responses that match the search query
         """
         # Execute search via Greptile API
         try:
-            response = self.github.search_code(problem_description, [], k=k)
+            response = self.github.query(query, limit=limit)
             return response
         except Exception as e:
-            return {
-                "response": response,
-                "error": str(e),
-            }
+            return [str(e)]
 
-    def execute_issue_search(self, query: str, limit: int) -> Dict[str, Any]:
+    def execute_issue_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
         """
         Execute a search over the teams historical issues.
+
+        Args:
+            query (str): The search query in natural language format.
+            limit (int): The number of issues to retrieve
+
+        Returns:
+            List[KnowledgeBaseResponse]: List of issues that match the search query
         """
-        return self.issue_kb.query(query, limit)
+        try:
+            return self.issue_kb.query(query, limit)
+        except Exception as e:
+            return [str(e)]
