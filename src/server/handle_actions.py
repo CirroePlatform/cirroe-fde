@@ -29,6 +29,7 @@ def handle_new_runbook(runbook_req: UploadRunbookRequest):
     if runbook_req.runbook.rid not in RUNBOOKS:
         vector_db.add_runbook(runbook_req.runbook)
 
+
 def handle_issue_update(issue_update):
     """
     Handle an update to the issue from anyone.

@@ -62,5 +62,5 @@ class WebhookPayload(BaseModel):
 
 
 class OpenIssueRequest(BaseModel):
-    requestor: str
+    requestor_id: UUID
     issue: Issue

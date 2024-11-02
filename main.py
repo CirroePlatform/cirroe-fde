@@ -8,6 +8,7 @@ from src.integrations.merge import create_link_token, retrieve_account_token
 from src.model.runbook import UploadRunbookRequest
 from src.model.issue import OpenIssueRequest, WebhookPayload, Issue
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
+from src.integrations.github import LinkGithubRequest, GithubIntegration
 
 from src.core.handle_issue import debug_issue
 
@@ -35,6 +36,16 @@ def upload_runbook(
     background_tasks.add_task(handle_new_runbook, runbook_req)
 
 
+@app.post("/link_github")
+def link_github(payload: LinkGithubRequest, background_tasks: BackgroundTasks):
+    """
+    Accepts a new GitHub user id from the frontend, signifying that a user
+    has linked their GitHub account and it's ready to be indexed.
+    """
+    github = GithubIntegration(payload.org_id, payload.org_name)
+    background_tasks.add_task(github.index_user)
+
+
 @app.post("/issue")
 def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
     """
@@ -52,7 +63,7 @@ def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
 
     issue = Issue(tid=tid, problem_description=problem_description, comments=[])
 
-    req = OpenIssueRequest(requestor=requestor, issue=issue)
+    req = OpenIssueRequest(requestor_id=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)
 
 

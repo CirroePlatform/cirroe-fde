@@ -1,6 +1,7 @@
 """
 Merge API integration functionality.
 """
+
 import requests
 from merge.client import Merge
 from dotenv import load_dotenv

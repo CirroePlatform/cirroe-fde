@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 import os
 
 from src.model.runbook import Runbook
-
 from src.storage.supa import SupaClient
 
 # Embedding models

@@ -1,0 +1,187 @@
+import os
+from logger import logger
+from uuid import UUID
+import requests
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass
+from pydantic import BaseModel
+
+
+class Repository(BaseModel):
+    remote: str  # e.g. "github.com"
+    repository: str  # e.g. "username/repo"
+    branch: str = "main"
+
+
+class LinkGithubRequest(BaseModel):
+    org_id: UUID
+    org_name: str
+
+
+class GithubIntegration:
+    """
+    Integration with Github repositories via Greptile API for code search and analysis.
+    """
+
+    def __init__(self, org_id: str, org_name: str):
+        """
+        Initialize Github integration for an organization
+
+        Args:
+            org_id: Organization ID to scope the integration
+        """
+        self.org_id = org_id
+        self.org_name = org_name
+        self.api_base = "https://api.greptile.com/v2"
+        
+        self.gh_token = os.getenv("GITHUB_TEST_TOKEN")
+        if self.gh_token is None:
+            self.gh_token = self.get_github_token(org_id)
+        
+        self.headers = {
+            "Authorization": f"Bearer {os.getenv('GREPTILE_API_KEY')}",
+            "X-GitHub-Token": f"{self.gh_token}",
+            "Content-Type": "application/json",
+        }
+
+    def get_github_token(self, org_id: str) -> str:
+        """
+        Get the GitHub token for an organization from supabase vault.
+        """
+        # TODO
+        return os.getenv("GITHUB_TEST_TOKEN")
+
+    def index_user(self):
+        """
+        Index all of the organization's repositories.
+        """
+        # get users' github token from supabase, set the self.headers['X-GitHub-Token']
+        # TODO
+        repos = self.list_repositories()
+        for repo in repos:
+            self.index_repository(repos[repo])
+
+    def list_repositories(self) -> Dict[str, Repository]:
+        """
+        List all repositories for the organization
+
+        Returns:
+            Dict mapping repository names to Repository objects
+        """
+        url = f"https://api.github.com/orgs/{self.org_name}/repos"
+        github_headers = {
+            "Authorization": f"Bearer {self.gh_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        page = 1
+        repos = []
+        while True:
+            response = requests.get(
+                url,
+                headers=github_headers,
+                params={"per_page": 100, "page": page}
+            )
+            if response.status_code != 200:
+                raise Exception(f"Failed to fetch repositories: {response.status_code} {response.text}")
+            
+            repos.extend(response.json())
+            if len(repos) == 0:
+                break
+            
+            page += 1
+
+        repos_rv = {}
+        for github_repo in repos:
+            url = f"{self.api_base}/repositories/{github_repo['id']}"
+            response = requests.get(url, headers=self.headers)
+
+            if response.status_code == 200:
+                repo_data = response.json()
+                name = repo_data["repository"]
+                repos_rv[name] = Repository(
+                    remote=repo_data["remote"],
+                    repository=name,
+                    branch=repo_data.get("branch", "main"),
+                )
+
+        return repos_rv
+
+    def index_repository(
+        self, repository: Repository, reload: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Index or reindex a repository for searching
+
+        Args:
+            repository: Repository to index
+            reload: Whether to force reindex if already indexed
+
+        Returns:
+            Dict with indexing status and details
+        """
+        url = f"{self.api_base}/repositories"
+
+        payload = {
+            "remote": repository.remote,
+            "repository": repository.repository,
+            "branch": repository.branch,
+            "reload": reload,
+            "notify": True,
+        }
+
+        response = requests.post(url, json=payload, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def search_code(
+        self,
+        query: str,
+        repositories: List[Repository],
+        k: int,
+        session_id: Optional[str] = None,
+        do_stream: bool = False,
+        genius: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Search code repositories with natural language queries
+
+        Args:
+            query: Natural language query about the codebase
+            repositories: List of repositories to search
+            session_id: Optional session ID for continuity
+            do_stream: Whether to stream results
+            genius: Whether to use enhanced search
+
+        Returns:
+            Dict containing search results with code references
+        """
+        url = f"{self.api_base}/query"
+
+        # index by all if empty
+        if len(repositories) == 0:
+            repositories = list(self.list_repositories().values())
+
+        payload = {
+            "messages": [{"id": "query", "content": query, "role": "user"}],
+            "repositories": [
+                {
+                    "remote": repo.remote,
+                    "repository": repo.repository,
+                    "branch": repo.branch,
+                }
+                for repo in repositories
+            ],
+            "stream": do_stream,
+            "genius": genius,
+        }
+
+        if session_id is not None:
+            payload["session_id"] = session_id
+
+        response = requests.post(url, json=payload, headers=self.headers)
+        response.raise_for_status()
+
+        # TODO return top k instead of all results
+        logger.info("Response from github searchq: %s", response.json())
+        return response.json()["results"][:k]
