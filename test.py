@@ -1,4 +1,4 @@
-from src.core.handle_issue import debug_issue, OpenIssueRequest
+from src.core.event.handle_issue import debug_issue, OpenIssueRequest
 from src.model.issue import Issue
 from uuid import uuid4, UUID
 import asyncio

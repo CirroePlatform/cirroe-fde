@@ -1,5 +1,4 @@
 from logger import logger
-from contextvars import ContextVar
 from merge.resources.ticketing import CommentRequest
 from merge.resources.ticketing import Ticket
 from uuid import UUID
@@ -10,7 +9,7 @@ from dotenv import load_dotenv
 from src.model.issue import OpenIssueRequest
 from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
 from src.integrations.merge import client as merge_client
-
+from src.integrations.issue_kb import IssueKnowledgeBase
 MODEL_LIGHT = "claude-3-haiku-20240307"
 MODEL_HEAVY = "claude-3-5-sonnet-20240620"
 
@@ -97,6 +96,16 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
 
     comment_on_ticket(issue_req.issue.primary_key, response.choices[0].message.content)
     logger.info("Comment added to ticket: %s", response.choices[0].message.content)
+
+def index_all_issues_async(org_id: UUID):
+    """
+    Indexes all issues in the database.
+    """
+    issue_kb = IssueKnowledgeBase(org_id)
+    tickets = merge_client.ticketing.tickets.list()
+
+    for ticket in tickets:
+        issue_kb.index(ticket)
 
 
 def comment_on_ticket(tid: UUID, comment: Optional[str] = None):

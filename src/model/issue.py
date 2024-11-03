@@ -65,3 +65,7 @@ class WebhookPayload(BaseModel):
 class OpenIssueRequest(BaseModel):
     requestor_id: UUID
     issue: Issue
+
+
+class IndexAllIssuesRequest(BaseModel):
+    org_id: UUID

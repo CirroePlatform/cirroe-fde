@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from uuid import UUID
 from merge.resources.ticketing import Ticket
 from merge.resources.ticketing.types import TicketStatusEnum
@@ -28,7 +28,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         self.vector_db = VectorDB(org_id)
         self.indexed_issues: Dict[str, Issue] = {}
 
-    async def index(self, data: Any = None) -> bool:
+    async def index(self, data: Union[Issue, Ticket] = None) -> bool:
         """
         Index tickets from either Merge API or Issue model representation
         
@@ -45,13 +45,6 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
                     self._index_ticket(data)
                 elif hasattr(data, 'tid'):  # Issue model
                     self.vector_db.add_issue(data)
-                return True
-
-            # Otherwise index all Merge tickets
-            tickets = merge_client.ticketing.tickets.list()
-            for ticket in tickets:
-                self._index_ticket(ticket)
-            
             return True
 
         except Exception as e:

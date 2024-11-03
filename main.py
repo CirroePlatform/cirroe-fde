@@ -2,15 +2,15 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 
-from src.server.handle_actions import handle_new_runbook
+from src.core.event.handle_runbooks import handle_new_runbook
 from src.integrations.merge import create_link_token, retrieve_account_token
 
 from src.model.runbook import UploadRunbookRequest
-from src.model.issue import OpenIssueRequest, WebhookPayload, Issue
+from src.model.issue import OpenIssueRequest, WebhookPayload, Issue, IndexAllIssuesRequest
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 from src.integrations.github import LinkGithubRequest, GithubIntegration
 
-from src.core.handle_issue import debug_issue
+from src.core.event.handle_issue import debug_issue, index_all_issues_async
 
 app = FastAPI()
 
@@ -86,3 +86,12 @@ def create_account_token(request: GetAccountTokenRequest):
     """
     print("Entered retrieve acct token request")
     return retrieve_account_token(request)
+
+@app.post("/idx_all_issues")
+def index_all_issues(request: IndexAllIssuesRequest, background_tasks: BackgroundTasks):
+    """
+    Indexes all issues in the database.
+
+    Asynchronusly does this on repeat.
+    """
+    background_tasks.add_task(index_all_issues_async, request.org_id)
