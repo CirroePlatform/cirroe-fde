@@ -4,7 +4,7 @@ from uuid import UUID
 
 from src.core.event.handle_runbooks import handle_new_runbook
 from src.integrations.merge import create_link_token, retrieve_account_token
-
+from src.integrations.documentation_kb import DocumentationKnowledgeBase
 from src.model.runbook import UploadRunbookRequest
 from src.model.issue import OpenIssueRequest, WebhookPayload, Issue, IndexAllIssuesRequest
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
@@ -95,3 +95,8 @@ def index_all_issues(request: IndexAllIssuesRequest, background_tasks: Backgroun
     Asynchronusly does this on repeat.
     """
     background_tasks.add_task(index_all_issues_async, request.org_id)
+
+from test.docu_test import test_idx
+import asyncio
+
+asyncio.run(test_idx())

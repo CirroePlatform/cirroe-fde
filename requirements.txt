@@ -12,3 +12,4 @@ pydantic[email]
 anthropic
 langchain
 langchain-openai
+beautifulsoup4
