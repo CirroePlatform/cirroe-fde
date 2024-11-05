@@ -1,8 +1,10 @@
+from uuid import UUID
+from typing import List
+from typeguard import typechecked
+
 from src.integrations.github import GithubIntegration
 from src.integrations.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
-from uuid import UUID
-from typing import Dict, Any, List
-from typeguard import typechecked
+from src.integrations.documentation_kb import DocumentationKnowledgeBase
 
 DEBUG_ISSUE_TOOLS = [
     {
@@ -40,6 +42,24 @@ DEBUG_ISSUE_TOOLS = [
             },  
             "required": ["query", "limit"],
         },
+    },
+    {
+        "name": "execute_documentation_search",
+        "description": "A function to search the teams documentation for relevant information.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A natural language query about the documentation",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "The number of documents to retrieve",
+                }
+            },
+            "required": ["query", "limit"],
+        },
     }
 ]
 
@@ -54,7 +74,7 @@ class SearchTools:
 
         self.github = GithubIntegration(org_id=self.requestor_id, org_name=org_name)
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
-
+        self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
     def execute_codebase_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
         """
             Execute a command over git repos using the Greptile API integration.
@@ -86,5 +106,21 @@ class SearchTools:
         """
         try:
             return self.issue_kb.query(query, limit)
+        except Exception as e:
+            return [str(e)]
+
+    def execute_documentation_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
+        """
+        Execute a search over the teams documentation.
+
+        Args:
+            query (str): The search query in natural language format.
+            limit (int): The number of documents to retrieve
+
+        Returns:
+            List[KnowledgeBaseResponse]: List of documentation responses that match the search query
+        """
+        try:
+            return self.documentation_kb.query(query, limit)
         except Exception as e:
             return [str(e)]
