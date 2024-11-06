@@ -43,7 +43,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             if data:
                 if isinstance(data, Ticket):
                     self._index_ticket(data)
-                elif hasattr(data, 'tid'):  # Issue model
+                elif hasattr(data, 'primary_key'):  # Issue model
                     self.vector_db.add_issue(data)
             return True
 

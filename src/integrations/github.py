@@ -2,9 +2,11 @@ import os
 from logger import logger
 from uuid import UUID
 import requests
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
+
+from src.model.issue import Issue
+
 from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
 class Repository(BaseModel):
@@ -51,6 +53,31 @@ class GithubIntegration(BaseKnowledgeBase):
         """
         # TODO
         return os.getenv("GITHUB_TEST_TOKEN")
+
+    def get_all_issues_json(self, repo_name: str, state: Optional[str] = "closed") -> Dict[str, Any]:
+        """
+        Get all issues for some provided repository.
+        """
+        if "github.com" in repo_name:
+            repo_name = "/".join(repo_name.split("/")[-2:])
+        else:
+            repo_name = repo_name
+
+        # Set up API request
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+
+        url = f"https://api.github.com/repos/{repo_name}/issues"
+        if state is not None:
+            url += f"?state={state}"
+
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+
+        return response.json()
 
     def index_user(self):
         """
@@ -131,6 +158,8 @@ class GithubIntegration(BaseKnowledgeBase):
 
             response = requests.post(url, json=payload, headers=self.headers)
             response.raise_for_status()
+
+            logger.info(f"Successfully indexed repository: {repository.repository}")
             return True
         except Exception as e:
             logger.error(f"Failed to index repository: {str(e)}")

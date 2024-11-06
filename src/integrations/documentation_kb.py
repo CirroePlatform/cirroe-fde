@@ -53,12 +53,13 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             logging.error(f"Failed to fetch page content: {str(e)}")
             raise
 
+    def _get_sitemap_path(self) -> str:
+        return f"scripts/data/sitemaps/{self.org_id}.xml"
+
     def _index_tree(self, tree: etree.ElementTree):
         """
         Index the XML tree into the knowledge base.
         """
-        logging.info("Starting to index XML tree")
-        logging.warning("XML tree indexing not implemented yet")
         pass
 
     async def index(self, url: str) -> bool:
@@ -72,6 +73,12 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             bool: True if the documentation page was indexed successfully, False otherwise.
         """
         logging.info(f"Starting documentation indexing for {url}")
+
+        if os.path.exists(self._get_sitemap_path()):
+            tree = etree.parse(self._get_sitemap_path())
+            self._index_tree(tree)
+            return True
+
         try:
             links = self._parse_sitemap(url)
             root = etree.Element(f"Documentation_{self.org_id}")
@@ -92,7 +99,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             logging.info("Saving XML tree to file")
             tree = etree.ElementTree(root)
 
-            smpath = f"/scripts/data/sitemaps/{self.org_id}.xml"
+            smpath = self._get_sitemap_path()
             if not os.path.exists(smpath):
                 logging.info(f"Creating directory for sitemap at {smpath}")
                 os.makedirs(os.path.dirname(smpath), exist_ok=True)
@@ -103,10 +110,10 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             # 4. index tree
             logging.info("Starting tree indexing")
             self._index_tree(tree)
-            
+
             logging.info("Successfully completed documentation indexing")
             return True
-            
+
         except Exception as e:
             logging.error(f"Failed to index documentation: {str(e)}")
             logging.error(traceback.format_exc())
@@ -123,6 +130,4 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         Returns:
             List[KnowledgeBaseResponse]: List of documentation responses that match the search query
         """
-        logging.info(f"Querying documentation with query: '{query}', limit: {limit}")
         logging.warning("Query functionality not implemented yet")
-        pass

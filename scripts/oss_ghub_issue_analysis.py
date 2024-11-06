@@ -1,4 +1,4 @@
-import requests
+from uuid import UUID
 from datetime import datetime
 import os
 from statistics import mean
@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import csv
 
 load_dotenv()
+
+from src.integrations.github import GithubIntegration
 
 def analyze_github_issues(repo_url: str) -> Dict:
     """
@@ -18,29 +20,14 @@ def analyze_github_issues(repo_url: str) -> Dict:
     Returns:
         Dictionary containing issue completion times and average completion time
     """
-    
+
     # Extract org/repo from URL if full URL provided
-    if "github.com" in repo_url:
-        repo_name = "/".join(repo_url.split("/")[-2:])
-    else:
-        repo_name = repo_url
-        
-    # Set up API request
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
-        "X-GitHub-Api-Version": "2022-11-28"
-    }
-    
-    url = f"https://api.github.com/repos/{repo_name}/issues?state=closed"
-    
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    
-    completion_times = {}
+    github = GithubIntegration(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1"), repo_url)
+    issues = github.get_all_issues_json(repo_url)
+
     time_deltas = []
-    
-    for issue in response.json():
+    completion_times = {}
+    for issue in issues:
         if issue['closed_at'] and issue['created_at']:
             # Parse datetime strings to datetime objects
             closed_at = datetime.strptime(issue['closed_at'], "%Y-%m-%dT%H:%M:%SZ")
