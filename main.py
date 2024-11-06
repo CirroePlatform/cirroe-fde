@@ -95,8 +95,3 @@ def index_all_issues(request: IndexAllIssuesRequest, background_tasks: Backgroun
     Asynchronusly does this on repeat.
     """
     background_tasks.add_task(index_all_issues_async, request.org_id)
-
-from test.docu_test import test_idx
-import asyncio
-
-asyncio.run(test_idx())
