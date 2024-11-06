@@ -13,3 +13,6 @@ anthropic
 langchain
 langchain-openai
 beautifulsoup4
+lxml
+requests
+typeguard
