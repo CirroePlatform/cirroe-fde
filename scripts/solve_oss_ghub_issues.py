@@ -12,7 +12,7 @@ from src.model.issue import Issue
 MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
 
 # Setup repo, issue, and documentation knowledge bases
-def setup_repos(org_id: UUID, repo_name: str):
+async def setup_repos(org_id: UUID, repo_name: str):
     github = GithubIntegration(org_id, repo_name)
     issue_kb = IssueKnowledgeBase(org_id)
     # doc_kb = DocumentationKnowledgeBase(org_id)
@@ -21,10 +21,16 @@ def setup_repos(org_id: UUID, repo_name: str):
     
     issues = github.get_all_issues_json(repo_name, state=None)
     for issue in issues:
-        issue_kb.index(Issue(
-            primary_key=issue["id"], 
-            problem_description=issue["title"], 
-            comments=issue["body"]
+        
+        comments = {} 
+        for comment in issue["comments"]:
+            comments[comment["user"]["login"]] = comment["body"]
+        
+        #  Issue id is not a uuid, need to co
+        await issue_kb.index(Issue(
+            primary_key=str(issue["id"]), 
+            description=f"title: {issue['title']}, description: {issue['body']}", 
+            comments=comments
         ))
 
     # doc_kb.index()

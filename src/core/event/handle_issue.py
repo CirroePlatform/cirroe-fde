@@ -28,7 +28,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
         sysprompt = fp.read()
 
     messages = [
-        {"role": "user", "content": issue_req.issue.problem_description},
+        {"role": "user", "content": issue_req.issue.description},
     ]
 
     response = client.messages.create(
@@ -94,7 +94,7 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
         )
         logger.info("Response: %s", response)
 
-    comment_on_ticket(issue_req.issue.primary_key, response.choices[0].message.content)
+    comment_on_ticket(str(issue_req.issue.primary_key), response.choices[0].message.content)
     logger.info("Comment added to ticket: %s", response.choices[0].message.content)
 
 def index_all_issues_async(org_id: UUID):

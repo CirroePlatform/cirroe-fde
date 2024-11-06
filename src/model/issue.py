@@ -9,9 +9,9 @@ class Issue(BaseModel):
     Model for a customer issue, could be issue, slack thread, etc.
     """
 
-    primary_key: UUID
+    primary_key: str
     vector: Optional[List[float]] = None
-    problem_description: str
+    description: str
     comments: Dict[str, str]  # a dictionary of (requestor_name, comment) objects
 
 

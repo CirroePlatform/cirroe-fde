@@ -87,6 +87,8 @@ class VectorDB:
             user_id,
         )
 
+        self.is_debug_mode = os.environ.get("DEBUG_MODE").lower() == "true"
+
         self.create_runbook_collection()
         self.create_issue_collection()
 
@@ -144,14 +146,14 @@ class VectorDB:
         """
         return self.model.encode(text)
 
-    def embed_runbook(self, runbook: Runbook, debug: bool = True) -> List[float]:
+    def embed_runbook(self, runbook: Runbook) -> List[float]:
         """
         Embed a runbook description and return it.
 
         Will be an array of size self.dimension
         """
         # Embed the runbook description using SentenceTransformer
-        if debug:
+        if self.is_debug_mode:
             return [0.0] * self.dimension
 
         return self.model.encode(runbook.description)
@@ -160,13 +162,13 @@ class VectorDB:
         """
         Convert an issue to a string that can be embedded
         """
-        return issue.problem_description + " " + " ".join(issue.comments.values())
+        return issue.description + " " + " ".join(issue.comments.values())
 
-    def embed_issue(self, issue: Issue, debug: bool = True) -> List[float]:
+    def embed_issue(self, issue: Issue) -> List[float]:
         """
         Embed an issue description and return it.
         """
-        if debug:
+        if self.is_debug_mode:
             return [0.0] * self.dimension
 
         return self.model.encode(self.issue_to_embeddable_string(issue))
@@ -180,7 +182,7 @@ class VectorDB:
             return  # Runbook already exists, just continue.
 
         # Embed the description
-        vector = self.embed_runbook(runbook, debug=False)
+        vector = self.embed_runbook(runbook)
 
         # get step ids for db insert
         step_ids = [str(step.sid) for step in runbook.steps]
@@ -209,9 +211,8 @@ class VectorDB:
 
         # Check if issue already exists
         prev_data = self.client.get(ISSUE, issue.primary_key)
-
         if len(prev_data) > 0:
-            # compare content TODO need to test this to make sure we're actually doing the comparison properly.
+            # compare content, if there's even a slight difference, we should update the issue vector.
             prev_data_issue = Issue(**prev_data[0])
             if self.issue_to_embeddable_string(prev_data_issue) == self.issue_to_embeddable_string(issue):
                 return  # Issue content is the same as existing issue, just continue.
@@ -221,7 +222,7 @@ class VectorDB:
             {
                 "primary_key": str(issue.primary_key),
                 "vector": vector,
-                "description": issue.problem_description,
+                "description": issue.description,
                 "comments": issue.comments,
             }
         ]
@@ -295,7 +296,7 @@ class VectorDB:
             comments = result["entity"]["comments"]
             vector = result["entity"]["vector"]
 
-            issue = Issue(primary_key=issue_id, problem_description=problem_description, comments=comments, vector=vector)
+            issue = Issue(primary_key=issue_id, description=problem_description, comments=comments, vector=vector)
 
             issues[issue_id] = {"similarity": distance, "metadata": issue.model_dump_json()}
 

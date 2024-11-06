@@ -56,7 +56,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
     def get_all_issues_json(self, repo_name: str, state: Optional[str] = "closed") -> Dict[str, Any]:
         """
-        Get all issues for some provided repository.
+        Get all issues (excluding pull requests) for some provided repository.
         """
         if "github.com" in repo_name:
             repo_name = "/".join(repo_name.split("/")[-2:])
@@ -65,19 +65,32 @@ class GithubIntegration(BaseKnowledgeBase):
 
         # Set up API request
         headers = {
-            "Accept": "application/vnd.github+json",
+            "Accept": "application/vnd.github+json", 
             "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
             "X-GitHub-Api-Version": "2022-11-28"
         }
 
+        # Add parameters to exclude pull requests and filter by state
+        params = {"state": state} if state is not None else {}
+        # Add filter to exclude pull requests
         url = f"https://api.github.com/repos/{repo_name}/issues"
-        if state is not None:
-            url += f"?state={state}"
 
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
 
-        return response.json()
+        # Filter out pull requests from the response
+        issues = [issue for issue in response.json() if "pull_request" not in issue]
+        
+        # Fetch comments for each issue
+        for issue in issues:
+            comments_url = issue['comments_url']
+            comments_response = requests.get(comments_url, headers=headers)
+            comments_response.raise_for_status()
+            
+            # Add comments to the issue object
+            issue['comments'] = comments_response.json()
+        
+        return issues
 
     def index_user(self):
         """
