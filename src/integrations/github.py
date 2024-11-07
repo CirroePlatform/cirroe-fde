@@ -9,6 +9,7 @@ from src.model.issue import Issue
 
 from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
+
 class Repository(BaseModel):
     remote: str  # e.g. "github.com"
     repository: str  # e.g. "username/repo"
@@ -36,11 +37,11 @@ class GithubIntegration(BaseKnowledgeBase):
         super().__init__(org_id)
         self.org_name = org_name
         self.api_base = "https://api.greptile.com/v2"
-        
+
         self.gh_token = os.getenv("GITHUB_TEST_TOKEN")
         if self.gh_token is None:
             self.gh_token = self.get_github_token(org_id)
-        
+
         self.headers = {
             "Authorization": f"Bearer {os.getenv('GREPTILE_API_KEY')}",
             "X-GitHub-Token": f"{self.gh_token}",
@@ -54,7 +55,9 @@ class GithubIntegration(BaseKnowledgeBase):
         # TODO
         return os.getenv("GITHUB_TEST_TOKEN")
 
-    def get_all_issues_json(self, repo_name: str, state: Optional[str] = "closed") -> Dict[str, Any]:
+    def get_all_issues_json(
+        self, repo_name: str, state: Optional[str] = "closed"
+    ) -> Dict[str, Any]:
         """
         Get all issues (excluding pull requests) for some provided repository.
         """
@@ -65,9 +68,9 @@ class GithubIntegration(BaseKnowledgeBase):
 
         # Set up API request
         headers = {
-            "Accept": "application/vnd.github+json", 
+            "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
-            "X-GitHub-Api-Version": "2022-11-28"
+            "X-GitHub-Api-Version": "2022-11-28",
         }
 
         # Add parameters to exclude pull requests and filter by state
@@ -80,16 +83,16 @@ class GithubIntegration(BaseKnowledgeBase):
 
         # Filter out pull requests from the response
         issues = [issue for issue in response.json() if "pull_request" not in issue]
-        
+
         # Fetch comments for each issue
         for issue in issues:
-            comments_url = issue['comments_url']
+            comments_url = issue["comments_url"]
             comments_response = requests.get(comments_url, headers=headers)
             comments_response.raise_for_status()
-            
+
             # Add comments to the issue object
-            issue['comments'] = comments_response.json()
-        
+            issue["comments"] = comments_response.json()
+
         return issues
 
     def index_user(self):
@@ -112,24 +115,24 @@ class GithubIntegration(BaseKnowledgeBase):
         url = f"https://api.github.com/orgs/{self.org_name}/repos"
         github_headers = {
             "Authorization": f"Bearer {self.gh_token}",
-            "Accept": "application/vnd.github.v3+json"
+            "Accept": "application/vnd.github.v3+json",
         }
-        
+
         page = 1
         repos = []
         while True:
             response = requests.get(
-                url,
-                headers=github_headers,
-                params={"per_page": 100, "page": page}
+                url, headers=github_headers, params={"per_page": 100, "page": page}
             )
             if response.status_code != 200:
-                raise Exception(f"Failed to fetch repositories: {response.status_code} {response.text}")
-            
+                raise Exception(
+                    f"Failed to fetch repositories: {response.status_code} {response.text}"
+                )
+
             repos.extend(response.json())
             if len(repos) == 0:
                 break
-            
+
             page += 1
 
         repos_rv = {}
@@ -209,13 +212,13 @@ class GithubIntegration(BaseKnowledgeBase):
 
             response = requests.post(url, json=payload, headers=self.headers)
             response.raise_for_status()
-            
+
             results = response.json()["results"][:limit]
             return [
                 KnowledgeBaseResponse(
                     content=result["content"],
                     source=result["file"],
-                    score=result.get("score", 0.0)
+                    score=result.get("score", 0.0),
                 )
                 for result in results
             ]

@@ -10,12 +10,14 @@ from src.model.issue import OpenIssueRequest
 from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
 from src.integrations.merge import client as merge_client
 from src.integrations.issue_kb import IssueKnowledgeBase
+
 MODEL_LIGHT = "claude-3-haiku-20240307"
 MODEL_HEAVY = "claude-3-5-sonnet-20240620"
 
 load_dotenv()
 
 client = anthropic.Anthropic()
+
 
 def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     """
@@ -94,8 +96,11 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
         )
         logger.info("Response: %s", response)
 
-    comment_on_ticket(str(issue_req.issue.primary_key), response.choices[0].message.content)
+    comment_on_ticket(
+        str(issue_req.issue.primary_key), response.choices[0].message.content
+    )
     logger.info("Comment added to ticket: %s", response.choices[0].message.content)
+
 
 def index_all_issues_async(org_id: UUID):
     """

@@ -6,6 +6,7 @@ from src.storage.supa import SupaClient
 from logger import logger
 from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
+
 class CloudIntegration(BaseKnowledgeBase):
     def __init__(self, org_id: str):
         """

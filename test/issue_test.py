@@ -5,8 +5,9 @@ import asyncio
 from src.integrations.issue_kb import IssueKnowledgeBase
 
 
-org_id=UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
+org_id = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
 issue_kb = IssueKnowledgeBase(org_id)
+
 
 async def test_issue_kb():
     # Test indexing a single ticket
@@ -14,8 +15,11 @@ async def test_issue_kb():
     test_ticket = Issue(
         primary_key=str(issue_id),
         description="Having issues with multimodal queries in production",
-        comments={"Jacob": "Have you checked the model configuration?", "Tom @ Cirroe": "Yes, config looks correct but still failing"},
-        org_id=org_id
+        comments={
+            "Jacob": "Have you checked the model configuration?",
+            "Tom @ Cirroe": "Yes, config looks correct but still failing",
+        },
+        org_id=org_id,
     )
     success = await issue_kb.index(test_ticket)
     print(f"Index single ticket result: {success}")
@@ -34,20 +38,26 @@ async def test_issue_kb():
         Issue(
             primary_key=str(uuid4()),
             description="Need help configuring model parameters",
-            comments={"Tom @ Cirroe": "Which parameters are you trying to set?", "Jacob": "The temperature and max tokens"},
-            org_id=org_id
+            comments={
+                "Tom @ Cirroe": "Which parameters are you trying to set?",
+                "Jacob": "The temperature and max tokens",
+            },
+            org_id=org_id,
         ),
         Issue(
             primary_key=str(uuid4()),
             description="API returning 500 error on image uploads",
-            comments={"Tom @ Cirroe": "Is this happening for all image types?", "Jacob": "Only for PNG files over 5MB"},
-            org_id=org_id
-        )
+            comments={
+                "Tom @ Cirroe": "Is this happening for all image types?",
+                "Jacob": "Only for PNG files over 5MB",
+            },
+            org_id=org_id,
+        ),
     ]
-    
+
     for ticket in test_tickets:
         await issue_kb.index(ticket)
-    
+
     # Test broader query
     query = "configuration problems"
     results = await issue_kb.query(query, limit=3)
@@ -56,6 +66,7 @@ async def test_issue_kb():
         print(f"\nSource: {result.source}")
         print(f"Content: {result.content}")
         print(f"Score: {result.score}")
+
 
 # Run tests
 asyncio.run(test_issue_kb())

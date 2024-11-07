@@ -10,13 +10,14 @@ load_dotenv()
 
 from src.integrations.github import GithubIntegration
 
+
 def analyze_github_issues(repo_url: str) -> Dict:
     """
     Analyzes closed issues from a GitHub repository to calculate completion times.
-    
+
     Args:
         repo_url: URL or org/repo string for the GitHub repository
-    
+
     Returns:
         Dictionary containing issue completion times and average completion time
     """
@@ -28,23 +29,24 @@ def analyze_github_issues(repo_url: str) -> Dict:
     time_deltas = []
     completion_times = {}
     for issue in issues:
-        if issue['closed_at'] and issue['created_at']:
+        if issue["closed_at"] and issue["created_at"]:
             # Parse datetime strings to datetime objects
-            closed_at = datetime.strptime(issue['closed_at'], "%Y-%m-%dT%H:%M:%SZ")
-            created_at = datetime.strptime(issue['created_at'], "%Y-%m-%dT%H:%M:%SZ")
-            
+            closed_at = datetime.strptime(issue["closed_at"], "%Y-%m-%dT%H:%M:%SZ")
+            created_at = datetime.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ")
+
             # Calculate time delta between creation and closing
             completion_time = closed_at - created_at
-            completion_times[issue['number']] = completion_time
+            completion_times[issue["number"]] = completion_time
             time_deltas.append(completion_time.total_seconds())
-    
+
     # Calculate average completion time
     avg_completion_time = mean(time_deltas) if time_deltas else 0
-    
+
     return {
         "issue_completion_times": completion_times,
-        "average_completion_time": avg_completion_time
+        "average_completion_time": avg_completion_time,
     }
+
 
 if __name__ == "__main__":
     # Example usage
@@ -64,6 +66,13 @@ if __name__ == "__main__":
 
         for repo in repos:
             results = analyze_github_issues(repo)
-            values_in_seconds = [x.total_seconds() for x in results['issue_completion_times'].values()]
-            writer.writerow([repo, results['average_completion_time']/3600, sum(values_in_seconds) / 3600])
-
+            values_in_seconds = [
+                x.total_seconds() for x in results["issue_completion_times"].values()
+            ]
+            writer.writerow(
+                [
+                    repo,
+                    results["average_completion_time"] / 3600,
+                    sum(values_in_seconds) / 3600,
+                ]
+            )

@@ -11,6 +11,7 @@ from src.storage.vector import VectorDB
 
 from logger import logger
 
+
 class IssueKnowledgeBase(BaseKnowledgeBase):
     """
     Knowledge base for searching and indexing historical support tickets/issues.
@@ -20,7 +21,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         """
         Initialize issue knowledge base for an organization
-        
+
         Args:
             org_id: Organization ID to scope the knowledge base
         """
@@ -31,10 +32,10 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
     async def index(self, data: Union[Issue, Ticket] = None) -> bool:
         """
         Index tickets from either Merge API or Issue model representation
-        
+
         Args:
             data: Optional specific Issue or Ticket to index, if None indexes all Merge tickets
-            
+
         Returns:
             bool indicating if indexing was successful
         """
@@ -43,7 +44,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             if data:
                 if isinstance(data, Ticket):
                     self._index_ticket(data)
-                elif hasattr(data, 'primary_key'):  # Issue model
+                elif hasattr(data, "primary_key"):  # Issue model
                     self.vector_db.add_issue(data)
             return True
 
@@ -64,17 +65,17 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             "status": ticket.status,
             "comments": comment_texts,
             "priority": ticket.priority,
-            "created_at": ticket.created_at
+            "created_at": ticket.created_at,
         }
 
     async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Search indexed tickets for relevant matches
-        
+
         Args:
             query: Natural language query about previous issues
             limit: Maximum number of results to return
-            
+
         Returns:
             List of KnowledgeBaseResponse objects containing relevant tickets
         """
@@ -85,17 +86,15 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
 
             results = []
             for issue_id, issue_data in issues.items():
-                # source: str  # Source of the information (e.g. "github", "cloud", "issue")
-                # content: str  # The relevant content
-                # metadata: Dict[str, Any]  # Additional metadata like timestamps, urls, etc
-                # relevance_score: float  # How relevant this piece of information is to the query
 
-                results.append(KnowledgeBaseResponse(
-                    content=issue_data["metadata"],
-                    metadata=json.loads(issue_data["metadata"]),
-                    source=f"Ticket #{issue_id}",
-                    relevance_score=issue_data["similarity"]
-                ))
+                results.append(
+                    KnowledgeBaseResponse(
+                        content=issue_data["metadata"],
+                        metadata=json.loads(issue_data["metadata"]),
+                        source=f"Ticket #{issue_id}",
+                        relevance_score=issue_data["similarity"],
+                    )
+                )
 
             return results
 

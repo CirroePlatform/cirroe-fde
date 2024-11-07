@@ -71,7 +71,10 @@ class VectorDB:
     """
 
     def __init__(
-        self, user_id: UUID, embedding_model_name: str = OPENAI_EMBED, dimension: int = DIMENSION
+        self,
+        user_id: UUID,
+        embedding_model_name: str = OPENAI_EMBED,
+        dimension: int = DIMENSION,
     ):
         self.client = MilvusClient(
             uri=os.environ.get("MILVUS_URL"),
@@ -127,7 +130,12 @@ class VectorDB:
         already, then we just load into memory
         """
         fields = [
-            FieldSchema(name="primary_key", dtype=DataType.VARCHAR, is_primary=True, max_length=36),
+            FieldSchema(
+                name="primary_key",
+                dtype=DataType.VARCHAR,
+                is_primary=True,
+                max_length=36,
+            ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="comments", dtype=DataType.JSON),
@@ -158,7 +166,7 @@ class VectorDB:
             return [0.0] * self.dimension
 
         return self.model.encode(runbook.description)
-    
+
     def issue_to_embeddable_string(self, issue: Issue) -> str:
         """
         Convert an issue to a string that can be embedded
@@ -215,7 +223,9 @@ class VectorDB:
         if len(prev_data) > 0:
             # compare content, if there's even a slight difference, we should update the issue vector.
             prev_data_issue = Issue(**prev_data[0])
-            if self.issue_to_embeddable_string(prev_data_issue) == self.issue_to_embeddable_string(issue):
+            if self.issue_to_embeddable_string(
+                prev_data_issue
+            ) == self.issue_to_embeddable_string(issue):
                 return  # Issue content is the same as existing issue, just continue.
 
         vector = self.embed_issue(issue)
@@ -289,7 +299,7 @@ class VectorDB:
             limit=k,
             output_fields=["vector", "description", "comments"],
         )
-        
+
         issues = {}
         for result in results[0]:
             issue_id = result["id"]
@@ -298,8 +308,17 @@ class VectorDB:
             comments = result["entity"]["comments"]
             vector = result["entity"]["vector"]
 
-            issue = Issue(primary_key=issue_id, description=problem_description, comments=comments, vector=vector, org_id=self.user_id)
+            issue = Issue(
+                primary_key=issue_id,
+                description=problem_description,
+                comments=comments,
+                vector=vector,
+                org_id=self.user_id,
+            )
 
-            issues[issue_id] = {"similarity": distance, "metadata": issue.model_dump_json()}
+            issues[issue_id] = {
+                "similarity": distance,
+                "metadata": issue.model_dump_json(),
+            }
 
         return issues

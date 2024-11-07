@@ -11,6 +11,7 @@ load_dotenv()
 
 RUNBOOKS = {}  # {rid: runbook}
 
+
 class IssueUpdateRequest(BaseModel):
     issue: Issue
     new_comment: Tuple[UUID, str]

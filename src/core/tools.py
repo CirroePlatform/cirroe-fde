@@ -38,8 +38,8 @@ DEBUG_ISSUE_TOOLS = [
                 "limit": {
                     "type": "integer",
                     "description": "The number of issues to retrieve",
-                }
-            },  
+                },
+            },
             "required": ["query", "limit"],
         },
     },
@@ -56,26 +56,30 @@ DEBUG_ISSUE_TOOLS = [
                 "limit": {
                     "type": "integer",
                     "description": "The number of documents to retrieve",
-                }
+                },
             },
             "required": ["query", "limit"],
         },
-    }
+    },
 ]
 
 DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
+
 
 @typechecked
 class SearchTools:
 
     def __init__(self, requestor_id: UUID):
         self.requestor_id = requestor_id
-        org_name = "CirroePlatform" # TODO: fetch this from users' supabase table
+        org_name = "CirroePlatform"  # TODO: fetch this from users' supabase table
 
         self.github = GithubIntegration(org_id=self.requestor_id, org_name=org_name)
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
-    def execute_codebase_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
+
+    def execute_codebase_search(
+        self, query: str, limit: int
+    ) -> List[KnowledgeBaseResponse]:
         """
             Execute a command over git repos using the Greptile API integration.
 
@@ -93,7 +97,9 @@ class SearchTools:
         except Exception as e:
             return [str(e)]
 
-    def execute_issue_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
+    def execute_issue_search(
+        self, query: str, limit: int
+    ) -> List[KnowledgeBaseResponse]:
         """
         Execute a search over the teams historical issues.
 
@@ -109,7 +115,9 @@ class SearchTools:
         except Exception as e:
             return [str(e)]
 
-    def execute_documentation_search(self, query: str, limit: int) -> List[KnowledgeBaseResponse]:
+    def execute_documentation_search(
+        self, query: str, limit: int
+    ) -> List[KnowledgeBaseResponse]:
         """
         Execute a search over the teams documentation.
 

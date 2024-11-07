@@ -8,6 +8,7 @@ from typing import List
 from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 import requests
 
+
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
@@ -21,15 +22,15 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         try:
             response = requests.get(url)
             response.raise_for_status()
-            soup = BeautifulSoup(response.content, 'html.parser')
+            soup = BeautifulSoup(response.content, "html.parser")
 
             # Customize the selector according to the website structure
             links = []
             logging.info("Extracting links from sitemap")
-            for a_tag in soup.select('a[href]'):  # TODO Adjust selector as needed
-                href = a_tag.get('href')
+            for a_tag in soup.select("a[href]"):  # TODO Adjust selector as needed
+                href = a_tag.get("href")
                 # Ensure link is absolute or properly formatted
-                full_url = href if href.startswith('http') else url + href
+                full_url = href if href.startswith("http") else url + href
                 logging.debug(f"Found link: {full_url}")
                 links.append(full_url)
 
@@ -87,7 +88,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             for link in links:
                 logging.debug(f"Processing link: {link}")
                 node = etree.SubElement(root, "Page", url=link)
-                
+
                 # 1. fetch page content
                 content = self._fetch_page_content(link)
                 # 2. create xml tree

@@ -6,7 +6,12 @@ from src.core.event.handle_runbooks import handle_new_runbook
 from src.integrations.merge import create_link_token, retrieve_account_token
 from src.integrations.documentation_kb import DocumentationKnowledgeBase
 from src.model.runbook import UploadRunbookRequest
-from src.model.issue import OpenIssueRequest, WebhookPayload, Issue, IndexAllIssuesRequest
+from src.model.issue import (
+    OpenIssueRequest,
+    WebhookPayload,
+    Issue,
+    IndexAllIssuesRequest,
+)
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 from src.integrations.github import LinkGithubRequest, GithubIntegration
 
@@ -55,9 +60,16 @@ def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
     requestor = payload.data.end_user.email_address
     tid = payload.hook.id
     problem_description = payload.data.error_description
-    org_id = payload.data.end_user.organization_name # TODO we need to verify this id is the same loaded into the vector DB.
+    org_id = (
+        payload.data.end_user.organization_name
+    )  # TODO we need to verify this id is the same loaded into the vector DB.
 
-    issue = Issue(primary_key=str(tid), description=problem_description, comments={}, org_id=org_id)
+    issue = Issue(
+        primary_key=str(tid),
+        description=problem_description,
+        comments={},
+        org_id=org_id,
+    )
 
     req = OpenIssueRequest(requestor_id=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)
@@ -82,6 +94,7 @@ def create_account_token(request: GetAccountTokenRequest):
     """
     print("Entered retrieve acct token request")
     return retrieve_account_token(request)
+
 
 @app.post("/idx_all_issues")
 def index_all_issues(request: IndexAllIssuesRequest, background_tasks: BackgroundTasks):
