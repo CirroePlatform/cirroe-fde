@@ -2,10 +2,8 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 
-from src.core.event.handle_runbooks import handle_new_runbook
 from src.integrations.merge import create_link_token, retrieve_account_token
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
-from src.model.runbook import UploadRunbookRequest
 from src.model.issue import (
     OpenIssueRequest,
     WebhookPayload,
@@ -26,19 +24,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Mapping of issue ids to handler objects
-ISSUE_HANDLERS = {}
-
-
-@app.post("/runbook")
-def upload_runbook(
-    runbook_req: UploadRunbookRequest, background_tasks: BackgroundTasks
-):
-    """
-    Accepts a new runbook from the frontend, and async adds it to vector db.
-    """
-    background_tasks.add_task(handle_new_runbook, runbook_req)
 
 
 @app.post("/link_github")
