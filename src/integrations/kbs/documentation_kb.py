@@ -5,7 +5,7 @@ import os
 from bs4 import BeautifulSoup
 from lxml import etree
 from typing import List
-from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
+from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 import requests
 
 

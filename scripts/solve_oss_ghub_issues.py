@@ -4,9 +4,9 @@ A basic script that solves a few subsets of issues from some commercial oss proj
 
 from uuid import UUID
 
-from src.integrations.github import GithubIntegration, Repository
-from src.integrations.issue_kb import IssueKnowledgeBase
-from src.integrations.documentation_kb import DocumentationKnowledgeBase
+from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.integrations.kbs.issue_kb import IssueKnowledgeBase
+from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from src.model.issue import Issue
 
 MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")

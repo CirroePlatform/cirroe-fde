@@ -2,9 +2,9 @@ from uuid import UUID
 from typing import List
 from typeguard import typechecked
 
-from src.integrations.github import GithubIntegration
-from src.integrations.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
-from src.integrations.documentation_kb import DocumentationKnowledgeBase
+from src.integrations.kbs.github_kb import GithubIntegration
+from src.integrations.kbs.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
+from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 
 DEBUG_ISSUE_TOOLS = [
     {

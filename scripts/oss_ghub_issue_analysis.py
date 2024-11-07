@@ -8,7 +8,7 @@ import csv
 
 load_dotenv()
 
-from src.integrations.github import GithubIntegration
+from src.integrations.kbs.github_kb import GithubIntegration
 
 
 def analyze_github_issues(repo_url: str) -> Dict:

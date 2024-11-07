@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from src.model.issue import OpenIssueRequest
 from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
 from src.integrations.merge import client as merge_client
-from src.integrations.issue_kb import IssueKnowledgeBase
+from src.integrations.kbs.issue_kb import IssueKnowledgeBase
 
 MODEL_LIGHT = "claude-3-haiku-20240307"
 MODEL_HEAVY = "claude-3-5-sonnet-20240620"

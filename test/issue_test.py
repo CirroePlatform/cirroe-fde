@@ -2,7 +2,7 @@ from src.core.event.handle_issue import debug_issue, OpenIssueRequest
 from src.model.issue import Issue
 from uuid import uuid4, UUID
 import asyncio
-from src.integrations.issue_kb import IssueKnowledgeBase
+from src.integrations.kbs.issue_kb import IssueKnowledgeBase
 
 
 org_id = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")

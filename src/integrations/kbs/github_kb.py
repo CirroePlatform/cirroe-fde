@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from src.model.issue import Issue
 
-from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
+from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
 
 class Repository(BaseModel):

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from src.core.event.handle_runbooks import handle_new_runbook
 from src.integrations.merge import create_link_token, retrieve_account_token
-from src.integrations.documentation_kb import DocumentationKnowledgeBase
+from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from src.model.runbook import UploadRunbookRequest
 from src.model.issue import (
     OpenIssueRequest,
@@ -13,7 +13,7 @@ from src.model.issue import (
     IndexAllIssuesRequest,
 )
 from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
-from src.integrations.github import LinkGithubRequest, GithubIntegration
+from src.integrations.kbs.github_kb import LinkGithubRequest, GithubIntegration
 
 from src.core.event.handle_issue import debug_issue, index_all_issues_async
 

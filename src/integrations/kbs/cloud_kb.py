@@ -4,7 +4,7 @@ import os
 from typing import Any, Dict, List
 from src.storage.supa import SupaClient
 from logger import logger
-from src.integrations.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
+from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
 
 class CloudIntegration(BaseKnowledgeBase):

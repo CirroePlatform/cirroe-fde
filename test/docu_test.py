@@ -1,4 +1,4 @@
-from src.integrations.documentation_kb import DocumentationKnowledgeBase
+from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from uuid import UUID
 
 
