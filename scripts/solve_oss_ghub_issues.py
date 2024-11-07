@@ -30,7 +30,8 @@ async def setup_repos(org_id: UUID, repo_name: str):
         await issue_kb.index(Issue(
             primary_key=str(issue["id"]), 
             description=f"title: {issue['title']}, description: {issue['body']}", 
-            comments=comments
+            comments=comments,
+            org_id=MEM0AI_ORG_ID
         ))
 
     # doc_kb.index()

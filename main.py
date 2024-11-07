@@ -49,19 +49,15 @@ def link_github(payload: LinkGithubRequest, background_tasks: BackgroundTasks):
 @app.post("/issue")
 def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
     """
-    Handles the case of a new issue being created.
-
-    Triggered from a webhook, so TODO need to send message to user via
-    slack or something.
+    Handles the case of a new issue being created. Triggered from a merge api webhook
     """
 
     requestor = payload.data.end_user.email_address
     tid = payload.hook.id
-
-    # TODO Need to look into passing more data rather than just this basic stuff here...
     problem_description = payload.data.error_description
+    org_id = payload.data.end_user.organization_name # TODO we need to verify this id is the same loaded into the vector DB.
 
-    issue = Issue(primary_key=str(tid), description=problem_description, comments={})
+    issue = Issue(primary_key=str(tid), description=problem_description, comments={}, org_id=org_id)
 
     req = OpenIssueRequest(requestor_id=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)

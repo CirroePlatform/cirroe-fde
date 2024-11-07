@@ -14,7 +14,8 @@ async def test_issue_kb():
     test_ticket = Issue(
         primary_key=str(issue_id),
         description="Having issues with multimodal queries in production",
-        comments={"Jacob": "Have you checked the model configuration?", "Tom @ Cirroe": "Yes, config looks correct but still failing"}
+        comments={"Jacob": "Have you checked the model configuration?", "Tom @ Cirroe": "Yes, config looks correct but still failing"},
+        org_id=org_id
     )
     success = await issue_kb.index(test_ticket)
     print(f"Index single ticket result: {success}")
@@ -33,12 +34,14 @@ async def test_issue_kb():
         Issue(
             primary_key=str(uuid4()),
             description="Need help configuring model parameters",
-            comments={"Tom @ Cirroe": "Which parameters are you trying to set?", "Jacob": "The temperature and max tokens"}
+            comments={"Tom @ Cirroe": "Which parameters are you trying to set?", "Jacob": "The temperature and max tokens"},
+            org_id=org_id
         ),
         Issue(
             primary_key=str(uuid4()),
             description="API returning 500 error on image uploads",
-            comments={"Tom @ Cirroe": "Is this happening for all image types?", "Jacob": "Only for PNG files over 5MB"}
+            comments={"Tom @ Cirroe": "Is this happening for all image types?", "Jacob": "Only for PNG files over 5MB"},
+            org_id=org_id
         )
     ]
     

@@ -131,6 +131,7 @@ class VectorDB:
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="comments", dtype=DataType.JSON),
+            FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
         ]
         schema = CollectionSchema(fields=fields, description="Issue collection")
 
@@ -224,6 +225,7 @@ class VectorDB:
                 "vector": vector,
                 "description": issue.description,
                 "comments": issue.comments,
+                "org_id": str(issue.org_id),
             }
         ]
 
@@ -296,7 +298,7 @@ class VectorDB:
             comments = result["entity"]["comments"]
             vector = result["entity"]["vector"]
 
-            issue = Issue(primary_key=issue_id, description=problem_description, comments=comments, vector=vector)
+            issue = Issue(primary_key=issue_id, description=problem_description, comments=comments, vector=vector, org_id=self.user_id)
 
             issues[issue_id] = {"similarity": distance, "metadata": issue.model_dump_json()}
 
