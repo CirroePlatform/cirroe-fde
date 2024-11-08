@@ -9,10 +9,9 @@ from typing import List, Any, Dict
 from uuid import UUID
 from dotenv import load_dotenv
 import os
-
-from src.model.runbook import Runbook
 from src.model.issue import Issue
 from src.storage.supa import SupaClient
+from src.model.documentation import DocumentationPage
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
@@ -20,7 +19,8 @@ OPENAI_EMBED = "text-embedding-3-small"
 SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
 DIMENSION = 1536
 
-RUNBOOK = "runbook"
+DOCUMENTATION = "documentation"
+RUNBOOK="runbook"
 ISSUE = "issue"
 
 load_dotenv()
@@ -92,9 +92,8 @@ class VectorDB:
 
         self.is_debug_mode = os.environ.get("DEBUG_MODE").lower() == "true"
 
-        self.create_runbook_collection()
         self.create_issue_collection()
-
+        self.create_documentation_collection()
     def create_runbook_collection(self):
         """
         Create a runbook collection if doesn't exist, and load it into memory. If exists in db
@@ -148,6 +147,31 @@ class VectorDB:
             self.client.create_index(ISSUE, IndexParams("vector"))
 
         self.client.load_collection(ISSUE)
+        
+    def create_documentation_collection(self):
+        """
+        Create a documentation collection if doesn't exist, and load it into memory. If exists in db
+        already, then we just load into memory
+        """
+        fields = [
+            FieldSchema(
+                name="primary_key",
+                dtype=DataType.VARCHAR,
+                is_primary=True,
+                max_length=36,
+            ),
+            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
+            FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=2048),
+            FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=65535),
+            FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
+        ]
+        schema = CollectionSchema(fields=fields, description="Documentation collection")
+
+        if not self.client.has_collection(DOCUMENTATION):
+            self.client.create_collection(DOCUMENTATION, schema=schema)
+            self.client.create_index(DOCUMENTATION, IndexParams("vector"))
+
+        self.client.load_collection(DOCUMENTATION)
 
     def vanilla_embed(self, text: str) -> List[float]:
         """
@@ -155,19 +179,7 @@ class VectorDB:
         """
         return self.model.encode(text)
 
-    def embed_runbook(self, runbook: Runbook) -> List[float]:
-        """
-        Embed a runbook description and return it.
-
-        Will be an array of size self.dimension
-        """
-        # Embed the runbook description using SentenceTransformer
-        if self.is_debug_mode:
-            return [0.0] * self.dimension
-
-        return self.model.encode(runbook.description)
-
-    def issue_to_embeddable_string(self, issue: Issue) -> str:
+    def __issue_to_embeddable_string(self, issue: Issue) -> str:
         """
         Convert an issue to a string that can be embedded
         """
@@ -180,38 +192,22 @@ class VectorDB:
         if self.is_debug_mode:
             return [0.0] * self.dimension
 
-        return self.model.encode(self.issue_to_embeddable_string(issue))
+        return self.model.encode(self.__issue_to_embeddable_string(issue))
 
-    def add_runbook(self, runbook: Runbook):
+    def __docu_page_to_embeddable_string(self, page: DocumentationPage) -> str:
         """
-        Add a new runbook to the vector db
+        Convert a documentation page to a string that can be embedded
         """
-        prev_data = self.client.get(RUNBOOK, runbook.rid)
-        if len(prev_data) > 0:
-            return  # Runbook already exists, just continue.
+        return f"{page.url} {page.content}"
 
-        # Embed the description
-        vector = self.embed_runbook(runbook)
-
-        # get step ids for db insert
-        step_ids = [str(step.sid) for step in runbook.steps]
-
-        # Insert the runbook data into Milvus
-        entity = [
-            {
-                "id": str(runbook.rid),
-                "vector": vector,
-                "description": runbook.description,
-                "steps": step_ids,
-            }
-        ]
-
-        self.client.insert(RUNBOOK, data=entity)
-
-        # TODO Add steps to step unstructured collection
-        self.supa_client.add_steps_for_runbook(runbook)
-
-        print("Successfully added new runbook")
+    def embed_docu(self, page: DocumentationPage) -> List[float]:
+        """
+        Embed a documentation page and return it.
+        """
+        if self.is_debug_mode:
+            return [0.0] * self.dimension
+            
+        return self.model.encode(self.__docu_page_to_embeddable_string(page))
 
     def add_issue(self, issue: Issue):
         """
@@ -223,9 +219,9 @@ class VectorDB:
         if len(prev_data) > 0:
             # compare content, if there's even a slight difference, we should update the issue vector.
             prev_data_issue = Issue(**prev_data[0])
-            if self.issue_to_embeddable_string(
+            if self.__issue_to_embeddable_string(
                 prev_data_issue
-            ) == self.issue_to_embeddable_string(issue):
+            ) == self.__issue_to_embeddable_string(issue):
                 return  # Issue content is the same as existing issue, just continue.
 
         vector = self.embed_issue(issue)
@@ -247,44 +243,6 @@ class VectorDB:
         """
         issues = self.client.get(ISSUE)
         return [Issue(**issue) for issue in issues]
-
-    def get_top_k_runbooks(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
-        """
-        Gets top k runbooks.
-        """
-        top_k_runbooks = {}
-        top_k_runbooks[RUNBOOK] = []
-
-        search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
-        results = self.client.search(
-            collection_name=RUNBOOK,
-            data=[query_vector],
-            anns_field="vector",
-            search_params=search_params,
-            limit=k,
-            output_fields=["vector", "description", "steps"],
-        )
-
-        # Format and return the results
-        for result in results[0]:
-            runbook_id = result["id"]
-            vector = result["entity"]["vector"]
-            description = result["entity"]["description"]
-            step_ids = list(result["entity"]["steps"])
-            score = result["distance"]
-
-            # TODO Fetch all step objects given the step ids
-            steps = self.supa_client.get_steps_for_runbook(step_ids)
-
-            rb = Runbook(
-                rid=runbook_id, description=description, steps=steps, vector=vector
-            )
-
-            top_k_runbooks[RUNBOOK].append(
-                {"similarity": score, "metadata": rb.model_dump_json()}
-            )
-
-        return top_k_runbooks
 
     def get_top_k_issues(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """
@@ -322,3 +280,74 @@ class VectorDB:
             }
 
         return issues
+
+    def add_documentation_page(self, doc: DocumentationPage):
+        """
+        Add documentation page to vector db
+        """
+        
+        prev_data = self.client.get(DOCUMENTATION, doc.primary_key)
+        if len(prev_data) > 0:
+            # compare content, if there's even a slight difference, we should update the issue vector.
+            prev_data_doc = DocumentationPage(**prev_data[0])
+            if self.__docu_page_to_embeddable_string(
+                prev_data_doc
+            ) == self.__docu_page_to_embeddable_string(doc):
+                return  # Page content is the same as existing page, just continue.
+        
+        vector = self.embed_docu(doc)
+        entity = [
+            {
+                "primary_key": str(doc.primary_key),
+                "vector": vector,
+                "url": doc.url,
+                "content": doc.content,
+                "org_id": str(self.user_id),
+            }
+        ]
+
+        self.client.upsert(DOCUMENTATION, data=entity)
+
+    def get_all_documentation(self) -> List[DocumentationPage]:
+        """
+        Get all documentation pages from the vector db
+        """
+        docs = self.client.get(DOCUMENTATION)
+        return [DocumentationPage(**doc) for doc in docs]
+
+    def get_top_k_documentation(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
+        """
+        Get top k documentation pages
+        """
+        search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+        results = self.client.search(
+            collection_name=DOCUMENTATION,
+            data=[query_vector],
+            anns_field="vector", 
+            search_params=search_params,
+            limit=k,
+            output_fields=["vector", "url", "content"],
+        )
+
+        docs = {}
+        for result in results[0]:
+            doc_id = result["id"]
+            distance = result["distance"]
+            url = result["entity"]["url"]
+            content = result["entity"]["content"]
+            vector = result["entity"]["vector"]
+
+            doc = DocumentationPage(
+                primary_key=doc_id,
+                vector=vector,
+                org_id=self.user_id,
+                url=url,
+                content=content
+            )
+
+            docs[doc_id] = {
+                "similarity": distance,
+                "metadata": doc.model_dump_json(),
+            }
+
+        return docs
