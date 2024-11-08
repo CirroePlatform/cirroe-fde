@@ -91,9 +91,12 @@ class VectorDB:
         )
 
         self.is_debug_mode = os.environ.get("DEBUG_MODE").lower() == "true"
+        self.user_id = user_id
 
         self.create_issue_collection()
         self.create_documentation_collection()
+
+
     def create_runbook_collection(self):
         """
         Create a runbook collection if doesn't exist, and load it into memory. If exists in db

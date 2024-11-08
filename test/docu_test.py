@@ -1,16 +1,19 @@
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
-from uuid import UUID
+from src.storage.vector import VectorDB
+from src.model.documentation import DocumentationPage
+import uuid
 
+from include.constants import MEM0AI_ORG_ID, MEM0AI_DOCU_URL
 
-async def test_idx():
-    org_id = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
-    kb = DocumentationKnowledgeBase(org_id)
+# TODO use this space to test out the documentation and vector functions for documentation you just created.
 
-    oss_repos_docs = [
-        "https://docs.letta.com/",
-        "https://trypear.ai/docs",
-        "https://docs.mem0.ai/",
-    ]
+def test_index_docu_page():
+    docu_kb = DocumentationKnowledgeBase(MEM0AI_ORG_ID)
+    vector_db = docu_kb.vector_db
+    page = DocumentationPage(primary_key=uuid.uuid4(), url=MEM0AI_DOCU_URL, content="Test content")
 
-    for repo in oss_repos_docs:
-        await kb.index(repo)
+    vector_db.is_debug_mode = True
+    vector_db.add_documentation_page(page)
+    
+    all_docs = set(vector_db.get_all_documentation())
+    assert page in all_docs
