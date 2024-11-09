@@ -181,7 +181,7 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to index repository: {str(e)}")
             return False
 
-    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Search code repositories with natural language queries
 

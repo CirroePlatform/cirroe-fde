@@ -90,7 +90,6 @@ class SearchTools:
         Returns:
             List[KnowledgeBaseResponse]: List of codebase responses that match the search query
         """
-        # Execute search via Greptile API
         try:
             response = self.github.query(query, limit=limit)
             return response

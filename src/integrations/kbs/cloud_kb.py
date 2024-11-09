@@ -112,7 +112,7 @@ class CloudIntegration(BaseKnowledgeBase):
         """
         return False
 
-    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Not implemented for cloud integration.
         """

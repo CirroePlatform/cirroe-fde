@@ -118,7 +118,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
 
             return False
 
-    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Retrieve a list of documentation pages that match the query.
 

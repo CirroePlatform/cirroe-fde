@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 
 from src.model.issue import OpenIssueRequest
 from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
-from src.integrations.merge import client as merge_client
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase
 
 MODEL_LIGHT = "claude-3-haiku-20240307"
@@ -18,13 +17,10 @@ load_dotenv()
 
 client = anthropic.Anthropic()
 
-
-def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
+def debug_issue(issue_req: OpenIssueRequest) -> str:
     """
-    Uses anthropic function calling to comment on an issue from a ticket a user opens.
+    Giiven some issue, the agent will try to solve it using the tools available to it and return a response of a comment to the issue.
     """
-    if debug:
-        return "Nothing for now..."
 
     with open(DEBUG_ISSUE_FILE, "r", encoding="utf8") as fp:
         sysprompt = fp.read()
@@ -46,6 +42,8 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
     search_tools = SearchTools(issue_req.requestor_id)
     TOOLS_MAP = {
         "execute_codebase_search": search_tools.execute_codebase_search,
+        "execute_documentation_search": search_tools.execute_documentation_search,
+        "execute_issue_search": search_tools.execute_issue_search,
     }
 
     while response.stop_reason == "tool_use":
@@ -94,29 +92,14 @@ def debug_issue(issue_req: OpenIssueRequest, debug: bool = False):
             tool_choice={"type": "any"},
             messages=messages,
         )
+
         logger.info("Response: %s", response)
 
-    comment_on_ticket(
-        str(issue_req.issue.primary_key), response.choices[0].message.content
-    )
-    logger.info("Comment added to ticket: %s", response.choices[0].message.content)
-
+    logger.info("Would've added comment to ticket: %s", response.choices[0].message.content)
+    return response.choices[0].message.content
 
 def index_all_issues_async(org_id: UUID):
     """
     Indexes all issues in the database.
     """
-    issue_kb = IssueKnowledgeBase(org_id)
-    tickets = merge_client.ticketing.tickets.list()
-
-    for ticket in tickets:
-        issue_kb.index(ticket)
-
-
-def comment_on_ticket(tid: UUID, comment: Optional[str] = None):
-    """
-    Add a comment to a ticket.
-    """
-    merge_client.ticketing.comments.create(
-        model=CommentRequest(html_body=comment, ticket=Ticket(id=tid))
-    )
+    raise NotImplementedError("Not implemented the indexing all issues async for an org yet.")

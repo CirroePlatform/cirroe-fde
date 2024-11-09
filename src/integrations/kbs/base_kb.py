@@ -42,7 +42,7 @@ class BaseKnowledgeBase(ABC):
         pass
 
     @abstractmethod
-    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Query the knowledge base for relevant information
 

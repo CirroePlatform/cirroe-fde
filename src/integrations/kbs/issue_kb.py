@@ -67,7 +67,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             "created_at": ticket.created_at,
         }
 
-    async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
         """
         Search indexed tickets for relevant matches
 

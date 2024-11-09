@@ -14,12 +14,17 @@ from include.constants import MEM0AI_ORG_ID, MEM0AI_DOCU_URL
 
 # Setup repo, issue, and documentation knowledge bases
 async def setup_repos(org_id: UUID, repo_name: str):
+    # 1. Setup all knowledge bases
     github = GithubIntegration(org_id, repo_name)
     issue_kb = IssueKnowledgeBase(org_id)
     doc_kb = DocumentationKnowledgeBase(org_id)
 
-    # github.index(Repository(remote="github", repository=repo_name, branch="main"))
 
+    # 2. Index the repository with each knowledge base
+    await github.index(Repository(remote="github", repository=repo_name, branch="main"))
+    await doc_kb.index(MEM0AI_DOCU_URL)
+
+    # 2.a Index the issues, need to pull all issues from the repo then index
     # issues = github.get_all_issues_json(repo_name, state=None)
     # for issue in issues:
 
@@ -27,7 +32,6 @@ async def setup_repos(org_id: UUID, repo_name: str):
     #     for comment in issue["comments"]:
     #         comments[comment["user"]["login"]] = comment["body"]
 
-    #     #  Issue id is not a uuid, need to co
     #     await issue_kb.index(
     #         Issue(
     #             primary_key=str(issue["id"]),
