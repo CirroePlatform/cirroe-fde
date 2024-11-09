@@ -50,4 +50,4 @@ def solve_issue(repo: str, issue_id: int):
     """
 
     github = GithubIntegration(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1"), "mem0ai")
-    print(github.list_repositories())
+    logging.info(github.list_repositories())

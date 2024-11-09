@@ -1,4 +1,4 @@
-from src.core.event.handle_issue import debug_issue, OpenIssueRequest
+import logging
 from src.model.issue import Issue
 from uuid import uuid4, UUID
 import asyncio
@@ -22,16 +22,16 @@ async def test_issue_kb():
         org_id=org_id,
     )
     success = await issue_kb.index(test_ticket)
-    print(f"Index single ticket result: {success}")
+    logging.info(f"Index single ticket result: {success}")
 
     # Test querying indexed tickets
     query = "multimodal query issues"
     results = await issue_kb.query(query, limit=2)
-    print("\nQuery results:")
+    logging.info("\nQuery results:")
     for result in results:
-        print(f"\nSource: {result.source}")
-        print(f"Content: {result.content}")
-        print(f"Score: {result.relevance_score}")
+        logging.info(f"\nSource: {result.source}")
+        logging.info(f"Content: {result.content}")
+        logging.info(f"Score: {result.relevance_score}")
 
     # Test indexing multiple tickets
     test_tickets = [
@@ -61,11 +61,11 @@ async def test_issue_kb():
     # Test broader query
     query = "configuration problems"
     results = await issue_kb.query(query, limit=3)
-    print("\nBroader query results:")
+    logging.info("\nBroader query results:")
     for result in results:
-        print(f"\nSource: {result.source}")
-        print(f"Content: {result.content}")
-        print(f"Score: {result.score}")
+        logging.info(f"\nSource: {result.source}")
+        logging.info(f"Content: {result.content}")
+        logging.info(f"Score: {result.score}")
 
 
 # Run tests

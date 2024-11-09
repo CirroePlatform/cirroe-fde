@@ -2,17 +2,13 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
 
-from src.integrations.merge import create_link_token, retrieve_account_token
-from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from src.model.issue import (
     OpenIssueRequest,
     WebhookPayload,
     Issue,
     IndexAllIssuesRequest,
 )
-from src.model.auth import GetLinkTokenRequest, GetAccountTokenRequest
 from src.integrations.kbs.github_kb import LinkGithubRequest, GithubIntegration
-
 from src.core.event.handle_issue import debug_issue, index_all_issues_async
 
 app = FastAPI()
@@ -58,27 +54,6 @@ def new_issue(payload: WebhookPayload, background_tasks: BackgroundTasks):
 
     req = OpenIssueRequest(requestor_id=requestor, issue=issue)
     background_tasks.add_task(debug_issue, req)
-
-
-@app.get("/link_token/{uid}/{org_name}/{email}")
-def get_link_token(uid: UUID, org_name: str, email: str):
-    """
-    Returns a new link token for a brand new integration.
-    """
-    request = GetLinkTokenRequest(uid=uid, org_name=org_name, email=email)
-
-    print("Entered link token request")
-    return create_link_token(request)
-
-
-@app.post("/account_token")
-def create_account_token(request: GetAccountTokenRequest):
-    """
-    Swaps out a public token for an account token. Should
-    be stored securely on backend.
-    """
-    print("Entered retrieve acct token request")
-    return retrieve_account_token(request)
 
 
 @app.post("/idx_all_issues")

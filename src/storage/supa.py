@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from supabase.client import ClientOptions
 from enum import StrEnum
-
+import logging
 
 class Table(StrEnum):
     USERS = "UserMetadata"
@@ -72,7 +72,7 @@ class SupaClient:
             .eq(USER_ID, str(self.user_id))
             .execute()
         )
-        print(f"setting user data result: {response}")
+        logging.info(f"setting user data result: {response}")
 
         self.user_data.update(response)
 

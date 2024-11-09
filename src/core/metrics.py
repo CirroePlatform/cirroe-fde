@@ -1,5 +1,6 @@
 import boto3
 from botocore.config import Config
+import logging
 from datetime import datetime, timedelta
 import statistics
 from typing import List, Dict, Tuple, Any, Optional
@@ -153,20 +154,20 @@ class SpikeDetector:
         logger.info("Generating spike detection report")
         report = self.scan_account(start_time, end_time, threshold, sort_key, sort_val)
 
-        print(f"Spike Detection Report")
-        print(f"Start Time: {start_time}")
-        print(f"End Time: {end_time}")
-        print(f"Threshold: {threshold} standard deviations\n")
-        print(f"sortkey: {sort_key} sortval: {sort_val}\n")
+        logging.info(f"Spike Detection Report")
+        logging.info(f"Start Time: {start_time}")
+        logging.info(f"End Time: {end_time}")
+        logging.info(f"Threshold: {threshold} standard deviations\n")
+        logging.info(f"sortkey: {sort_key} sortval: {sort_val}\n")
 
         for item in report:
-            print(f"Namespace: {item['Namespace']}")
-            print(f"Metric Name: {item['MetricName']}")
-            print(f"Dimensions: {item['Dimensions']}")
-            print("Spikes:")
+            logging.info(f"Namespace: {item['Namespace']}")
+            logging.info(f"Metric Name: {item['MetricName']}")
+            logging.info(f"Dimensions: {item['Dimensions']}")
+            logging.info("Spikes:")
             for spike in item["Spikes"]:
-                print(f"  - Index: {spike[0]}, Value: {spike[1]}")
-            print()
+                logging.info(f"  - Index: {spike[0]}, Value: {spike[1]}")
+            logging.info()
 
         logger.info("Report generation complete")
         return report

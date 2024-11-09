@@ -82,14 +82,14 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         
         for url in links:
             content = self._fetch_page_content(url)
-            logging.debug(f"Adding page {url} to vector database")
 
             try:
+                logging.debug(f"Adding page {url} to vector database")
                 page = DocumentationPage(primary_key=self._get_page_primary_key(url), url=url, content=content)
                 self.vector_db.add_documentation_page(page)
                 logging.debug(f"Successfully added {url} to vector database")
             except Exception as e:
-                logging.error(f"Failed to add {url} to vector database: {str(e)}")
+                logging.error(f"Failed to add {url} to vector database: {str(e)}. Skipping...")
                 continue
 
         logging.info("Finished indexing list of links")
