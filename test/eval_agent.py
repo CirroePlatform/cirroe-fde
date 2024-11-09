@@ -1,7 +1,7 @@
 from uuid import UUID
 import logging
 import random
-from typing import List, Tuple, Set
+from typing import List, Set
 from src.model.issue import Issue
 
 
@@ -9,11 +9,13 @@ from src.core.event.handle_issue import debug_issue
 from src.integrations.kbs.github_kb import GithubIntegration
 from src.storage.vector import VectorDB
 
+from include.constants import DEFAULT_TEST_TRAIN_RATIO
+
 class TestOrchestrator:
     """
     Orchestrates the testing of the agent on a given org.
     """
-    def __init__(self, org_id: UUID, test_train_ratio: float = 0.2):
+    def __init__(self, org_id: UUID, test_train_ratio: float = DEFAULT_TEST_TRAIN_RATIO):
         self.org_id = org_id
         self.test_train_ratio = test_train_ratio
         self.vector_db = VectorDB(org_id)

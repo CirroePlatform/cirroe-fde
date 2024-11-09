@@ -30,7 +30,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
 
     async def index(self, data: Union[Issue, Ticket] = None) -> bool:
         """
-        Index tickets from either Merge API or Issue model representation
+        Index a ticket from either Merge API or Issue model representation
 
         Args:
             data: Optional specific Issue or Ticket to index, if None indexes all Merge tickets
