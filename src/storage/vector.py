@@ -161,7 +161,7 @@ class VectorDB:
                 name="primary_key",
                 dtype=DataType.VARCHAR,
                 is_primary=True,
-                max_length=36,
+                max_length=64, # 16 bytes -> 32 hex characters for SHA3-256 hash
             ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=2048),
@@ -311,11 +311,11 @@ class VectorDB:
 
         self.client.upsert(DOCUMENTATION, data=entity)
 
-    def get_all_documentation(self) -> List[DocumentationPage]:
+    def get_all_documentation(self, keys: List[str]) -> List[DocumentationPage]:
         """
         Get all documentation pages from the vector db
         """
-        docs = self.client.get(DOCUMENTATION)
+        docs = self.client.get(DOCUMENTATION, ids=keys)
         return [DocumentationPage(**doc) for doc in docs]
 
     def get_top_k_documentation(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
