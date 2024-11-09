@@ -1,74 +1,22 @@
+from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
+from src.integrations.cleaners.html_cleaner import HTMLCleaner
+from src.model.documentation import DocumentationPage
+from src.storage.vector import VectorDB
+from bs4 import BeautifulSoup
+from typing import List
+from lxml import etree
 from uuid import UUID
-import hashlib
 import traceback
+import requests
+import hashlib
 import logging
 import os
-from bs4 import BeautifulSoup
-from lxml import etree
-from typing import List
-from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
-from src.storage.vector import VectorDB
-import requests
-from src.model.documentation import DocumentationPage
-
-
-class TreeIndexer:
-
-    class __node:
-        def __init__(self, url: str, content: str, synthetic_description: str, children: List["__node"]):
-            self.url = url
-            self.content = content
-            self.children = children
-
-    class __inner_node(__node):
-        def __init__(self, url: str, content: str, synthetic_description: str, community_report: str, children: List["__node"], children_vector_average: float):
-            super().__init__(url, content, synthetic_description, children)
-
-            self.community_report = community_report
-            self.children_vector_average = children_vector_average
-
-    class __leaf_node(__node):
-        def __init__(self, url: str, content: str, synthetic_description: str, page_content: str, vector: List[float]):
-            super().__init__(url, content, synthetic_description, [])
-
-            self.page_content = page_content
-            self.vector = vector
-
-    def __init__(self, org_id: UUID):
-        self.org_id = org_id
-        self.tree = None
-    
-    def load_tree(self, tree: etree.ElementTree):
-        """
-        Loads a tree into memory from the provided etree.ElementTree. Sets the self.tree attribute.
-
-        Args:
-            tree (etree.ElementTree): The tree to load into memory.
-        """
-        # look into how GraphRAG construction works for this
-        
-        # 1. Iterate through leaf nodes
-        # 2. Create a vector for each leaf node
-        # 3. Assign leaf nodes to specific communities 
-        # 4. Set the self.tree attribute to the created tree
-
-    def search(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
-        """
-        Searches the tree for the most relevant nodes to the query with the DRIFT method.
-
-        Args:
-            query (str): The query to search the tree with.
-            limit (int, optional): The maximum number of results to return. Defaults to 5.
-
-        Returns:
-            List[KnowledgeBaseResponse]: A list of KnowledgeBaseResponse objects containing the most relevant nodes to the query.
-        """
-        pass
 
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
         self.vector_db = VectorDB(org_id)
+        self.html_cleaner = HTMLCleaner()
         super().__init__(org_id)
 
     def _parse_sitemap(self, url: str) -> List[str]:
@@ -105,9 +53,9 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         try:
             response = requests.get(url)
             response.raise_for_status()
-            retval = response.text
-            
+            retval = self.html_cleaner.clean(response.text)
             logging.info(f"Successfully fetched content from {url}")
+            
             return retval
         except requests.RequestException as e:
             logging.error(f"Failed to fetch page content: {str(e)}")

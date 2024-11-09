@@ -1,6 +1,6 @@
-import logging
-from bs4 import BeautifulSoup
 from src.integrations.cleaners.base_cleaner import BaseCleaner
+from bs4 import BeautifulSoup
+import logging
 
 class HTMLCleaner(BaseCleaner):
     """
