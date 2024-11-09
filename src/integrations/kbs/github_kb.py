@@ -1,7 +1,7 @@
 import os
-from logger import logger
 from uuid import UUID
 import requests
+import logging
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
 
@@ -175,10 +175,10 @@ class GithubIntegration(BaseKnowledgeBase):
             response = requests.post(url, json=payload, headers=self.headers)
             response.raise_for_status()
 
-            logger.info(f"Successfully indexed repository: {repository.repository}")
+            logging.info(f"Successfully indexed repository: {repository.repository}")
             return True
         except Exception as e:
-            logger.error(f"Failed to index repository: {str(e)}")
+            logging.error(f"Failed to index repository: {str(e)}")
             return False
 
     async def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
@@ -223,5 +223,5 @@ class GithubIntegration(BaseKnowledgeBase):
                 for result in results
             ]
         except Exception as e:
-            logger.error(f"Failed to query repositories: {str(e)}")
+            logging.error(f"Failed to query repositories: {str(e)}")
             return []

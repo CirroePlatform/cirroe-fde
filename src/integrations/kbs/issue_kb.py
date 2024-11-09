@@ -5,7 +5,6 @@ from merge.resources.ticketing import Ticket
 from merge.resources.ticketing.types import TicketStatusEnum
 from src.model.issue import Issue
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
-from src.integrations.merge import client as merge_client
 
 from src.storage.vector import VectorDB
 
