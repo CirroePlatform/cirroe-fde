@@ -12,3 +12,10 @@ DEFAULT_TEST_TRAIN_RATIO = 0.2
 
 # Github constants
 CLOSED = "closed"
+
+# Prompt constants
+EVAL_AGENT_RESPONSE_PROMPT = "include/prompts/eval_agent_response.txt"
+
+# Model constants
+MODEL_LIGHT = "claude-3-haiku-20240307"
+MODEL_HEAVY = "claude-3-5-sonnet-20240620"

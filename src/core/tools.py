@@ -6,6 +6,8 @@ from src.integrations.kbs.github_kb import GithubIntegration
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 
+from src.storage.supa import SupaClient
+
 DEBUG_ISSUE_TOOLS = [
     {
         "name": "execute_codebase_search",
@@ -71,11 +73,16 @@ class SearchTools:
 
     def __init__(self, requestor_id: UUID):
         self.requestor_id = requestor_id
-        org_name = "CirroePlatform"  # TODO: fetch this from users' supabase table
+        self.supa = SupaClient(user_id=self.requestor_id)
+        org_name = self.supa.get_org_name()
 
         self.github = GithubIntegration(org_id=self.requestor_id, org_name=org_name)
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
+
+    def get_org_name(self):
+        userdata = self.supa.get_user_data()
+        
 
     def execute_codebase_search(
         self, query: str, limit: int
