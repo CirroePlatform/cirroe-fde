@@ -1,5 +1,8 @@
 from uuid import UUID
 
+# Supabase constants
+ORG_NAME = "org_name"
+
 # test constants
 MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
 MEM0AI_ORG_NAME = "mem0ai"

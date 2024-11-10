@@ -8,6 +8,8 @@ from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 
 from src.storage.supa import SupaClient
 
+from include.constants import ORG_NAME
+
 DEBUG_ISSUE_TOOLS = [
     {
         "name": "execute_codebase_search",
@@ -19,12 +21,12 @@ DEBUG_ISSUE_TOOLS = [
                     "type": "string",
                     "description": "A description of an issue from a customer on some ticket",
                 },
-                "k": {
+                "limit": {
                     "type": "integer",
                     "description": "The number of chunks to retrieve from the codebase",
                 },
             },
-            "required": ["problem_description", "k"],
+            "required": ["problem_description", "limit"],
         },
     },
     {
@@ -74,14 +76,15 @@ class SearchTools:
     def __init__(self, requestor_id: UUID):
         self.requestor_id = requestor_id
         self.supa = SupaClient(user_id=self.requestor_id)
-        org_name = self.supa.get_org_name()
+        self.org_name = self.get_org_name()
 
-        self.github = GithubIntegration(org_id=self.requestor_id, org_name=org_name)
+        self.github = GithubIntegration(org_id=self.requestor_id, org_name=self.org_name)
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
 
     def get_org_name(self):
         userdata = self.supa.get_user_data()
+        return userdata[ORG_NAME]
 
     def execute_codebase_search(
         self, query: str, limit: int

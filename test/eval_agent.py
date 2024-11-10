@@ -59,7 +59,7 @@ class Orchestrator:
 
         return solved_or_closed_issues
 
-    def setup_test_train_issues_splits(self) -> Set[Issue]:
+    def setup_test_train_issues_splits(self) -> List[Issue]:
         """
         The issue knowledgebase is a bit different, because we are evaluating inbound issues, we need to make sure the knowledgebase
         isn't indexed with any issues from the org in our test set.
@@ -71,37 +71,50 @@ class Orchestrator:
         """
         # 1. Pull all issues from the git repo that are closed or resolved.
         issues = self.__get_closed_or_solved_issues()
-        num_solved_or_closed_issues = len(issues)
-        test_set: Set[Issue]
+        total_issues_ids = set([issue.primary_key for issue in issues])
+        assert len(total_issues_ids) == len(issues)
+        num_solved_or_closed_issues = len(total_issues_ids)
 
         # 2. Check and see how many issues are already indexed in the vector db.
         indexed_issues = self.vector_db.get_all_issues()
-        num_indexed_issues = len(indexed_issues)
+        indexed_issues_ids = set([issue.primary_key for issue in indexed_issues])
+        assert len(indexed_issues_ids) == len(indexed_issues)
+        num_indexed_issues = len(indexed_issues_ids)
 
+        test_set: List[Issue] = []
         # 3. If nun_indexed_in_vector_db / total closed or resolved issues in repo < 1 - test_train_ratio, we need to randomly sample issues
         # from the total issues that haven't been indexed for the test set, and index them until we reach the desired test and train ratio.
         # We should never exceed the ratio, because new tickets will be closed and solved in these repos.
         if num_indexed_issues / num_solved_or_closed_issues < (
             1 - self.test_train_ratio
-        ):  # TODO Untested
-            unindexed_list = [issue for issue in issues if issue not in indexed_issues]
+        ):  # TODO this branch is untested
+            unindexed_list = [issue for issue in issues if issue.primary_key not in indexed_issues_ids]
             test_set = unindexed_list
 
             # 3.a Index all the unindexed issues until we reach the desired test and train ratio.
             # Convert to list for random sampling
             random.shuffle(unindexed_list)
 
+            logging.info(f"Indexing at most {len(unindexed_list)} issues to reach desired test/train ratio...")
             for issue in unindexed_list:
                 self.vector_db.add_issue(issue)
-                test_set = [issue for issue in test_set if issue != issue]
+                test_set.append(issue)
 
                 num_indexed_issues += 1
                 if num_indexed_issues / num_solved_or_closed_issues >= (
                     1 - self.test_train_ratio
                 ):
+                    logging.info(f"Reached desired test/train ratio. Indexed {num_indexed_issues} issues out of {num_solved_or_closed_issues} total issues.")
                     break
         else:
-            test_set = [issue for issue in issues if issue not in indexed_issues]
+            # Technically, we can reach a case where we have more indexed issues than closed or resolved issues.
+            # I don't think we should be performing any deletes in this case, maybe it's best to setup a prod and test knowledgebase.
+            # test_set = [issue for issue in issues if issue.primary_key not in indexed_issues_ids]
+            count=0
+            for issue in issues:
+                if issue.primary_key not in indexed_issues_ids:
+                    count += 1
+                    test_set.append(issue)
 
         return test_set
 
@@ -123,7 +136,7 @@ class Evaluator:
     """
 
     def __init__(
-        self, org_id: UUID, test_issues: Set[Issue], test_train_ratio: float = 0.2
+        self, org_id: UUID, test_issues: List[Issue], test_train_ratio: float = 0.2
     ):
         self.org_id = org_id
         self.test_issues = test_issues
