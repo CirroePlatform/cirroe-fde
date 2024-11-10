@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import List
 from typeguard import typechecked
 
-from src.integrations.kbs.github_kb import GithubIntegration
+from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 
@@ -17,7 +17,7 @@ DEBUG_ISSUE_TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "problem_description": {
+                "query": {
                     "type": "string",
                     "description": "A description of an issue from a customer on some ticket",
                 },
@@ -26,7 +26,7 @@ DEBUG_ISSUE_TOOLS = [
                     "description": "The number of chunks to retrieve from the codebase",
                 },
             },
-            "required": ["problem_description", "limit"],
+            "required": ["query", "limit"],
         },
     },
     {
@@ -73,12 +73,12 @@ DEBUG_ISSUE_FILE = "include/prompts/debug_issue.txt"
 @typechecked
 class SearchTools:
 
-    def __init__(self, requestor_id: UUID):
+    def __init__(self, requestor_id: UUID, github_repos: List[Repository]):
         self.requestor_id = requestor_id
         self.supa = SupaClient(user_id=self.requestor_id)
         self.org_name = self.get_org_name()
 
-        self.github = GithubIntegration(org_id=self.requestor_id, org_name=self.org_name)
+        self.github = GithubIntegration(org_id=self.requestor_id, org_name=self.org_name, repos=github_repos)
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
 

@@ -26,7 +26,7 @@ class GithubIntegration(BaseKnowledgeBase):
     Integration with Github repositories via Greptile API for code search and analysis.
     """
 
-    def __init__(self, org_id: UUID, org_name: str):
+    def __init__(self, org_id: UUID, org_name: str, repos: Optional[List[Repository]] = None):
         """
         Initialize Github integration for an organization
 
@@ -47,6 +47,7 @@ class GithubIntegration(BaseKnowledgeBase):
             "X-GitHub-Token": f"{self.gh_token}",
             "Content-Type": "application/json",
         }
+        self.repos = repos if repos is not None else self.list_repositories() # Index on all repos if none are provided.
 
     def get_github_token(self, org_id: str) -> str:
         """
@@ -90,7 +91,7 @@ class GithubIntegration(BaseKnowledgeBase):
             # Filter out pull requests from the response
             issues = [issue for issue in content if "pull_request" not in issue]
 
-            # Fetch comments for each issue
+            # Fetch comments for each issue TODO add a handler in case we get rate limited to retry.
             for issue in issues:
                 comments_url = issue["comments_url"]
                 comments_response = requests.get(comments_url, headers=headers)
@@ -115,9 +116,9 @@ class GithubIntegration(BaseKnowledgeBase):
         """
         # get users' github token from supabase, set the self.headers['X-GitHub-Token']
         # TODO
-        repos = self.list_repositories()
+        repos = self.repos
         for repo in repos:
-            self.index_repository(repos[repo])
+            self.index(repo)
 
     def list_repositories(self) -> Dict[str, Repository]:
         """
@@ -207,7 +208,7 @@ class GithubIntegration(BaseKnowledgeBase):
             List of KnowledgeBaseResponse objects containing search results
         """
         try:
-            repositories = list(self.list_repositories().values())
+            repositories = list(self.repos.values())
             url = f"{self.api_base}/query"
 
             payload = {

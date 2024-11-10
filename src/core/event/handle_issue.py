@@ -2,12 +2,13 @@ from logger import logger
 from merge.resources.ticketing import CommentRequest
 from merge.resources.ticketing import Ticket
 from uuid import UUID
-from typing import Dict, Any, Optional
+from typing import List
 import anthropic
 from dotenv import load_dotenv
 
 from src.model.issue import OpenIssueRequest
 from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
+from src.integrations.kbs.github_kb import Repository
 from include.constants import MODEL_LIGHT
 
 load_dotenv()
@@ -15,7 +16,7 @@ load_dotenv()
 client = anthropic.Anthropic()
 
 
-def debug_issue(issue_req: OpenIssueRequest) -> str:
+def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> str:
     """
     Giiven some issue, the agent will try to solve it using the tools available to it and return a response of a comment to the issue.
     """
@@ -37,7 +38,7 @@ def debug_issue(issue_req: OpenIssueRequest) -> str:
     )
     logger.info("Response: %s", response)
 
-    search_tools = SearchTools(issue_req.requestor_id)
+    search_tools = SearchTools(issue_req.requestor_id, github_repos)
     TOOLS_MAP = {
         "execute_codebase_search": search_tools.execute_codebase_search,
         "execute_documentation_search": search_tools.execute_documentation_search,

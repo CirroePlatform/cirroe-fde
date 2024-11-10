@@ -6,7 +6,7 @@ from typing import List, Set
 from src.model.issue import Issue, OpenIssueRequest
 
 from src.core.event.handle_issue import debug_issue
-from src.integrations.kbs.github_kb import GithubIntegration
+from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.storage.vector import VectorDB
 
 from include.constants import (
@@ -110,10 +110,8 @@ class Orchestrator:
             # Technically, we can reach a case where we have more indexed issues than closed or resolved issues.
             # I don't think we should be performing any deletes in this case, maybe it's best to setup a prod and test knowledgebase.
             # test_set = [issue for issue in issues if issue.primary_key not in indexed_issues_ids]
-            count=0
             for issue in issues:
                 if issue.primary_key not in indexed_issues_ids:
-                    count += 1
                     test_set.append(issue)
 
         return test_set
@@ -124,9 +122,11 @@ class Orchestrator:
         """
         # 1. Setup the test and train issues
         test_issues = self.setup_test_train_issues_splits()
+        logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
         # 2. Evaluate the agent on the test issues
-        evaluator = Evaluator(self.org_id, test_issues, self.test_train_ratio)
+        repo = Repository(repository=f"{self.org_name}/{self.test_repo_name}", branch="main", remote="github")
+        evaluator = Evaluator(self.org_id, test_issues, self.test_train_ratio, [repo])
         evaluator.evaluate()
 
 
@@ -136,12 +136,12 @@ class Evaluator:
     """
 
     def __init__(
-        self, org_id: UUID, test_issues: List[Issue], test_train_ratio: float = 0.2
+        self, org_id: UUID, test_issues: List[Issue], test_train_ratio: float = 0.2, github_repos: List[Repository] = None
     ):
         self.org_id = org_id
         self.test_issues = test_issues
         self.test_train_ratio = test_train_ratio
-
+        self.github_repos = github_repos
         self.judge_client = anthropic.Anthropic()
 
     def evaluate_agent_response(self, issue: Issue, response: str) -> bool:
@@ -182,7 +182,8 @@ class Evaluator:
             issue.comments = {}
 
             response = debug_issue(
-                OpenIssueRequest(requestor_id=self.org_id, issue=issue)
+                OpenIssueRequest(requestor_id=self.org_id, issue=issue), 
+                github_repos=self.github_repos
             )
 
             # Add the comments back to the issue object for evaluation
