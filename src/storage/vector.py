@@ -20,7 +20,7 @@ SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
 DIMENSION = 1536
 
 DOCUMENTATION = "documentation"
-RUNBOOK="runbook"
+RUNBOOK = "runbook"
 ISSUE = "issue"
 
 load_dotenv()
@@ -96,7 +96,6 @@ class VectorDB:
         self.create_issue_collection()
         self.create_documentation_collection()
 
-
     def create_runbook_collection(self):
         """
         Create a runbook collection if doesn't exist, and load it into memory. If exists in db
@@ -150,7 +149,7 @@ class VectorDB:
             self.client.create_index(ISSUE, IndexParams("vector"))
 
         self.client.load_collection(ISSUE)
-        
+
     def create_documentation_collection(self):
         """
         Create a documentation collection if doesn't exist, and load it into memory. If exists in db
@@ -161,7 +160,7 @@ class VectorDB:
                 name="primary_key",
                 dtype=DataType.VARCHAR,
                 is_primary=True,
-                max_length=64, # 16 bytes -> 32 hex characters for SHA3-256 hash
+                max_length=64,  # 16 bytes -> 32 hex characters for SHA3-256 hash
             ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=2048),
@@ -209,7 +208,7 @@ class VectorDB:
         """
         if self.is_debug_mode:
             return [0.0] * self.dimension
-            
+
         return self.model.encode(self.__docu_page_to_embeddable_string(page))
 
     def add_issue(self, issue: Issue):
@@ -288,7 +287,7 @@ class VectorDB:
         """
         Add documentation page to vector db
         """
-        
+
         prev_data = self.client.get(DOCUMENTATION, doc.primary_key)
         if len(prev_data) > 0:
             # compare content, if there's even a slight difference, we should update the issue vector.
@@ -297,7 +296,7 @@ class VectorDB:
                 prev_data_doc
             ) == self.__docu_page_to_embeddable_string(doc):
                 return  # Page content is the same as existing page, just continue.
-        
+
         vector = self.embed_docu(doc)
         entity = [
             {
@@ -318,7 +317,9 @@ class VectorDB:
         docs = self.client.get(DOCUMENTATION, ids=keys)
         return [DocumentationPage(**doc) for doc in docs]
 
-    def get_top_k_documentation(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
+    def get_top_k_documentation(
+        self, k: int, query_vector: List[float]
+    ) -> Dict[str, Any]:
         """
         Get top k documentation pages
         """
@@ -326,7 +327,7 @@ class VectorDB:
         results = self.client.search(
             collection_name=DOCUMENTATION,
             data=[query_vector],
-            anns_field="vector", 
+            anns_field="vector",
             search_params=search_params,
             limit=k,
             output_fields=["vector", "url", "content"],
@@ -345,7 +346,7 @@ class VectorDB:
                 vector=vector,
                 org_id=self.user_id,
                 url=url,
-                content=content
+                content=content,
             )
 
             docs[doc_id] = {

@@ -2,6 +2,7 @@ from src.integrations.cleaners.base_cleaner import BaseCleaner
 from bs4 import BeautifulSoup
 import logging
 
+
 class HTMLCleaner(BaseCleaner):
     """
     Cleans HTML content by removing unwanted elements and normalizing whitespace.
@@ -9,13 +10,13 @@ class HTMLCleaner(BaseCleaner):
 
     # Elements to remove completely
     SCRIPT_ELEMENTS = ["script", "style", "svg", "path"]
-    
+
     # Classes to remove
     NON_CONTENT_CLASSES = [
         "sr-only",
-        "js-clipboard-copy-icon", 
+        "js-clipboard-copy-icon",
         "octicon",
-        "zeroclipboard-container"
+        "zeroclipboard-container",
     ]
 
     def __init__(self):
@@ -32,7 +33,7 @@ class HTMLCleaner(BaseCleaner):
             str: Cleaned HTML content
         """
         try:
-            soup = BeautifulSoup(html_content, 'html.parser')
+            soup = BeautifulSoup(html_content, "html.parser")
 
             # Remove script elements
             for element in self.SCRIPT_ELEMENTS:
@@ -45,10 +46,10 @@ class HTMLCleaner(BaseCleaner):
                     tag.decompose()
 
             # Get text and normalize whitespace
-            text = soup.get_text(separator=' ', strip=True)
-            
+            text = soup.get_text(separator=" ", strip=True)
+
             # Remove extra whitespace
-            text = ' '.join(text.split())
+            text = " ".join(text.split())
 
             return text
 

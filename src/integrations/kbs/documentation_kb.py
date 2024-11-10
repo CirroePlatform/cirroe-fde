@@ -12,6 +12,7 @@ import hashlib
 import logging
 import os
 
+
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
@@ -36,13 +37,19 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             tree = etree.fromstring(response.content)
 
             # Find all loc elements which contain URLs in sitemap XML format
-            for loc in tree.xpath('//xmlns:loc', namespaces={'xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}):
+            for loc in tree.xpath(
+                "//xmlns:loc",
+                namespaces={"xmlns": "http://www.sitemaps.org/schemas/sitemap/0.9"},
+            ):
                 url = loc.text
                 logging.debug(f"Found link: {url}")
                 links.append(url)
-                
+
             # Also check for sitemap index files that contain other sitemaps
-            for sitemap in tree.xpath('//xmlns:sitemap/xmlns:loc', namespaces={'xmlns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}):
+            for sitemap in tree.xpath(
+                "//xmlns:sitemap/xmlns:loc",
+                namespaces={"xmlns": "http://www.sitemaps.org/schemas/sitemap/0.9"},
+            ):
                 sitemap_url = sitemap.text
                 logging.debug(f"Found sitemap: {sitemap_url}")
                 # Recursively parse nested sitemaps
@@ -64,12 +71,12 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             response.raise_for_status()
             retval = self.html_cleaner.clean(response.text)
             logging.info(f"Successfully fetched content from {url}")
-            
+
             return retval
         except requests.RequestException as e:
             logging.error(f"Failed to fetch page content: {str(e)}")
             raise
-    
+
     def _get_page_primary_key(self, url: str) -> str:
         url_hash = hashlib.sha3_256(url.encode()).digest()
         return url_hash.hex()
@@ -79,17 +86,23 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         Index the list of links into the knowledge base by adding each page to the vector database.
         """
         logging.info("Indexing list of links into vector database")
-        
+
         for url in links:
             content = self._fetch_page_content(url)
 
             try:
                 logging.debug(f"Adding page {url} to vector database")
-                page = DocumentationPage(primary_key=self._get_page_primary_key(url), url=url, content=content)
+                page = DocumentationPage(
+                    primary_key=self._get_page_primary_key(url),
+                    url=url,
+                    content=content,
+                )
                 self.vector_db.add_documentation_page(page)
                 logging.debug(f"Successfully added {url} to vector database")
             except Exception as e:
-                logging.error(f"Failed to add {url} to vector database: {str(e)}. Skipping...")
+                logging.error(
+                    f"Failed to add {url} to vector database: {str(e)}. Skipping..."
+                )
                 continue
 
         logging.info("Finished indexing list of links")

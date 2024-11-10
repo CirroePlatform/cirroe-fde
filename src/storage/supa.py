@@ -7,6 +7,7 @@ from supabase.client import ClientOptions
 from enum import StrEnum
 import logging
 
+
 class Table(StrEnum):
     USERS = "UserMetadata"
     CHAT_SESSIONS = "ChatSessions"

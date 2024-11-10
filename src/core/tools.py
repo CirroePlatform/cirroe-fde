@@ -82,7 +82,6 @@ class SearchTools:
 
     def get_org_name(self):
         userdata = self.supa.get_user_data()
-        
 
     def execute_codebase_search(
         self, query: str, limit: int

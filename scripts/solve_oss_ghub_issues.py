@@ -15,8 +15,15 @@ import tqdm
 
 from include.constants import DEFAULT_TEST_TRAIN_RATIO, CLOSED
 
+
 # Setup repo, issue, and documentation knowledge bases
-async def setup_all_kbs_with_repo(org_id: UUID, org_name: str, repo_name: str, docu_url: str, index_fraction: float = (1 - DEFAULT_TEST_TRAIN_RATIO)):
+async def setup_all_kbs_with_repo(
+    org_id: UUID,
+    org_name: str,
+    repo_name: str,
+    docu_url: str,
+    index_fraction: float = (1 - DEFAULT_TEST_TRAIN_RATIO),
+):
     # 1. Setup all knowledge bases
     github = GithubIntegration(org_id, org_name)
     issue_kb = IssueKnowledgeBase(org_id)
@@ -30,9 +37,11 @@ async def setup_all_kbs_with_repo(org_id: UUID, org_name: str, repo_name: str, d
     logging.info(f"Getting all issues for {org_name}/{repo_name}")
     issues = github.get_all_issues_json(f"{org_name}/{repo_name}", CLOSED)
     random.shuffle(issues)
-    indexable_issues = issues[:int(len(issues) * index_fraction)]
-    
-    for issue in tqdm.tqdm(indexable_issues, desc="Indexing issues", total=len(indexable_issues)):
+    indexable_issues = issues[: int(len(issues) * index_fraction)]
+
+    for issue in tqdm.tqdm(
+        indexable_issues, desc="Indexing issues", total=len(indexable_issues)
+    ):
         comments = {}
         for comment in issue["comments"]:
             comments[comment["user"]["login"]] = comment["body"]

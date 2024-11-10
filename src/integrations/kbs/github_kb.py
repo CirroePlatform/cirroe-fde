@@ -74,7 +74,11 @@ class GithubIntegration(BaseKnowledgeBase):
         }
 
         # Add parameters to exclude pull requests and filter by state
-        params = {"state": state, "per_page": 100, "page": 1} if state is not None else {"per_page": 100, "page": 1}
+        params = (
+            {"state": state, "per_page": 100, "page": 1}
+            if state is not None
+            else {"per_page": 100, "page": 1}
+        )
         url = f"https://api.github.com/repos/{repo_name}/issues"
 
         all_issues = []
@@ -85,7 +89,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
             # Filter out pull requests from the response
             issues = [issue for issue in content if "pull_request" not in issue]
-            
+
             # Fetch comments for each issue
             for issue in issues:
                 comments_url = issue["comments_url"]

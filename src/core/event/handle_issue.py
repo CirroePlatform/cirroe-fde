@@ -14,6 +14,7 @@ load_dotenv()
 
 client = anthropic.Anthropic()
 
+
 def debug_issue(issue_req: OpenIssueRequest) -> str:
     """
     Giiven some issue, the agent will try to solve it using the tools available to it and return a response of a comment to the issue.
@@ -92,11 +93,16 @@ def debug_issue(issue_req: OpenIssueRequest) -> str:
 
         logger.info("Response: %s", response)
 
-    logger.info("Would've added comment to ticket: %s", response.choices[0].message.content)
+    logger.info(
+        "Would've added comment to ticket: %s", response.choices[0].message.content
+    )
     return response.choices[0].message.content
+
 
 def index_all_issues_async(org_id: UUID):
     """
     Indexes all issues in the database.
     """
-    raise NotImplementedError("Not implemented the indexing all issues async for an org yet.")
+    raise NotImplementedError(
+        "Not implemented the indexing all issues async for an org yet."
+    )
