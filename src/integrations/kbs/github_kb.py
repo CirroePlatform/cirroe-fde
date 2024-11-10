@@ -56,7 +56,7 @@ class GithubIntegration(BaseKnowledgeBase):
         return os.getenv("GITHUB_TEST_TOKEN")
 
     def get_all_issues_json(
-        self, repo_name: str, state: Optional[str] = "closed"
+        self, repo_name: str, state: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Get all issues (excluding pull requests) for some provided repository.
@@ -74,26 +74,36 @@ class GithubIntegration(BaseKnowledgeBase):
         }
 
         # Add parameters to exclude pull requests and filter by state
-        params = {"state": state} if state is not None else {}
-        # Add filter to exclude pull requests
+        params = {"state": state, "per_page": 100, "page": 1} if state is not None else {"per_page": 100, "page": 1}
         url = f"https://api.github.com/repos/{repo_name}/issues"
 
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
+        all_issues = []
+        while True:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            content = response.json()
 
-        # Filter out pull requests from the response
-        issues = [issue for issue in response.json() if "pull_request" not in issue]
+            # Filter out pull requests from the response
+            issues = [issue for issue in content if "pull_request" not in issue]
+            
+            # Fetch comments for each issue
+            for issue in issues:
+                comments_url = issue["comments_url"]
+                comments_response = requests.get(comments_url, headers=headers)
+                comments_response.raise_for_status()
 
-        # Fetch comments for each issue
-        for issue in issues:
-            comments_url = issue["comments_url"]
-            comments_response = requests.get(comments_url, headers=headers)
-            comments_response.raise_for_status()
+                # Add comments to the issue object
+                issue["comments"] = comments_response.json()
 
-            # Add comments to the issue object
-            issue["comments"] = comments_response.json()
+            all_issues.extend(issues)
 
-        return issues
+            # Check if we've received all issues
+            if len(content) < params["per_page"]:
+                break
+
+            params["page"] += 1
+
+        return all_issues
 
     def index_user(self):
         """
@@ -166,7 +176,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
             payload = {
                 "remote": repository.remote,
-                "repository": repository.repository,
+                "repository": f"{self.org_name}/{repository.repository}",
                 "branch": repository.branch,
                 "reload": False,
                 "notify": True,
