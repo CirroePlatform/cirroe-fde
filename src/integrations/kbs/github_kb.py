@@ -79,7 +79,7 @@ class GithubIntegration(BaseKnowledgeBase):
             if state is not None
             else {"per_page": 100, "page": 1}
         )
-        url = f"https://api.github.com/repos/{repo_name}/issues"
+        url = f"https://api.github.com/repos/{self.org_name}/{repo_name}/issues"
 
         all_issues = []
         while True:

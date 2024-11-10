@@ -243,8 +243,27 @@ class VectorDB:
         """
         Get all issues from the vector db
         """
-        issues = self.client.get(ISSUE)
-        return [Issue(**issue) for issue in issues]
+        # Get all primary keys from the collection
+        output_fields = ["primary_key", "description", "comments", "org_id", "vector"]
+        batch_size = 100
+        offset = 0
+        all_results = []
+
+        while True:
+            results = self.client.query(
+                collection_name=ISSUE,
+                output_fields=output_fields,
+                limit=batch_size,
+                offset=offset,
+            )
+
+            all_results.extend(results)
+            offset += batch_size
+
+            if len(results) < batch_size:
+                break
+
+        return [Issue(**issue) for issue in all_results]
 
     def get_top_k_issues(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """

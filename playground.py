@@ -1,15 +1,9 @@
 from include.constants import (
     MEM0AI_ORG_ID,
-    MEM0AI_REPO_NAME,
     MEM0AI_ORG_NAME,
-    MEM0AI_DOCU_URL,
+    MEM0AI_REPO_NAME,
 )
-from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
-import asyncio
+from test.eval_agent import Orchestrator
 
-# org_id: UUID, org_name: str, repo_name: str, docu_url: str
-asyncio.run(
-    setup_all_kbs_with_repo(
-        MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, MEM0AI_DOCU_URL
-    )
-)
+orchestrator = Orchestrator(MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, test_train_ratio=0.2)
+orchestrator.evaluate()

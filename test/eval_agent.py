@@ -16,7 +16,7 @@ from include.constants import (
 )
 
 
-class TestOrchestrator:
+class Orchestrator:
     """
     Orchestrates the testing of the agent on a given org.
     """
@@ -24,15 +24,17 @@ class TestOrchestrator:
     def __init__(
         self,
         org_id: UUID,
+        org_name: str,
         test_repo_name: str,
         test_train_ratio: float = DEFAULT_TEST_TRAIN_RATIO,
     ):
         self.org_id = org_id
+        self.org_name = org_name
         self.test_train_ratio = test_train_ratio
         self.test_repo_name = test_repo_name
 
         self.vector_db = VectorDB(org_id)
-        self.github_kb = GithubIntegration(org_id)
+        self.github_kb = GithubIntegration(org_id, org_name)
 
     def __get_closed_or_solved_issues(self) -> List[Issue]:
         """
@@ -65,15 +67,15 @@ class TestOrchestrator:
         Therefore, if the issue kb is already indexed, we consider the non-indexed, solved issues in our test set. Else, we randomly split the
         issues into training and testing with the split_issues method.
 
-        returns the test set.
+        returns the test set. As of now we sacrifice runtime for memory because sets cant hash issues.
         """
         # 1. Pull all issues from the git repo that are closed or resolved.
-        issues = set(self.__get_closed_or_solved_issues())
+        issues = self.__get_closed_or_solved_issues()
         num_solved_or_closed_issues = len(issues)
         test_set: Set[Issue]
 
         # 2. Check and see how many issues are already indexed in the vector db.
-        indexed_issues = set(self.vector_db.get_all_issues())
+        indexed_issues = self.vector_db.get_all_issues()
         num_indexed_issues = len(indexed_issues)
 
         # 3. If nun_indexed_in_vector_db / total closed or resolved issues in repo < 1 - test_train_ratio, we need to randomly sample issues
@@ -82,17 +84,16 @@ class TestOrchestrator:
         if num_indexed_issues / num_solved_or_closed_issues < (
             1 - self.test_train_ratio
         ):  # TODO Untested
-            unindexed_issues = issues - indexed_issues
-            test_set = unindexed_issues
+            unindexed_list = [issue for issue in issues if issue not in indexed_issues]
+            test_set = unindexed_list
 
             # 3.a Index all the unindexed issues until we reach the desired test and train ratio.
             # Convert to list for random sampling
-            unindexed_list = list(unindexed_issues)
             random.shuffle(unindexed_list)
 
             for issue in unindexed_list:
                 self.vector_db.add_issue(issue)
-                test_set.remove(issue)
+                test_set = [issue for issue in test_set if issue != issue]
 
                 num_indexed_issues += 1
                 if num_indexed_issues / num_solved_or_closed_issues >= (
@@ -100,7 +101,7 @@ class TestOrchestrator:
                 ):
                     break
         else:
-            test_set = issues - indexed_issues
+            test_set = [issue for issue in issues if issue not in indexed_issues]
 
         return test_set
 
