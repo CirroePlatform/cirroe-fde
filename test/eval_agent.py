@@ -1,6 +1,8 @@
 from uuid import UUID
 import anthropic
+import json
 import logging
+import os
 import random
 from typing import List, Set
 from src.model.issue import Issue, OpenIssueRequest
@@ -13,6 +15,7 @@ from include.constants import (
     DEFAULT_TEST_TRAIN_RATIO,
     EVAL_AGENT_RESPONSE_PROMPT,
     MODEL_HEAVY,
+    CACHE_DIR,
 )
 
 
@@ -41,7 +44,15 @@ class Orchestrator:
         """
         Get all closed or solved issues based on the org_id.
         """
-        issues = self.github_kb.get_all_issues_json(self.test_repo_name, "closed")
+        # Cached data, makes it such that new closed issues aren't considered.
+        cache_file = os.path.join(CACHE_DIR, f"{self.test_repo_name}_closed_issues.json")
+        if os.path.exists(cache_file):
+            with open(cache_file, "r", encoding="utf8") as fp:
+                issues = json.load(fp)
+        else:
+            issues = self.github_kb.get_all_issues_json(self.test_repo_name, "closed")
+            with open(cache_file, "w", encoding="utf8") as fp:
+                json.dump(issues, fp)
         solved_or_closed_issues = []
 
         for issue in issues:
@@ -71,12 +82,14 @@ class Orchestrator:
         returns the test set. As of now we sacrifice runtime for memory because sets cant hash issues.
         """
         # 1. Pull all issues from the git repo that are closed or resolved.
+        logging.info(f"Pulling all closed or resolved issues from {self.test_repo_name}...")
         issues = self.__get_closed_or_solved_issues()
         total_issues_ids = set([issue.primary_key for issue in issues])
         assert len(total_issues_ids) == len(issues)
         num_solved_or_closed_issues = len(total_issues_ids)
 
         # 2. Check and see how many issues are already indexed in the vector db.
+        logging.info(f"Checking how many issues are already indexed in the vector db...")
         indexed_issues = self.vector_db.get_all_issues()
         indexed_issues_ids = set([issue.primary_key for issue in indexed_issues])
         assert len(indexed_issues_ids) == len(indexed_issues)
@@ -88,7 +101,8 @@ class Orchestrator:
         # We should never exceed the ratio, because new tickets will be closed and solved in these repos.
         if num_indexed_issues / num_solved_or_closed_issues < (
             1 - self.test_train_ratio
-        ):  # TODO this branch is untested
+        ):
+            logging.info(f"num indexed issues is too low. current ratio: {num_indexed_issues / num_solved_or_closed_issues}, desired ratio: {1 - self.test_train_ratio}")
             unindexed_list = [issue for issue in issues if issue.primary_key not in indexed_issues_ids]
             test_set = unindexed_list
 

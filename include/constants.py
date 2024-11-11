@@ -10,6 +10,8 @@ MEM0AI_REPO_NAME = "mem0"
 MEM0AI_REPO_URL = f"https://github.com/{MEM0AI_ORG_NAME}/{MEM0AI_REPO_NAME}"
 MEM0AI_DOCU_URL = "https://docs.mem0.ai/sitemap.xml"
 
+CACHE_DIR = "include/cache"
+
 # Evaluation constants
 DEFAULT_TEST_TRAIN_RATIO = 0.2
 
