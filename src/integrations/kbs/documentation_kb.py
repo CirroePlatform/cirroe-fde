@@ -3,7 +3,7 @@ from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
 from src.storage.vector import VectorDB
 from bs4 import BeautifulSoup
-from typing import List
+from typing import List, Tuple
 from lxml import etree
 from uuid import UUID
 import traceback

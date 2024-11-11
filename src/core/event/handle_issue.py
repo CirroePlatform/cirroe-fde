@@ -1,6 +1,4 @@
 from logger import logger
-from merge.resources.ticketing import CommentRequest
-from merge.resources.ticketing import Ticket
 from uuid import UUID
 from typing import List
 import anthropic
@@ -9,6 +7,7 @@ from dotenv import load_dotenv
 from src.model.issue import OpenIssueRequest
 from src.core.tools import SearchTools
 from src.integrations.kbs.github_kb import Repository
+from src.integrations.kbs.base_kb import KnowledgeBaseResponse
 from include.constants import MODEL_LIGHT, DEBUG_ISSUE_FILE, DEBUG_TOOLS
 
 load_dotenv()
@@ -33,7 +32,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         system=sysprompt,
         max_tokens=2048,
         tools=DEBUG_TOOLS,
-        tool_choice={"type": "any"},
+        tool_choice={"type": "auto"},
         messages=messages,
     )
     logger.info("Response: %s", response)
@@ -45,6 +44,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         "execute_issue_search": search_tools.execute_issue_search,
     }
 
+    kb_responses = []
     while response.stop_reason == "tool_use":
         response_message = response.content[0].input
         tool_name = response.content[0].name
@@ -66,7 +66,10 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
             logger.info("CALL tool %s with %s", function_name, function_args)
 
             try:
-                function_response = fn_to_call(**function_args)
+                kbres, function_response = fn_to_call(**function_args)
+                kb_responses += [
+                    KnowledgeBaseResponse.model_validate(kb) for kb in kbres
+                ]
             except Exception as e:
                 function_response = str(e)
 
@@ -88,7 +91,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
             model=MODEL_LIGHT,
             max_tokens=2048,
             tools=DEBUG_TOOLS,
-            tool_choice={"type": "any"},
+            tool_choice={"type": "auto"},
             messages=messages,
         )
 

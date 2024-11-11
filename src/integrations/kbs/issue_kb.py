@@ -1,8 +1,6 @@
 import json
-from typing import Any, Dict, List, Union
+from typing import Dict, List, Tuple
 from uuid import UUID
-from merge.resources.ticketing import Ticket
-from merge.resources.ticketing.types import TicketStatusEnum
 from src.model.issue import Issue
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
@@ -26,9 +24,14 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         """
         super().__init__(org_id)
         self.vector_db = VectorDB(org_id)
-        self.indexed_issues: Dict[str, Issue] = {}
 
-    async def index(self, data: Union[Issue, Ticket] = None) -> bool:
+    def __respond_to_query(self, issues: List[KnowledgeBaseResponse], query: str) -> str:
+        """
+        Generate a natural language response to a query given a list of KnowledgeBaseResponse objects
+        """
+        pass
+
+    async def index(self, data: Issue = None) -> bool:
         """
         Index a ticket from either Merge API or Issue model representation
 
@@ -41,33 +44,14 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         try:
             # If specific ticket provided, just index that one
             if data:
-                if isinstance(data, Ticket):
-                    self._index_ticket(data)
-                elif hasattr(data, "primary_key"):  # Issue model
-                    self.vector_db.add_issue(data)
+                self.vector_db.add_issue(data)
             return True
 
         except Exception as e:
             logger.error(f"Failed to index issues: {str(e)}")
             return False
 
-    def _index_ticket(self, ticket: Ticket):
-        """Helper to index a ticket from Merge API"""
-        # Get comments for the ticket
-        comments = merge_client.ticketing.comments.list(ticket_id=ticket.id)
-        comment_texts = [c.body for c in comments]
-
-        # Store indexed ticket data
-        self.indexed_issues[str(ticket.id)] = {
-            "title": ticket.name,
-            "description": ticket.description,
-            "status": ticket.status,
-            "comments": comment_texts,
-            "priority": ticket.priority,
-            "created_at": ticket.created_at,
-        }
-
-    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search indexed tickets for relevant matches
 
@@ -76,7 +60,8 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             limit: Maximum number of results to return
 
         Returns:
-            List of KnowledgeBaseResponse objects containing relevant tickets
+            Tuple of (List of KnowledgeBaseResponse objects containing relevant tickets,
+                      String answer to the query)
         """
         try:
             query_vector = self.vector_db.vanilla_embed(query)
@@ -95,7 +80,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
                     )
                 )
 
-            return results
+            return results, ""  # TODO add a natural language response to the query given the retrieved issues
 
         except Exception as e:
             logger.error(f"Failed to query issues: {str(e)}")

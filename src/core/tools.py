@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import List
+from typing import List, Tuple
 from typeguard import typechecked
 
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
@@ -28,7 +28,7 @@ class SearchTools:
 
     def execute_codebase_search(
         self, query: str, limit: int
-    ) -> List[KnowledgeBaseResponse]:
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
             Execute a command over git repos using the Greptile API integration.
 
@@ -43,11 +43,11 @@ class SearchTools:
             response = self.github.query(query, limit=limit)
             return response
         except Exception as e:
-            return [str(e)]
+            return [], str(e)
 
     def execute_issue_search(
         self, query: str, limit: int
-    ) -> List[KnowledgeBaseResponse]:
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Execute a search over the teams historical issues.
 
@@ -61,11 +61,11 @@ class SearchTools:
         try:
             return self.issue_kb.query(query, limit)
         except Exception as e:
-            return [str(e)]
+            return [], str(e)
 
     def execute_documentation_search(
         self, query: str, limit: int
-    ) -> List[KnowledgeBaseResponse]:
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Execute a search over the teams documentation.
 
@@ -79,4 +79,4 @@ class SearchTools:
         try:
             return self.documentation_kb.query(query, limit)
         except Exception as e:
-            return [str(e)]
+            return [], str(e)
