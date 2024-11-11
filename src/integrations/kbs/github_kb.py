@@ -2,10 +2,8 @@ import os
 from uuid import UUID
 import requests
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
-
-from src.model.issue import Issue
 
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
@@ -196,7 +194,7 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to index repository: {str(e)}")
             return False
 
-    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search code repositories with natural language queries
 
@@ -205,10 +203,10 @@ class GithubIntegration(BaseKnowledgeBase):
             limit: Maximum number of results to return
 
         Returns:
-            List of KnowledgeBaseResponse objects containing search results
+            Tuple of (List of KnowledgeBaseResponse objects containing search results,
+                      String answer to the query)
         """
         try:
-            repositories = list(self.repos.values())
             url = f"{self.api_base}/query"
 
             payload = {
@@ -219,7 +217,7 @@ class GithubIntegration(BaseKnowledgeBase):
                         "repository": repo.repository,
                         "branch": repo.branch,
                     }
-                    for repo in repositories
+                    for repo in self.repos
                 ],
                 "stream": False,
                 "genius": True,
@@ -228,15 +226,17 @@ class GithubIntegration(BaseKnowledgeBase):
             response = requests.post(url, json=payload, headers=self.headers)
             response.raise_for_status()
 
-            results = response.json()["results"][:limit]
+            results = response.json()
+            results = results["sources"][:limit]
+
             return [
                 KnowledgeBaseResponse(
-                    content=result["content"],
-                    source=result["file"],
-                    score=result.get("score", 0.0),
+                    content=result["summary"],
+                    source="github",
+                    relevance_score=result["distance"],
                 )
                 for result in results
-            ]
+            ], results["message"]
         except Exception as e:
             logging.error(f"Failed to query repositories: {str(e)}")
-            return []
+            return [], ""

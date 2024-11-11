@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from pydantic import BaseModel
 from uuid import UUID
 
@@ -9,8 +9,8 @@ class KnowledgeBaseResponse(BaseModel):
 
     source: str  # Source of the information (e.g. "github", "cloud", "issue")
     content: str  # The relevant content
-    metadata: Dict[str, Any]  # Additional metadata like timestamps, urls, etc
     relevance_score: float  # How relevant this piece of information is to the query
+    metadata: Dict[str, Any]  # Additional metadata like timestamps, urls, etc
 
 
 class BaseKnowledgeBase(ABC):
@@ -42,7 +42,7 @@ class BaseKnowledgeBase(ABC):
         pass
 
     @abstractmethod
-    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the knowledge base for relevant information
 
@@ -51,7 +51,8 @@ class BaseKnowledgeBase(ABC):
             limit: Maximum number of results to return
 
         Returns:
-            List of KnowledgeBaseResponse objects containing relevant information
+            Tuple of (List of KnowledgeBaseResponse objects containing relevant information,
+                      String answer to the query)
         """
         pass
 

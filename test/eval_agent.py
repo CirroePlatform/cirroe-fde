@@ -32,9 +32,10 @@ class Orchestrator:
         self.org_name = org_name
         self.test_train_ratio = test_train_ratio
         self.test_repo_name = test_repo_name
+        self.repos = [Repository(repository=f"{self.org_name}/{self.test_repo_name}", branch="main", remote="github")]
 
         self.vector_db = VectorDB(org_id)
-        self.github_kb = GithubIntegration(org_id, org_name)
+        self.github_kb = GithubIntegration(org_id, org_name, self.repos)
 
     def __get_closed_or_solved_issues(self) -> List[Issue]:
         """
@@ -125,8 +126,7 @@ class Orchestrator:
         logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
         # 2. Evaluate the agent on the test issues
-        repo = Repository(repository=f"{self.org_name}/{self.test_repo_name}", branch="main", remote="github")
-        evaluator = Evaluator(self.org_id, test_issues, self.test_train_ratio, [repo])
+        evaluator = Evaluator(self.org_id, test_issues, self.repos, self.test_train_ratio)
         evaluator.evaluate()
 
 
@@ -136,7 +136,7 @@ class Evaluator:
     """
 
     def __init__(
-        self, org_id: UUID, test_issues: List[Issue], test_train_ratio: float = 0.2, github_repos: List[Repository] = None
+        self, org_id: UUID, test_issues: List[Issue], github_repos: List[Repository], test_train_ratio: float = 0.2
     ):
         self.org_id = org_id
         self.test_issues = test_issues

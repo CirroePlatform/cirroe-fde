@@ -131,7 +131,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
 
             return False
 
-    def query(self, query: str, limit: int = 5) -> List[KnowledgeBaseResponse]:
+    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Retrieve a list of documentation pages that match the query.
 
@@ -140,6 +140,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             limit (int): The number of documents to retrieve
 
         Returns:
-            List[KnowledgeBaseResponse]: List of documentation responses that match the search query
+            Tuple[List[KnowledgeBaseResponse], str]: List of documentation responses that match the search query,
+                      String answer to the query
         """
         logging.warning("Query functionality not implemented yet")

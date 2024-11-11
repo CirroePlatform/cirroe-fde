@@ -7,9 +7,9 @@ import anthropic
 from dotenv import load_dotenv
 
 from src.model.issue import OpenIssueRequest
-from src.core.tools import DEBUG_ISSUE_TOOLS, DEBUG_ISSUE_FILE, SearchTools
+from src.core.tools import SearchTools
 from src.integrations.kbs.github_kb import Repository
-from include.constants import MODEL_LIGHT
+from include.constants import MODEL_LIGHT, DEBUG_ISSUE_FILE, DEBUG_TOOLS
 
 load_dotenv()
 
@@ -32,7 +32,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         model=MODEL_LIGHT,
         system=sysprompt,
         max_tokens=2048,
-        tools=DEBUG_ISSUE_TOOLS,
+        tools=DEBUG_TOOLS,
         tool_choice={"type": "any"},
         messages=messages,
     )
@@ -87,7 +87,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         response = client.messages.create(
             model=MODEL_LIGHT,
             max_tokens=2048,
-            tools=DEBUG_ISSUE_TOOLS,
+            tools=DEBUG_TOOLS,
             tool_choice={"type": "any"},
             messages=messages,
         )
