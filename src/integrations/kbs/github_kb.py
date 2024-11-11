@@ -227,16 +227,22 @@ class GithubIntegration(BaseKnowledgeBase):
             response.raise_for_status()
 
             results = response.json()
-            results = results["sources"][:limit]
+            results_kbs = results["sources"][:limit]
 
-            return [
-                KnowledgeBaseResponse(
-                    content=result["summary"],
-                    source="github",
-                    relevance_score=result["distance"],
+            kbs = []
+            for result in results_kbs:
+                if result["summary"] is None or result["distance"] is None:
+                    continue
+
+                kbs.append(
+                    KnowledgeBaseResponse(
+                        content=result["summary"],
+                        source="github",
+                        relevance_score=result["distance"],
+                    )
                 )
-                for result in results
-            ], results["message"]
+
+            return kbs, results["message"]
         except Exception as e:
             logging.error(f"Failed to query repositories: {str(e)}")
             return [], ""

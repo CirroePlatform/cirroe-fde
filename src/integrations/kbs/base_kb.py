@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel
 from uuid import UUID
 
@@ -10,7 +10,7 @@ class KnowledgeBaseResponse(BaseModel):
     source: str  # Source of the information (e.g. "github", "cloud", "issue")
     content: str  # The relevant content
     relevance_score: float  # How relevant this piece of information is to the query
-    metadata: Dict[str, Any]  # Additional metadata like timestamps, urls, etc
+    metadata: Optional[Dict[str, Any]] = None  # Additional metadata like timestamps, urls, etc
 
 
 class BaseKnowledgeBase(ABC):
