@@ -8,7 +8,7 @@ from src.model.issue import OpenIssueRequest
 from src.core.tools import SearchTools
 from src.integrations.kbs.github_kb import Repository
 from src.integrations.kbs.base_kb import KnowledgeBaseResponse
-from include.constants import MODEL_LIGHT, DEBUG_ISSUE_FILE, DEBUG_TOOLS
+from include.constants import MODEL_HEAVY, DEBUG_ISSUE_FILE, DEBUG_TOOLS, DEBUG_ISSUE_FINAL_PROMPT
 
 load_dotenv()
 
@@ -28,11 +28,11 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
     ]
 
     response = client.messages.create(
-        model=MODEL_LIGHT,
+        model=MODEL_HEAVY,
         system=sysprompt,
         max_tokens=2048,
         tools=DEBUG_TOOLS,
-        tool_choice={"type": "auto"},
+        tool_choice={"type": "any"},
         messages=messages,
     )
     logger.info("Response: %s", response)
@@ -54,9 +54,19 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         logger.info("Tool call id: %s", tool_call_id)
 
         if tool_name:
-            messages.append(
-                response_message
-            )  # extend conversation with assistant's reply
+            # Add assistant's tool call message
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [{
+                    "id": tool_call_id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_name,
+                        "arguments": response_message
+                    }
+                }]
+            })
 
             function_name = tool_name
             function_args = response_message
@@ -76,32 +86,52 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
             logger.info(
                 "tool %s responded with %s",
                 function_name,
-                function_response[:200],
+                function_response,
             )
-            messages.append(
-                {
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_outputs": [{
                     "tool_call_id": tool_call_id,
-                    "role": "tool",
-                    "name": function_name,
-                    "content": function_response,
-                }
-            )  # extend conversation with function response
+                    "output": function_response
+                }]
+            })
 
         response = client.messages.create(
-            model=MODEL_LIGHT,
+            model=MODEL_HEAVY,
             max_tokens=2048,
             tools=DEBUG_TOOLS,
-            tool_choice={"type": "auto"},
+            tool_choice={"type": "any"},
             messages=messages,
         )
 
         logger.info("Response: %s", response)
 
-    logger.info(
-        "Would've added comment to ticket: %s", response.choices[0].message.content
-    )
-    return response.choices[0].message.content
+    # Second phase: Request final summarized response
+    if response.stop_reason != "tool_use":
+        if response.content and len(response.content) > 0:
+            final_response = response.content[0].text
+        else:
+            with open(DEBUG_ISSUE_FINAL_PROMPT, "r", encoding="utf8") as fp:
+                sysprompt = fp.read()
 
+            final_call = client.messages.create(
+                messages=messages,
+                model=MODEL_HEAVY,
+                max_tokens=2048,
+                system=sysprompt,
+                temperature=0.7
+            )
+            
+            if final_call.content and len(final_call.content) > 0:
+                final_response = final_call.content[0].text
+
+    logger.info(
+        "Would've added comment to ticket: %s", final_response
+    )
+
+    # kb_responses can be used here as well. not sure what to do with it yet.
+    return final_response
 
 def index_all_issues_async(org_id: UUID):
     """

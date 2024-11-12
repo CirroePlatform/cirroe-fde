@@ -231,7 +231,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
             kbs = []
             for result in results_kbs:
-                if result["summary"] is None or result["distance"] is None:
+                if "summary" not in result or "distance" not in result:
                     continue
 
                 kbs.append(

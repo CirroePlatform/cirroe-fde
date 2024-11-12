@@ -53,8 +53,8 @@ class Orchestrator:
             issues = self.github_kb.get_all_issues_json(self.test_repo_name, "closed")
             with open(cache_file, "w", encoding="utf8") as fp:
                 json.dump(issues, fp)
-        solved_or_closed_issues = []
 
+        solved_or_closed_issues = []
         for issue in issues:
             comments = {}
             for comment in issue["comments"]:
