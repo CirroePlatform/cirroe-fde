@@ -8,14 +8,22 @@ from src.model.issue import OpenIssueRequest
 from src.core.tools import SearchTools
 from src.integrations.kbs.github_kb import Repository
 from src.integrations.kbs.base_kb import KnowledgeBaseResponse
-from include.constants import MODEL_HEAVY, DEBUG_ISSUE_FILE, DEBUG_TOOLS, DEBUG_ISSUE_FINAL_PROMPT, MODEL_LIGHT
+from include.constants import (
+    MODEL_HEAVY,
+    DEBUG_ISSUE_FILE,
+    DEBUG_TOOLS,
+    DEBUG_ISSUE_FINAL_PROMPT,
+    MODEL_LIGHT,
+)
 
 load_dotenv()
 
 client = anthropic.Anthropic()
 
 
-def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 5) -> str:
+def debug_issue(
+    issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 5
+) -> str:
     """
     Giiven some issue, the agent will try to solve it using the tools available to it and return a response of a comment to the issue.
     """
@@ -50,23 +58,25 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository], max
         tool_name = tool_calls.name
         tool_call_id = tool_calls.id
         tool_input = tool_calls.input
-        
+
         logger.info("Tool name: %s", tool_name)
         logger.info("Tool input: %s", tool_input)
         logger.info("Tool call id: %s", tool_call_id)
 
         if tool_name:
-            
+
             # Sometimes, the search goes way off the rails. We don't want to call tools indefinitely.
             max_tool_calls -= 1
             if max_tool_calls <= 0:
                 break
 
             # Add the assistant's message with their reasoning/request
-            messages.append({
-                "role": "assistant",
-                "content": f"I'll search using {tool_name} with the following parameters: {tool_input}"
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": f"I'll search using {tool_name} with the following parameters: {tool_input}",
+                }
+            )
 
             function_name = tool_name
             function_args = tool_input
@@ -85,12 +95,14 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository], max
                 function_name,
                 function_response,
             )
-            
+
             # Add the function response as a user message
-            messages.append({
-                "role": "user",
-                "content": f"Results from {tool_name}: {function_response}"
-            })
+            messages.append(
+                {
+                    "role": "user",
+                    "content": f"Results from {tool_name}: {function_response}",
+                }
+            )
 
         response = client.messages.create(
             model=MODEL_LIGHT,
@@ -103,12 +115,16 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository], max
     # Second phase: Request final summarized response
     if max_tool_calls <= 0:
         try:
-            if response.stop_reason != "tool_use" and response.content and len(response.content) > 0:
+            if (
+                response.stop_reason != "tool_use"
+                and response.content
+                and len(response.content) > 0
+            ):
                 final_response = response.content[0].text
             else:
                 with open(DEBUG_ISSUE_FINAL_PROMPT, "r", encoding="utf8") as fp:
                     final_sysprompt = fp.read()
-                    
+
                 if max_tool_calls <= 0:
                     final_sysprompt += "\n\nNote: We ran out of tools calls for this particular issue. Please try to provide a response based on the information provided. If you cannot provide a response, please answer with a simple <failure> tag."
 
@@ -120,21 +136,23 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository], max
                     temperature=0.7,
                 )
 
-                if final_call.content and len(final_call.content) > 0 and "<failure>" not in final_call.content[0].text:
+                if (
+                    final_call.content
+                    and len(final_call.content) > 0
+                    and "<failure>" not in final_call.content[0].text
+                ):
                     final_response = final_call.content[0].text
                 else:
                     final_response = "Unable to generate a final response. Please review the collected information."
 
             logger.info("Final response generated: %s", final_response)
-            
-            return {
-                'response': final_response,
-                'kb_responses': kb_responses
-            }
+
+            return {"response": final_response, "kb_responses": kb_responses}
 
         except Exception as e:
             logger.error("Error generating final response: %s", str(e))
             raise RuntimeError(f"Failed to generate final response: {str(e)}")
+
 
 def index_all_issues_async(org_id: UUID):
     """

@@ -112,7 +112,9 @@ class CloudIntegration(BaseKnowledgeBase):
         """
         return False
 
-    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Not implemented for cloud integration.
         """

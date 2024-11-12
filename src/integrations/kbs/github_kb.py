@@ -24,7 +24,9 @@ class GithubIntegration(BaseKnowledgeBase):
     Integration with Github repositories via Greptile API for code search and analysis.
     """
 
-    def __init__(self, org_id: UUID, org_name: str, repos: Optional[List[Repository]] = None):
+    def __init__(
+        self, org_id: UUID, org_name: str, repos: Optional[List[Repository]] = None
+    ):
         """
         Initialize Github integration for an organization
 
@@ -45,7 +47,9 @@ class GithubIntegration(BaseKnowledgeBase):
             "X-GitHub-Token": f"{self.gh_token}",
             "Content-Type": "application/json",
         }
-        self.repos = repos if repos is not None else self.list_repositories() # Index on all repos if none are provided.
+        self.repos = (
+            repos if repos is not None else self.list_repositories()
+        )  # Index on all repos if none are provided.
 
     def get_github_token(self, org_id: str) -> str:
         """
@@ -194,7 +198,9 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to index repository: {str(e)}")
             return False
 
-    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search code repositories with natural language queries
 

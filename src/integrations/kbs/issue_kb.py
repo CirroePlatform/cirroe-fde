@@ -11,6 +11,7 @@ from logger import logger
 
 from include.constants import MODEL_HEAVY, COALESCE_ISSUE_PROMPT
 
+
 class IssueKnowledgeBase(BaseKnowledgeBase):
     """
     Knowledge base for searching and indexing historical support tickets/issues.
@@ -28,7 +29,9 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         self.vector_db = VectorDB(org_id)
         self.client = Anthropic()
 
-    def __respond_to_query(self, issues: List[KnowledgeBaseResponse], query: str) -> str:
+    def __respond_to_query(
+        self, issues: List[KnowledgeBaseResponse], query: str
+    ) -> str:
         """
         Generate a natural language response to a query given a list of KnowledgeBaseResponse objects
         """
@@ -54,7 +57,9 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             logger.error(f"Failed to index issues: {str(e)}")
             return False
 
-    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search indexed tickets for relevant matches
 
@@ -82,12 +87,15 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
                         relevance_score=issue_data["similarity"],
                     )
                 )
-                
+
             with open(COALESCE_ISSUE_PROMPT, "r", encoding="utf8") as fp:
                 sysprompt = fp.read()
-             
+
             messages = [
-                {"role": "user", "content": f"input query: {query}\nsimilar_issues: {json.dumps(issues)}"}
+                {
+                    "role": "user",
+                    "content": f"input query: {query}\nsimilar_issues: {json.dumps(issues)}",
+                }
             ]
 
             response = self.client.messages.create(

@@ -10,7 +10,9 @@ class KnowledgeBaseResponse(BaseModel):
     source: str  # Source of the information (e.g. "github", "cloud", "issue")
     content: str  # The relevant content
     relevance_score: float  # How relevant this piece of information is to the query
-    metadata: Optional[Dict[str, Any]] = None  # Additional metadata like timestamps, urls, etc
+    metadata: Optional[Dict[str, Any]] = (
+        None  # Additional metadata like timestamps, urls, etc
+    )
 
 
 class BaseKnowledgeBase(ABC):
@@ -42,7 +44,9 @@ class BaseKnowledgeBase(ABC):
         pass
 
     @abstractmethod
-    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the knowledge base for relevant information
 

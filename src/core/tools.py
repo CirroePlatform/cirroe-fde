@@ -10,6 +10,7 @@ from src.storage.supa import SupaClient
 
 from include.constants import ORG_NAME
 
+
 @typechecked
 class SearchTools:
 
@@ -18,7 +19,9 @@ class SearchTools:
         self.supa = SupaClient(user_id=self.requestor_id)
         self.org_name = self.get_org_name()
 
-        self.github = GithubIntegration(org_id=self.requestor_id, org_name=self.org_name, repos=github_repos)
+        self.github = GithubIntegration(
+            org_id=self.requestor_id, org_name=self.org_name, repos=github_repos
+        )
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
 

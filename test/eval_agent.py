@@ -35,7 +35,13 @@ class Orchestrator:
         self.org_name = org_name
         self.test_train_ratio = test_train_ratio
         self.test_repo_name = test_repo_name
-        self.repos = [Repository(repository=f"{self.org_name}/{self.test_repo_name}", branch="main", remote="github")]
+        self.repos = [
+            Repository(
+                repository=f"{self.org_name}/{self.test_repo_name}",
+                branch="main",
+                remote="github",
+            )
+        ]
 
         self.vector_db = VectorDB(org_id)
         self.github_kb = GithubIntegration(org_id, org_name, self.repos)
@@ -45,7 +51,9 @@ class Orchestrator:
         Get all closed or solved issues based on the org_id.
         """
         # Cached data, makes it such that new closed issues aren't considered.
-        cache_file = os.path.join(CACHE_DIR, f"{self.test_repo_name}_closed_issues.json")
+        cache_file = os.path.join(
+            CACHE_DIR, f"{self.test_repo_name}_closed_issues.json"
+        )
         if os.path.exists(cache_file):
             with open(cache_file, "r", encoding="utf8") as fp:
                 issues = json.load(fp)
@@ -82,14 +90,18 @@ class Orchestrator:
         returns the test set. As of now we sacrifice runtime for memory because sets cant hash issues.
         """
         # 1. Pull all issues from the git repo that are closed or resolved.
-        logging.info(f"Pulling all closed or resolved issues from {self.test_repo_name}...")
+        logging.info(
+            f"Pulling all closed or resolved issues from {self.test_repo_name}..."
+        )
         issues = self.__get_closed_or_solved_issues()
         total_issues_ids = set([issue.primary_key for issue in issues])
         assert len(total_issues_ids) == len(issues)
         num_solved_or_closed_issues = len(total_issues_ids)
 
         # 2. Check and see how many issues are already indexed in the vector db.
-        logging.info(f"Checking how many issues are already indexed in the vector db...")
+        logging.info(
+            f"Checking how many issues are already indexed in the vector db..."
+        )
         indexed_issues = self.vector_db.get_all_issues()
         indexed_issues_ids = set([issue.primary_key for issue in indexed_issues])
         assert len(indexed_issues_ids) == len(indexed_issues)
@@ -102,15 +114,21 @@ class Orchestrator:
         if num_indexed_issues / num_solved_or_closed_issues < (
             1 - self.test_train_ratio
         ):
-            logging.info(f"num indexed issues is too low. current ratio: {num_indexed_issues / num_solved_or_closed_issues}, desired ratio: {1 - self.test_train_ratio}")
-            unindexed_list = [issue for issue in issues if issue.primary_key not in indexed_issues_ids]
+            logging.info(
+                f"num indexed issues is too low. current ratio: {num_indexed_issues / num_solved_or_closed_issues}, desired ratio: {1 - self.test_train_ratio}"
+            )
+            unindexed_list = [
+                issue for issue in issues if issue.primary_key not in indexed_issues_ids
+            ]
             test_set = unindexed_list
 
             # 3.a Index all the unindexed issues until we reach the desired test and train ratio.
             # Convert to list for random sampling
             random.shuffle(unindexed_list)
 
-            logging.info(f"Indexing at most {len(unindexed_list)} issues to reach desired test/train ratio...")
+            logging.info(
+                f"Indexing at most {len(unindexed_list)} issues to reach desired test/train ratio..."
+            )
             for issue in unindexed_list:
                 self.vector_db.add_issue(issue)
                 test_set.append(issue)
@@ -119,7 +137,9 @@ class Orchestrator:
                 if num_indexed_issues / num_solved_or_closed_issues >= (
                     1 - self.test_train_ratio
                 ):
-                    logging.info(f"Reached desired test/train ratio. Indexed {num_indexed_issues} issues out of {num_solved_or_closed_issues} total issues.")
+                    logging.info(
+                        f"Reached desired test/train ratio. Indexed {num_indexed_issues} issues out of {num_solved_or_closed_issues} total issues."
+                    )
                     break
         else:
             # Technically, we can reach a case where we have more indexed issues than closed or resolved issues.
@@ -140,7 +160,9 @@ class Orchestrator:
         logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
         # 2. Evaluate the agent on the test issues
-        evaluator = Evaluator(self.org_id, test_issues, self.repos, self.test_train_ratio)
+        evaluator = Evaluator(
+            self.org_id, test_issues, self.repos, self.test_train_ratio
+        )
         evaluator.evaluate()
 
 
@@ -150,7 +172,11 @@ class Evaluator:
     """
 
     def __init__(
-        self, org_id: UUID, test_issues: List[Issue], github_repos: List[Repository], test_train_ratio: float = 0.2
+        self,
+        org_id: UUID,
+        test_issues: List[Issue],
+        github_repos: List[Repository],
+        test_train_ratio: float = 0.2,
     ):
         self.org_id = org_id
         self.test_issues = test_issues
@@ -173,7 +199,7 @@ class Evaluator:
             },
         ]
 
-        response = self.judge_client.messages.create( # TODO sometimes this outputs more than just true or false, need to refine the prompt a bit
+        response = self.judge_client.messages.create(  # TODO sometimes this outputs more than just true or false, need to refine the prompt a bit
             model=MODEL_LIGHT,
             system=sysprompt,
             max_tokens=16,
@@ -195,8 +221,8 @@ class Evaluator:
             issue.comments = {}
 
             response = debug_issue(
-                OpenIssueRequest(requestor_id=self.org_id, issue=issue), 
-                github_repos=self.github_repos
+                OpenIssueRequest(requestor_id=self.org_id, issue=issue),
+                github_repos=self.github_repos,
             )
 
             # Add the comments back to the issue object for evaluation

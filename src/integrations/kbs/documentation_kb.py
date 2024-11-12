@@ -13,6 +13,7 @@ import hashlib
 import logging
 import json
 
+
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
@@ -132,7 +133,9 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
 
             return False
 
-    def query(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Retrieve a list of documentation pages that match the query.
 
@@ -146,18 +149,28 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         """
         try:
             query_vector = self.vector_db.vanilla_embed(query)
-            results = self.vector_db.get_top_k_documentation(limit, query_vector) # TODO seeing similarity scores of 1. that seems off
-            
+            results = self.vector_db.get_top_k_documentation(
+                limit, query_vector
+            )  # TODO seeing similarity scores of 1. that seems off
+
             kb_responses = []
             for result in results.values():
                 metadata = json.loads(result["metadata"])
-                kb_response = KnowledgeBaseResponse(source="documentation", content=metadata["content"], relevance_score=result["similarity"], metadata=metadata)
+                kb_response = KnowledgeBaseResponse(
+                    source="documentation",
+                    content=metadata["content"],
+                    relevance_score=result["similarity"],
+                    metadata=metadata,
+                )
                 kb_responses.append(kb_response)
-            
+
             messages = [
                 {"role": "user", "content": query},
-                {"role": "assistant", "content": "Here are the documentation pages I found that match your query:"},
-                {"role": "user", "content": json.dumps(results)}
+                {
+                    "role": "assistant",
+                    "content": "Here are the documentation pages I found that match your query:",
+                },
+                {"role": "user", "content": json.dumps(results)},
             ]
 
             response = self.client.messages.create(
