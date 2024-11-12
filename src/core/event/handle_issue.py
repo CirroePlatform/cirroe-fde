@@ -8,14 +8,14 @@ from src.model.issue import OpenIssueRequest
 from src.core.tools import SearchTools
 from src.integrations.kbs.github_kb import Repository
 from src.integrations.kbs.base_kb import KnowledgeBaseResponse
-from include.constants import MODEL_HEAVY, DEBUG_ISSUE_FILE, DEBUG_TOOLS, DEBUG_ISSUE_FINAL_PROMPT
+from include.constants import MODEL_HEAVY, DEBUG_ISSUE_FILE, DEBUG_TOOLS, DEBUG_ISSUE_FINAL_PROMPT, MODEL_LIGHT
 
 load_dotenv()
 
 client = anthropic.Anthropic()
 
 
-def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> str:
+def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 5) -> str:
     """
     Giiven some issue, the agent will try to solve it using the tools available to it and return a response of a comment to the issue.
     """
@@ -28,7 +28,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
     ]
 
     response = client.messages.create(
-        model=MODEL_HEAVY,
+        model=MODEL_LIGHT,
         system=sysprompt,
         max_tokens=2048,
         tools=DEBUG_TOOLS,
@@ -56,6 +56,12 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         logger.info("Tool call id: %s", tool_call_id)
 
         if tool_name:
+            
+            # Sometimes, the search goes way off the rails. We don't want to call tools indefinitely.
+            max_tool_calls -= 1
+            if max_tool_calls <= 0:
+                break
+
             # Add the assistant's message with their reasoning/request
             messages.append({
                 "role": "assistant",
@@ -87,7 +93,7 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
             })
 
         response = client.messages.create(
-            model=MODEL_HEAVY,
+            model=MODEL_LIGHT,
             max_tokens=2048,
             tools=DEBUG_TOOLS,
             tool_choice={"type": "any"},
@@ -95,13 +101,16 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
         )
 
     # Second phase: Request final summarized response
-    if response.stop_reason != "tool_use":
+    if max_tool_calls <= 0:
         try:
-            if response.content and len(response.content) > 0:
+            if response.stop_reason != "tool_use" and response.content and len(response.content) > 0:
                 final_response = response.content[0].text
             else:
                 with open(DEBUG_ISSUE_FINAL_PROMPT, "r", encoding="utf8") as fp:
                     final_sysprompt = fp.read()
+                    
+                if max_tool_calls <= 0:
+                    final_sysprompt += "\n\nNote: We ran out of tools calls for this particular issue. Please try to provide a response based on the information provided. If you cannot provide a response, please answer with a simple <failure> tag."
 
                 final_call = client.messages.create(
                     model=MODEL_HEAVY,
@@ -110,8 +119,8 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
                     messages=messages,
                     temperature=0.7,
                 )
-                
-                if final_call.content and len(final_call.content) > 0:
+
+                if final_call.content and len(final_call.content) > 0 and "<failure>" not in final_call.content[0].text:
                     final_response = final_call.content[0].text
                 else:
                     final_response = "Unable to generate a final response. Please review the collected information."

@@ -14,7 +14,7 @@ from src.storage.vector import VectorDB
 from include.constants import (
     DEFAULT_TEST_TRAIN_RATIO,
     EVAL_AGENT_RESPONSE_PROMPT,
-    MODEL_HEAVY,
+    MODEL_LIGHT,
     CACHE_DIR,
 )
 
@@ -167,21 +167,20 @@ class Evaluator:
             sysprompt = fp.read()
 
         messages = [
-            {"role": "system", "content": sysprompt},
             {
                 "role": "user",
                 "content": f"<issue>{issue.description}</issue>\n<comments>{issue.comments}</comments>\n<agent_response>{response}</agent_response>",
             },
         ]
 
-        response = self.judge_client.messages.create(
-            model=MODEL_HEAVY,
+        response = self.judge_client.messages.create( # TODO sometimes this outputs more than just true or false, need to refine the prompt a bit
+            model=MODEL_LIGHT,
             system=sysprompt,
-            max_tokens=2048,
+            max_tokens=16,
             messages=messages,
         )
 
-        return response.content[0].text.lower() == "true"
+        return "true" in response.content[0].text.lower()
 
     def evaluate(self):
         """
