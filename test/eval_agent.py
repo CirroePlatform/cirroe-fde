@@ -80,7 +80,7 @@ class Orchestrator:
 
         return solved_or_closed_issues
 
-    def setup_test_train_issues_splits(self) -> List[Issue]:
+    def setup_test_train_issues_splits(self, test_subset: float = 0.1) -> List[Issue]:
         """
         The issue knowledgebase is a bit different, because we are evaluating inbound issues, we need to make sure the knowledgebase
         isn't indexed with any issues from the org in our test set.
@@ -149,6 +149,11 @@ class Orchestrator:
             for issue in issues:
                 if issue.primary_key not in indexed_issues_ids:
                     test_set.append(issue)
+
+        # 4. Randomly sample the test set to be the desired test subset
+        random.shuffle(test_set)
+        test_set = test_set[:int(len(test_set) * test_subset)]
+        logging.info(f"Final test set size after sampling: {len(test_set)}")
 
         return test_set
 

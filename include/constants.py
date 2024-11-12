@@ -25,10 +25,11 @@ EVAL_AGENT_RESPONSE_PROMPT = "include/prompts/eval_agent_response.txt"
 DEBUG_ISSUE_FILE = "include/prompts/debug_issue_tools.txt"
 DEBUG_ISSUE_FINAL_PROMPT = "include/prompts/debug_issue_final.txt"
 COALESCE_ISSUE_PROMPT = "include/prompts/coalesce_issue.txt"
+COALESCE_DOCU_PROMPT = "include/prompts/coalesce_docu.txt"
 
 # Model constants
-MODEL_LIGHT = "claude-3-haiku-20240307"
-MODEL_HEAVY = "claude-3-5-sonnet-20240620"
+MODEL_LIGHT = "claude-3-5-haiku-latest"
+MODEL_HEAVY = "claude-3-5-sonnet-latest"
 
 # Tool constants
 DEBUG_TOOLS = [

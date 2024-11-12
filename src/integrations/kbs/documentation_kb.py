@@ -1,7 +1,7 @@
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
-from include.constants import MODEL_HEAVY
+from include.constants import MODEL_HEAVY, 
 from src.storage.vector import VectorDB
 from anthropic import Anthropic
 from typing import List, Tuple
@@ -163,19 +163,21 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
                     metadata=metadata,
                 )
                 kb_responses.append(kb_response)
+                
+            with open(COALESCE_DOCU, "r", encoding="utf8") as fp:
+                sysprompt = fp.read()
 
             messages = [
-                {"role": "user", "content": query},
                 {
-                    "role": "assistant",
-                    "content": "Here are the documentation pages I found that match your query:",
+                    "role": "user",
+                    "content": f"issue: {query}\n\ndocumentation pages: {json.dumps(results)}",
                 },
-                {"role": "user", "content": json.dumps(results)},
             ]
 
             response = self.client.messages.create(
                 model=MODEL_HEAVY,
                 max_tokens=1024,
+                system=sysprompt,
                 messages=messages,
             )
 
