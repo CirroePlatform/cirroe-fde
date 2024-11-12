@@ -1,7 +1,7 @@
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
-from include.constants import MODEL_HEAVY, 
+from include.constants import MODEL_HEAVY, COALESCE_DOCU_PROMPT
 from src.storage.vector import VectorDB
 from anthropic import Anthropic
 from typing import List, Tuple
@@ -163,8 +163,8 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
                     metadata=metadata,
                 )
                 kb_responses.append(kb_response)
-                
-            with open(COALESCE_DOCU, "r", encoding="utf8") as fp:
+
+            with open(COALESCE_DOCU_PROMPT, "r", encoding="utf8") as fp:
                 sysprompt = fp.read()
 
             messages = [
