@@ -243,6 +243,8 @@ class Evaluator:
                 'issue_comments': json.dumps(comments)
             })
 
+            logging.info(f"Evaluated issue {issue.primary_key}. Success: {success}")
+
         success_rate = total_success / total_issues
         logging.info(
             f"Evaluation complete. test/train ratio: {self.test_train_ratio}. Total issues: {total_issues}, Total success: {total_success}, Success rate: {success_rate}."

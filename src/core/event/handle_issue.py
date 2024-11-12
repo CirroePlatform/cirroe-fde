@@ -22,7 +22,7 @@ client = anthropic.Anthropic()
 
 
 def debug_issue(
-    issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 5
+    issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 3
 ) -> str:
     """
     Giiven some issue, the agent will try to solve it using the tools available to it and return a response of a comment to the issue.
