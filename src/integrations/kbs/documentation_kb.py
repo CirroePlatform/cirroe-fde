@@ -175,7 +175,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
 
             response = self.client.messages.create(
                 model=MODEL_HEAVY,
-                max_tokens=2048,
+                max_tokens=1024,
                 messages=messages,
             )
 

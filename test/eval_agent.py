@@ -1,14 +1,15 @@
+from src.model.issue import Issue, OpenIssueRequest
+from typing import List
 from uuid import UUID
 import anthropic
-import json
 import logging
-import os
 import random
-from typing import List, Set
-from src.model.issue import Issue, OpenIssueRequest
+import json
+import csv
+import os
 
-from src.core.event.handle_issue import debug_issue
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.core.event.handle_issue import debug_issue
 from src.storage.vector import VectorDB
 
 from include.constants import (
@@ -16,8 +17,8 @@ from include.constants import (
     EVAL_AGENT_RESPONSE_PROMPT,
     MODEL_LIGHT,
     CACHE_DIR,
+    EVAL_OUTPUT_FILE,
 )
-
 
 class Orchestrator:
     """
@@ -214,6 +215,7 @@ class Evaluator:
         """
         total_issues = len(self.test_issues)
         total_success = 0
+        eval_results = []
 
         for issue in self.test_issues:
             # Take the comments out of the issue object
@@ -227,8 +229,28 @@ class Evaluator:
 
             # Add the comments back to the issue object for evaluation
             issue.comments = comments
-            total_success += self.evaluate_agent_response(issue, response)
+            success = self.evaluate_agent_response(issue, response)
+            total_success += success
 
+            # Record evaluation data
+            eval_results.append({
+                'org_id': str(self.org_id),
+                'issue_id': str(issue.primary_key),
+                'test_train_ratio': self.test_train_ratio,
+                'success': success,
+                'agent_response': response,
+                'issue_description': issue.description,
+                'issue_comments': json.dumps(comments)
+            })
+
+        success_rate = total_success / total_issues
         logging.info(
-            f"Evaluation complete. test/train ratio: {self.test_train_ratio}. Total issues: {total_issues}, Total success: {total_success}, Success rate: {total_success / total_issues}."
+            f"Evaluation complete. test/train ratio: {self.test_train_ratio}. Total issues: {total_issues}, Total success: {total_success}, Success rate: {success_rate}."
         )
+
+        file_exists = os.path.exists(EVAL_OUTPUT_FILE)
+        with open(EVAL_OUTPUT_FILE, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=eval_results[0].keys())
+            if not file_exists:
+                writer.writeheader()
+            writer.writerows(eval_results)

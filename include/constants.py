@@ -14,6 +14,8 @@ CACHE_DIR = "include/cache"
 
 # Evaluation constants
 DEFAULT_TEST_TRAIN_RATIO = 0.2
+EVAL_OUTPUT_FILE = "include/eval_output.csv"
+
 
 # Github constants
 CLOSED = "closed"

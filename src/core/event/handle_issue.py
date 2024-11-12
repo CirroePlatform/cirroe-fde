@@ -38,7 +38,7 @@ def debug_issue(
     response = client.messages.create(
         model=MODEL_LIGHT,
         system=sysprompt,
-        max_tokens=2048,
+        max_tokens=1024,
         tools=DEBUG_TOOLS,
         tool_choice={"type": "any"},
         messages=messages,
@@ -106,7 +106,7 @@ def debug_issue(
 
         response = client.messages.create(
             model=MODEL_LIGHT,
-            max_tokens=2048,
+            max_tokens=1024,
             tools=DEBUG_TOOLS,
             tool_choice={"type": "any"},
             messages=messages,
@@ -131,7 +131,7 @@ def debug_issue(
                 final_call = client.messages.create(
                     model=MODEL_HEAVY,
                     system=final_sysprompt,
-                    max_tokens=2048,
+                    max_tokens=1024,
                     messages=messages,
                     temperature=0.7,
                 )
