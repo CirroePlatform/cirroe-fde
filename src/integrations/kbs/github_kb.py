@@ -1,4 +1,6 @@
 import os
+import traceback
+import time
 from uuid import UUID
 import requests
 import logging
@@ -93,14 +95,23 @@ class GithubIntegration(BaseKnowledgeBase):
             # Filter out pull requests from the response
             issues = [issue for issue in content if "pull_request" not in issue]
 
-            # Fetch comments for each issue TODO add a handler in case we get rate limited to retry.
-            for issue in issues:
-                comments_url = issue["comments_url"]
-                comments_response = requests.get(comments_url, headers=headers)
-                comments_response.raise_for_status()
+            # Fetch comments for each issue
+            for i in range(len(issues)):
+                comments_url = issues[i]["comments_url"]
 
-                # Add comments to the issue object
-                issue["comments"] = comments_response.json()
+                try:
+                    comments_response = requests.get(comments_url, headers=headers)
+                    comments_response.raise_for_status()
+
+                    # Add comments to the issue object
+                    issues[i]["comments"] = comments_response.json()
+                except requests.exceptions.Timeout or requests.exceptions.RateLimitError as e: # TODO this handler and catch is untested.
+                    logging.error(
+                        f"request timed out or was rate limited. Sleeping for a few secs then retrying. {e}"
+                    )
+                    logging.error(traceback.format_exc())
+                    time.sleep(10)
+                    i -= 1
 
             all_issues.extend(issues)
 
