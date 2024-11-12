@@ -46,34 +46,25 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
 
     kb_responses = []
     while response.stop_reason == "tool_use":
-        response_message = response.content[0].input
-        tool_name = response.content[0].name
-        tool_call_id = response.content[0].id
+        tool_calls = response.content[0]
+        tool_name = tool_calls.name
+        tool_call_id = tool_calls.id
+        tool_input = tool_calls.input
+        
         logger.info("Tool name: %s", tool_name)
-        logger.info("Response message: %s", response_message)
+        logger.info("Tool input: %s", tool_input)
         logger.info("Tool call id: %s", tool_call_id)
 
         if tool_name:
-            # Add assistant's tool call message
+            # Add the assistant's message with their reasoning/request
             messages.append({
                 "role": "assistant",
-                "content": "",
-                "tool_calls": [{
-                    "id": tool_call_id,
-                    "type": "function",
-                    "function": {
-                        "name": tool_name,
-                        "arguments": response_message
-                    }
-                }]
+                "content": f"I'll search using {tool_name} with the following parameters: {tool_input}"
             })
 
             function_name = tool_name
-            function_args = response_message
-            function_response: str
+            function_args = tool_input
             fn_to_call = TOOLS_MAP[function_name]
-
-            logger.info("CALL tool %s with %s", function_name, function_args)
 
             try:
                 kbres, function_response = fn_to_call(**function_args)
@@ -84,17 +75,15 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
                 function_response = str(e)
 
             logger.info(
-                "tool %s responded with %s",
+                "Tool %s responded with %s",
                 function_name,
                 function_response,
             )
+            
+            # Add the function response as a user message
             messages.append({
-                "role": "assistant",
-                "content": "",
-                "tool_outputs": [{
-                    "tool_call_id": tool_call_id,
-                    "output": function_response
-                }]
+                "role": "user",
+                "content": f"Results from {tool_name}: {function_response}"
             })
 
         response = client.messages.create(
@@ -105,33 +94,38 @@ def debug_issue(issue_req: OpenIssueRequest, github_repos: List[Repository]) -> 
             messages=messages,
         )
 
-        logger.info("Response: %s", response)
-
     # Second phase: Request final summarized response
     if response.stop_reason != "tool_use":
-        if response.content and len(response.content) > 0:
-            final_response = response.content[0].text
-        else:
-            with open(DEBUG_ISSUE_FINAL_PROMPT, "r", encoding="utf8") as fp:
-                sysprompt = fp.read()
+        try:
+            if response.content and len(response.content) > 0:
+                final_response = response.content[0].text
+            else:
+                with open(DEBUG_ISSUE_FINAL_PROMPT, "r", encoding="utf8") as fp:
+                    final_sysprompt = fp.read()
 
-            final_call = client.messages.create(
-                messages=messages,
-                model=MODEL_HEAVY,
-                max_tokens=2048,
-                system=sysprompt,
-                temperature=0.7
-            )
+                final_call = client.messages.create(
+                    model=MODEL_HEAVY,
+                    system=final_sysprompt,
+                    max_tokens=2048,
+                    messages=messages,
+                    temperature=0.7,
+                )
+                
+                if final_call.content and len(final_call.content) > 0:
+                    final_response = final_call.content[0].text
+                else:
+                    final_response = "Unable to generate a final response. Please review the collected information."
+
+            logger.info("Final response generated: %s", final_response)
             
-            if final_call.content and len(final_call.content) > 0:
-                final_response = final_call.content[0].text
+            return {
+                'response': final_response,
+                'kb_responses': kb_responses
+            }
 
-    logger.info(
-        "Would've added comment to ticket: %s", final_response
-    )
-
-    # kb_responses can be used here as well. not sure what to do with it yet.
-    return final_response
+        except Exception as e:
+            logger.error("Error generating final response: %s", str(e))
+            raise RuntimeError(f"Failed to generate final response: {str(e)}")
 
 def index_all_issues_async(org_id: UUID):
     """

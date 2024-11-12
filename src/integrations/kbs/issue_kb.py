@@ -1,6 +1,7 @@
 import json
 from typing import Dict, List, Tuple
 from uuid import UUID
+from anthropic import Anthropic
 from src.model.issue import Issue
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 
@@ -8,6 +9,7 @@ from src.storage.vector import VectorDB
 
 from logger import logger
 
+from include.constants import MODEL_HEAVY, COALESCE_ISSUE_PROMPT
 
 class IssueKnowledgeBase(BaseKnowledgeBase):
     """
@@ -24,6 +26,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         """
         super().__init__(org_id)
         self.vector_db = VectorDB(org_id)
+        self.client = Anthropic()
 
     def __respond_to_query(self, issues: List[KnowledgeBaseResponse], query: str) -> str:
         """
@@ -79,8 +82,22 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
                         relevance_score=issue_data["similarity"],
                     )
                 )
+                
+            with open(COALESCE_ISSUE_PROMPT, "r", encoding="utf8") as fp:
+                sysprompt = fp.read()
+             
+            messages = [
+                {"role": "user", "content": f"input query: {query}\nsimilar_issues: {json.dumps(issues)}"}
+            ]
 
-            return results, ""  # TODO add a natural language response to the query given the retrieved issues
+            response = self.client.messages.create(
+                model=MODEL_HEAVY,
+                system=sysprompt,
+                max_tokens=2048,
+                messages=messages,
+            )
+
+            return results, response.content[0].text
 
         except Exception as e:
             logger.error(f"Failed to query issues: {str(e)}")
