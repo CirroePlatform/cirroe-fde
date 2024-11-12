@@ -1,8 +1,9 @@
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
+from include.constants import MODEL_HEAVY
 from src.storage.vector import VectorDB
-from bs4 import BeautifulSoup
+from anthropic import Anthropic
 from typing import List, Tuple
 from lxml import etree
 from uuid import UUID
@@ -10,14 +11,14 @@ import traceback
 import requests
 import hashlib
 import logging
-import os
-
+import json
 
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
         self.vector_db = VectorDB(org_id)
         self.html_cleaner = HTMLCleaner()
+        self.client = Anthropic()
         super().__init__(org_id)
 
     def _parse_links_from_sitemap(self, url: str) -> List[str]:
@@ -143,4 +144,30 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             Tuple[List[KnowledgeBaseResponse], str]: List of documentation responses that match the search query,
                       String answer to the query
         """
-        logging.warning("Query functionality not implemented yet")
+        try:
+            query_vector = self.vector_db.vanilla_embed(query)
+            results = self.vector_db.get_top_k_documentation(limit, query_vector) # TODO seeing similarity scores of 1. that seems off
+            
+            kb_responses = []
+            for result in results.values():
+                metadata = json.loads(result["metadata"])
+                kb_response = KnowledgeBaseResponse(source="documentation", content=metadata["content"], relevance_score=result["similarity"], metadata=metadata)
+                kb_responses.append(kb_response)
+            
+            messages = [
+                {"role": "user", "content": query},
+                {"role": "assistant", "content": "Here are the documentation pages I found that match your query:"},
+                {"role": "user", "content": json.dumps(results)}
+            ]
+
+            response = self.client.messages.create(
+                model=MODEL_HEAVY,
+                max_tokens=2048,
+                messages=messages,
+            )
+
+            return kb_responses, response.content[0].text
+        except Exception as e:
+            logging.error(f"Failed to query documentation: {str(e)}")
+            logging.error(traceback.format_exc())
+            return [], str(e)
