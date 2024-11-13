@@ -143,6 +143,9 @@ def debug_issue(
                 ):
                     final_response = final_call.content[0].text
                 else:
+                    logger.error(
+                        f"Failed to generate a final response, using fallback. Actual output: {final_call.content[0].text}"
+                    )
                     final_response = "Unable to generate a final response. Please review the collected information."
 
             logger.info("Final response generated: %s", final_response)

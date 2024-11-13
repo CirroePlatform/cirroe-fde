@@ -1,5 +1,5 @@
 from src.model.issue import Issue, OpenIssueRequest
-from typing import List
+from typing import List, Tuple, Dict
 from uuid import UUID
 import anthropic
 import logging
@@ -15,6 +15,7 @@ from src.storage.vector import VectorDB
 from include.constants import (
     DEFAULT_TEST_TRAIN_RATIO,
     EVAL_AGENT_RESPONSE_PROMPT,
+    EVAL_ISSUE_PREPROCESS_PROMPT,
     MODEL_LIGHT,
     CACHE_DIR,
     EVAL_OUTPUT_FILE,
@@ -191,20 +192,27 @@ class Evaluator:
         self.github_repos = github_repos
         self.judge_client = anthropic.Anthropic()
 
-    def preprocess_issue(self, issue: Issue) -> Issue:
+    def preprocess_issue(self, issue: Issue) -> str:
         """
-        Clean the ticket datapoint by removing the comments from the issue object.
-        """
-        comments = issue.comments
-        issue.comments = {}
+        Cleans the issue description for evaluation. Sometimes the issue description is empty, isn't actually an issue/is gibberish, or has part of the solution in the description.
 
-        return issue
+        Returns a cleaned issue description.
+        """
+        with open(EVAL_ISSUE_PREPROCESS_PROMPT, "r", encoding="utf8") as fp:
+            sysprompt = fp.read()
 
-    def postprocess_issue(self, issue: Issue, response: str) -> str:
-        """
-        Postprocess the agent's response to an issue.
-        """
-        return response
+        messages = [
+            {"role": "user", "content": issue.description},
+        ]
+
+        response = self.judge_client.messages.create(
+            model=MODEL_LIGHT,
+            system=sysprompt,
+            max_tokens=len(issue.description.split()),  # roughly 1 token per word assumption
+            messages=messages,
+        )
+
+        return response.content[0].text
 
     def evaluate_agent_response(self, issue: Issue, response: str) -> bool:
         """
@@ -240,20 +248,26 @@ class Evaluator:
 
         for issue in self.test_issues:
             # Take the comments out of the issue object
-            comments = issue.comments
-            issue.comments = {}
+            cleaned_issue_description = self.preprocess_issue(issue)
+            logging.info(
+                f"Preprocessed issue description: {cleaned_issue_description}, original issue description: {issue.description}"
+            )
+            if cleaned_issue_description == "":
+                continue
 
+            comments = issue.comments
+
+            issue.comments = {}
+            issue.description = cleaned_issue_description
             response = debug_issue(
                 OpenIssueRequest(requestor_id=self.org_id, issue=issue),
                 github_repos=self.github_repos,
             )
-
             # Add the comments back to the issue object for evaluation
             issue.comments = comments
+
             success = self.evaluate_agent_response(issue, response)
             total_success += success
-
-            # Record evaluation data
             eval_results.append(
                 {
                     "org_id": str(self.org_id),
@@ -261,7 +275,8 @@ class Evaluator:
                     "test_train_ratio": self.test_train_ratio,
                     "success": success,
                     "agent_response": response,
-                    "issue_description": issue.description,
+                    "actual_issue_description": issue.description,
+                    "cleaned_issue_description": cleaned_issue_description,
                     "issue_comments": json.dumps(comments),
                 }
             )
@@ -274,8 +289,11 @@ class Evaluator:
         )
 
         file_exists = os.path.exists(EVAL_OUTPUT_FILE)
+        # delete the file if it exists
+        if file_exists:
+            os.remove(EVAL_OUTPUT_FILE)
+
         with open(EVAL_OUTPUT_FILE, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=eval_results[0].keys())
-            if not file_exists:
-                writer.writeheader()
+            writer.writeheader()
             writer.writerows(eval_results)

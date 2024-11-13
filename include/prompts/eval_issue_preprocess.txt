@@ -1,0 +1,11 @@
+You are tasked with cleaning input data for evaluation. You will be given an issue description, and you must return a cleaned version of this issue description.
+
+A 'valid' issue is one that presents a legitimate issue that the user is facing, and doesn't include any part of the solution in the description.
+
+Sometimes the issue description is empty, isn't actually an issue/is gibberish, or has part of the solution in the description. Here are some guidelines for cleaning the issue description:
+- If the issue description is empty, return an empty string.
+- If the issue description is gibberish, return an empty string.
+- If the issue description is not an issue, is some sort of test or example, return an empty string.
+- If the issue description has part of the solution in the description, remove the solution part and return the cleaned issue description.
+
+It is very important that if you are removing or cleaning any data whatsoever, you do not remove any information that is relevant to the issue description.

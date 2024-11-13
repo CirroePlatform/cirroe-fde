@@ -26,6 +26,7 @@ DEBUG_ISSUE_FILE = "include/prompts/debug_issue_tools.txt"
 DEBUG_ISSUE_FINAL_PROMPT = "include/prompts/debug_issue_final.txt"
 COALESCE_ISSUE_PROMPT = "include/prompts/coalesce_issue.txt"
 COALESCE_DOCU_PROMPT = "include/prompts/coalesce_docu.txt"
+EVAL_ISSUE_PREPROCESS_PROMPT = "include/prompts/eval_issue_preprocess.txt"
 
 # Model constants
 MODEL_LIGHT = "claude-3-5-haiku-latest"
