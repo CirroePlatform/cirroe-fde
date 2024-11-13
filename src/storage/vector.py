@@ -1,17 +1,18 @@
 from pymilvus import DataType, CollectionSchema, FieldSchema
-from pymilvus import MilvusClient
-from pymilvus.milvus_client.index import IndexParams
-from sentence_transformers import SentenceTransformer
-from openai import OpenAI
-
-from logger import logger
-from typing import List, Any, Dict
-from uuid import UUID
-from dotenv import load_dotenv
-import os
-from src.model.issue import Issue
-from src.storage.supa import SupaClient
 from src.model.documentation import DocumentationPage
+from sentence_transformers import SentenceTransformer
+from pymilvus.milvus_client.index import IndexParams
+from typing import List, Any, Dict, Union
+from src.storage.supa import SupaClient
+from pymilvus import MilvusClient
+from typeguard import typechecked
+from src.model.issue import Issue
+from dotenv import load_dotenv
+from openai import OpenAI
+from uuid import UUID
+import json
+import os
+
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
@@ -54,7 +55,7 @@ class EmbeddingModel:
         if self.model_name.lower() == OPENAI_EMBED:
             response = self.client.embeddings.create(
                 model=self.model_name,
-                input="The food was delicious and the waiter...",
+                input=text,
                 encoding_format="float",
             )
             return response.data[0].embedding
@@ -187,29 +188,33 @@ class VectorDB:
         """
         return issue.description + " " + " ".join(issue.comments.values())
 
-    def embed_issue(self, issue: Issue) -> List[float]:
-        """
-        Embed an issue description and return it.
-        """
-        if self.is_debug_mode:
-            return [0.0] * self.dimension
-
-        return self.model.encode(self.__issue_to_embeddable_string(issue))
-
     def __docu_page_to_embeddable_string(self, page: DocumentationPage) -> str:
         """
         Convert a documentation page to a string that can be embedded
         """
         return f"{page.url} {page.content}"
 
-    def embed_docu(self, page: DocumentationPage) -> List[float]:
+    @typechecked
+    def embed(self, data: Union[Issue, DocumentationPage]) -> List[float]:
         """
-        Embed a documentation page and return it.
+        Embed either an issue or documentation page and return the embedding.
+        
+        Args:
+            data: Either an Issue or DocumentationPage object to embed
+            
+        Returns:
+            List[float]: The embedding vector
         """
         if self.is_debug_mode:
             return [0.0] * self.dimension
 
-        return self.model.encode(self.__docu_page_to_embeddable_string(page))
+        if isinstance(data, Issue):
+            text = self.__issue_to_embeddable_string(data)
+        else:
+            text = self.__docu_page_to_embeddable_string(data)
+
+        return self.model.encode(text)
+
 
     def add_issue(self, issue: Issue):
         """
@@ -226,7 +231,7 @@ class VectorDB:
             ) == self.__issue_to_embeddable_string(issue):
                 return  # Issue content is the same as existing issue, just continue.
 
-        vector = self.embed_issue(issue)
+        vector = self.embed(issue)
         entity = [
             {
                 "primary_key": str(issue.primary_key),
@@ -316,7 +321,7 @@ class VectorDB:
             ) == self.__docu_page_to_embeddable_string(doc):
                 return  # Page content is the same as existing page, just continue.
 
-        vector = self.embed_docu(doc)
+        vector = self.embed(doc)
         entity = [
             {
                 "primary_key": str(doc.primary_key),

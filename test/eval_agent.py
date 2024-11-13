@@ -190,6 +190,21 @@ class Evaluator:
         self.github_repos = github_repos
         self.judge_client = anthropic.Anthropic()
 
+    def preprocess_issue(self, issue: Issue) -> Issue:
+        """
+        Clean the ticket datapoint by removing the comments from the issue object.
+        """
+        comments = issue.comments
+        issue.comments = {}
+
+        return issue
+    
+    def postprocess_issue(self, issue: Issue, response: str) -> str:
+        """
+        Postprocess the agent's response to an issue.
+        """
+        return response
+
     def evaluate_agent_response(self, issue: Issue, response: str) -> bool:
         """
         Evaluate the agent's response to an issue. Returns a boolean value indicating whether the response was correct, uses

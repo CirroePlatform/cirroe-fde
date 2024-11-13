@@ -129,11 +129,11 @@ def debug_issue(
                     final_sysprompt += "\n\nNote: We ran out of tools calls for this particular issue. Please try to provide a response based on the information provided. If you cannot provide a response, please answer with a simple <failure> tag."
 
                 final_call = client.messages.create(
-                    model=MODEL_HEAVY,
+                    model=MODEL_LIGHT,
                     system=final_sysprompt,
                     max_tokens=1024,
                     messages=messages,
-                    temperature=0.7,
+                    temperature=0.1,
                 )
 
                 if (
