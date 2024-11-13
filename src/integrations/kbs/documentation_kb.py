@@ -12,6 +12,7 @@ import requests
 import hashlib
 import logging
 import json
+import tqdm
 
 
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
@@ -89,7 +90,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         """
         logging.info("Indexing list of links into vector database")
 
-        for url in links:
+        for url in tqdm.tqdm(links, desc="Indexing links"):
             content = self._fetch_page_content(url)
 
             try:
@@ -149,9 +150,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         """
         try:
             query_vector = self.vector_db.vanilla_embed(query)
-            results = self.vector_db.get_top_k_documentation(
-                limit, query_vector
-            )  # TODO seeing similarity scores of 1. that seems off
+            results = self.vector_db.get_top_k_documentation(limit, query_vector)
 
             kb_responses = []
             for result in results.values():

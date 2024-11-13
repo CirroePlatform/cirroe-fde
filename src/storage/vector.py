@@ -198,10 +198,10 @@ class VectorDB:
     def embed(self, data: Union[Issue, DocumentationPage]) -> List[float]:
         """
         Embed either an issue or documentation page and return the embedding.
-        
+
         Args:
             data: Either an Issue or DocumentationPage object to embed
-            
+
         Returns:
             List[float]: The embedding vector
         """
@@ -214,7 +214,6 @@ class VectorDB:
             text = self.__docu_page_to_embeddable_string(data)
 
         return self.model.encode(text)
-
 
     def add_issue(self, issue: Issue):
         """

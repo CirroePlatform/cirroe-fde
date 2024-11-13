@@ -20,6 +20,7 @@ from include.constants import (
     EVAL_OUTPUT_FILE,
 )
 
+
 class Orchestrator:
     """
     Orchestrates the testing of the agent on a given org.
@@ -152,7 +153,7 @@ class Orchestrator:
 
         # 4. Randomly sample the test set to be the desired test subset
         random.shuffle(test_set)
-        test_set = test_set[:int(len(test_set) * test_subset)]
+        test_set = test_set[: int(len(test_set) * test_subset)]
         logging.info(f"Final test set size after sampling: {len(test_set)}")
 
         return test_set
@@ -198,7 +199,7 @@ class Evaluator:
         issue.comments = {}
 
         return issue
-    
+
     def postprocess_issue(self, issue: Issue, response: str) -> str:
         """
         Postprocess the agent's response to an issue.
@@ -253,15 +254,17 @@ class Evaluator:
             total_success += success
 
             # Record evaluation data
-            eval_results.append({
-                'org_id': str(self.org_id),
-                'issue_id': str(issue.primary_key),
-                'test_train_ratio': self.test_train_ratio,
-                'success': success,
-                'agent_response': response,
-                'issue_description': issue.description,
-                'issue_comments': json.dumps(comments)
-            })
+            eval_results.append(
+                {
+                    "org_id": str(self.org_id),
+                    "issue_id": str(issue.primary_key),
+                    "test_train_ratio": self.test_train_ratio,
+                    "success": success,
+                    "agent_response": response,
+                    "issue_description": issue.description,
+                    "issue_comments": json.dumps(comments),
+                }
+            )
 
             logging.info(f"Evaluated issue {issue.primary_key}. Success: {success}")
 
@@ -271,7 +274,7 @@ class Evaluator:
         )
 
         file_exists = os.path.exists(EVAL_OUTPUT_FILE)
-        with open(EVAL_OUTPUT_FILE, 'a', newline='', encoding='utf-8') as f:
+        with open(EVAL_OUTPUT_FILE, "a", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=eval_results[0].keys())
             if not file_exists:
                 writer.writeheader()

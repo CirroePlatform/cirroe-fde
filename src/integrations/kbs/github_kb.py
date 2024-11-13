@@ -105,7 +105,9 @@ class GithubIntegration(BaseKnowledgeBase):
 
                     # Add comments to the issue object
                     issues[i]["comments"] = comments_response.json()
-                except requests.exceptions.Timeout or requests.exceptions.RateLimitError as e: # TODO this handler and catch is untested.
+                except (
+                    requests.exceptions.Timeout or requests.exceptions.RateLimitError
+                ) as e:  # TODO this handler and catch is untested.
                     logging.error(
                         f"request timed out or was rate limited. Sleeping for a few secs then retrying. {e}"
                     )
