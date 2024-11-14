@@ -208,7 +208,9 @@ class Evaluator:
         response = self.judge_client.messages.create(
             model=MODEL_LIGHT,
             system=sysprompt,
-            max_tokens=len(issue.description.split()),  # roughly 1 token per word assumption
+            max_tokens=len(
+                issue.description.split()
+            ),  # roughly 1 token per word assumption
             messages=messages,
         )
 

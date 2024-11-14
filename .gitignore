@@ -166,3 +166,4 @@ cython_debug/
 scripts/scriptv
 *.json
 *.jsonl
+*.csv
