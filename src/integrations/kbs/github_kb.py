@@ -61,10 +61,15 @@ class GithubIntegration(BaseKnowledgeBase):
         return os.getenv("GITHUB_TEST_TOKEN")
 
     def get_all_issues_json(
-        self, repo_name: str, state: Optional[str] = None
+        self, repo_name: str, state: Optional[str] = None, labels: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """
         Get all issues (excluding pull requests) for some provided repository.
+
+        Args:
+            repo_name: Name of repository to fetch issues from
+            state: Optional filter for issue state (open, closed)
+            labels: Optional list of label names to filter issues by
         """
         if "github.com" in repo_name:
             repo_name = "/".join(repo_name.split("/")[-2:])
@@ -78,12 +83,13 @@ class GithubIntegration(BaseKnowledgeBase):
             "X-GitHub-Api-Version": "2022-11-28",
         }
 
-        # Add parameters to exclude pull requests and filter by state
-        params = (
-            {"state": state, "per_page": 100, "page": 1}
-            if state is not None
-            else {"per_page": 100, "page": 1}
-        )
+        # Add parameters to exclude pull requests and filter by state and labels
+        params = {"per_page": 100, "page": 1}
+        if state is not None:
+            params["state"] = state
+        if labels is not None:
+            params["labels"] = ",".join(labels)
+
         url = f"https://api.github.com/repos/{self.org_name}/{repo_name}/issues"
 
         all_issues = []
@@ -124,7 +130,6 @@ class GithubIntegration(BaseKnowledgeBase):
             params["page"] += 1
 
         return all_issues
-
     def index_user(self):
         """
         Index all of the organization's repositories.

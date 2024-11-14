@@ -61,7 +61,9 @@ class Orchestrator:
             with open(cache_file, "r", encoding="utf8") as fp:
                 issues = json.load(fp)
         else:
-            issues = self.github_kb.get_all_issues_json(self.test_repo_name, "closed")
+            issues = self.github_kb.get_all_issues_json(
+                self.test_repo_name, "closed", ["bug", "help wanted", "question"]
+            )
             with open(cache_file, "w", encoding="utf8") as fp:
                 json.dump(issues, fp)
 
