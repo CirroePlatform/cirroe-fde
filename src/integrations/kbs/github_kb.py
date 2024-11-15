@@ -87,8 +87,6 @@ class GithubIntegration(BaseKnowledgeBase):
         params = {"per_page": 100, "page": 1}
         if state is not None:
             params["state"] = state
-        if labels is not None:
-            params["labels"] = ",".join(labels)
 
         url = f"https://api.github.com/repos/{self.org_name}/{repo_name}/issues"
 
@@ -100,11 +98,15 @@ class GithubIntegration(BaseKnowledgeBase):
 
             # Filter out pull requests from the response
             issues = [issue for issue in content if "pull_request" not in issue]
+            final_issues = []
 
             # Fetch comments for each issue
             for i in range(len(issues)):
-                comments_url = issues[i]["comments_url"]
 
+                # Get labels if they exist, and remove this from the set if it doesn't satisfy label constraints
+                issue_number = issues[i]["number"]
+
+                comments_url = issues[i]["comments_url"]
                 try:
                     comments_response = requests.get(comments_url, headers=headers)
                     comments_response.raise_for_status()
@@ -121,7 +123,17 @@ class GithubIntegration(BaseKnowledgeBase):
                     time.sleep(10)
                     i -= 1
 
-            all_issues.extend(issues)
+                if labels is not None:
+                    label_url = f"{url}/{issue_number}/labels"
+                    label_response = requests.get(label_url, headers=headers)
+                    label_response.raise_for_status()
+
+                    issue_labels = set([label["name"] for label in label_response.json()])
+
+                    if set(labels).intersection(issue_labels):
+                        final_issues.append(issues[i])
+
+            all_issues.extend(final_issues)
 
             # Check if we've received all issues
             if len(content) < params["per_page"]:
@@ -130,6 +142,7 @@ class GithubIntegration(BaseKnowledgeBase):
             params["page"] += 1
 
         return all_issues
+
     def index_user(self):
         """
         Index all of the organization's repositories.
