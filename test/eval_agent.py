@@ -1,5 +1,5 @@
 from src.model.issue import Issue, OpenIssueRequest
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Optional
 from uuid import UUID
 import anthropic
 import logging
@@ -58,9 +58,11 @@ class Orchestrator:
             CACHE_DIR, f"{self.test_repo_name}_closed_issues.json"
         )
         if os.path.exists(cache_file):
+            logging.info(f"Loading cached closed issues from {cache_file}...")
             with open(cache_file, "r", encoding="utf8") as fp:
                 issues = json.load(fp)
         else:
+            logging.info(f"No cached closed issues found. Fetching from github...")
             issues = self.github_kb.get_all_issues_json(
                 self.test_repo_name, "closed", ["bug", "help wanted", "question"]
             )
@@ -84,7 +86,7 @@ class Orchestrator:
 
         return solved_or_closed_issues
 
-    def setup_test_train_issues_splits(self, test_subset: float = 0.1) -> List[Issue]:
+    def setup_test_train_issues_splits(self, test_subset: Optional[float] = None) -> List[Issue]:
         """
         The issue knowledgebase is a bit different, because we are evaluating inbound issues, we need to make sure the knowledgebase
         isn't indexed with any issues from the org in our test set.
@@ -156,8 +158,9 @@ class Orchestrator:
 
         # 4. Randomly sample the test set to be the desired test subset
         random.shuffle(test_set)
-        test_set = test_set[: int(len(test_set) * test_subset)]
-        logging.info(f"Final test set size after sampling: {len(test_set)}")
+        if test_subset is not None:
+            test_set = test_set[: int(len(test_set) * test_subset)]
+            logging.info(f"Final test set size after sampling: {len(test_set)}")
 
         return test_set
 
@@ -166,6 +169,7 @@ class Orchestrator:
         Main entry point to evaluate our agent on a specific org's issues.
         """
         # 1. Setup the test and train issues
+        # test_issues = self.setup_test_train_issues_splits(0.1)
         test_issues = self.setup_test_train_issues_splits()
         logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
@@ -212,7 +216,7 @@ class Evaluator:
             system=sysprompt,
             max_tokens=len(
                 issue.description.split()
-            ),  # roughly 1 token per word assumption
+            ) * 2,  # roughly 2 tokens per word assumption
             messages=messages,
         )
 
