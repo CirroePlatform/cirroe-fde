@@ -16,3 +16,5 @@ beautifulsoup4
 lxml
 requests
 typeguard
+einops
+datasets

@@ -4,6 +4,7 @@ from sentence_transformers import SentenceTransformer
 from pymilvus.milvus_client.index import IndexParams
 from typing import List, Any, Dict, Union
 from src.storage.supa import SupaClient
+from include.constants import DOCUMENTATION, ISSUE, RUNBOOK, NVIDIA_EMBED, OPENAI_EMBED, DIMENSION, SUPPORTED_MODELS
 from pymilvus import MilvusClient
 from typeguard import typechecked
 from src.model.issue import Issue
@@ -13,16 +14,6 @@ from uuid import UUID
 import json
 import os
 
-
-# Embedding models
-NVIDIA_EMBED = "nvidia/NV-Embed-v2"
-OPENAI_EMBED = "text-embedding-3-small"
-SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
-DIMENSION = 1536
-
-DOCUMENTATION = "documentation"
-RUNBOOK = "runbook"
-ISSUE = "issue"
 
 load_dotenv()
 
@@ -41,28 +32,28 @@ class EmbeddingModel:
         """
         Get the client to generate embeddings over
         """
-        if name.lower() == OPENAI_EMBED:
+        if name.lower() == OPENAI_EMBED.lower():
             return OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        elif name.lower() == NVIDIA_EMBED:
+        elif name.lower() == NVIDIA_EMBED.lower():
             return SentenceTransformer(name, trust_remote_code=True)
         else:
-            raise f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
+            raise ValueError(f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}")
 
     def encode(self, text: str) -> List[List[float]]:
         """
         Encode the provided string
         """
-        if self.model_name.lower() == OPENAI_EMBED:
+        if self.model_name.lower() == OPENAI_EMBED.lower():
             response = self.client.embeddings.create(
                 model=self.model_name,
                 input=text,
                 encoding_format="float",
             )
             return response.data[0].embedding
-        elif self.model_name.lower() == NVIDIA_EMBED:
+        elif self.model_name.lower() == NVIDIA_EMBED.lower():
             return self.client.encode([text])[0]
         else:
-            raise f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
+            raise ValueError(f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}")
 
 
 # VectorDB class wrapping Milvus client and an embedding model

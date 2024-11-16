@@ -3,7 +3,7 @@ from uuid import UUID
 # Supabase constants
 ORG_NAME = "org_name"
 
-# test constants
+# Mem0
 MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
 MEM0AI_ORG_NAME = "mem0ai"
 MEM0AI_REPO_NAME = "mem0"
@@ -17,15 +17,23 @@ BASETEN_REPO_NAME = "truss"
 BASETEN_REPO_URL = f"https://github.com/{BASETEN_ORG_NAME}/{BASETEN_REPO_NAME}"
 BASETEN_DOCU_URL = "https://docs.baseten.co/sitemap.xml"
 
+# Qdrant
+QDRANT_ORG_ID = UUID("802f083b-5d7e-4418-bebc-6052f5634f8e")
+QDRANT_ORG_NAME = "qdrant"
+QDRANT_REPO_NAME = "qdrant"
+QDRANT_REPO_URL = f"https://github.com/{QDRANT_ORG_NAME}/{QDRANT_REPO_NAME}"
+QDRANT_DOCU_URL = "https://qdrant.tech/sitemap.xml"
+
 CACHE_DIR = "include/cache"
 
 # Evaluation constants
 DEFAULT_TEST_TRAIN_RATIO = 0.2
 EVAL_OUTPUT_FILE = "include/eval_output.csv"
 
-
 # Github constants
 CLOSED = "closed"
+INDEX_WITH_GREPTILE = True
+GITHUB_API_BASE = "https://api.github.com"
 
 # Prompt constants
 EVAL_AGENT_RESPONSE_PROMPT = "include/prompts/eval_agent_response.txt"
@@ -96,3 +104,14 @@ DEBUG_TOOLS = [
         },
     },
 ]
+
+# Embedding models
+NVIDIA_EMBED = "nvidia/NV-Embed-v2"
+OPENAI_EMBED = "text-embedding-3-small"
+SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
+DIMENSION = 1536
+
+# Vector DB constants
+DOCUMENTATION = "documentation"
+RUNBOOK = "runbook"
+ISSUE = "issue"
