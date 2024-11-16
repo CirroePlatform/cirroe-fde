@@ -10,6 +10,13 @@ MEM0AI_REPO_NAME = "mem0"
 MEM0AI_REPO_URL = f"https://github.com/{MEM0AI_ORG_NAME}/{MEM0AI_REPO_NAME}"
 MEM0AI_DOCU_URL = "https://docs.mem0.ai/sitemap.xml"
 
+# Baseten
+BASETEN_ORG_ID = UUID("802f083b-5d7e-4418-bebc-6052f5634f8e")
+BASETEN_ORG_NAME="basetenlabs"
+BASETEN_REPO_NAME = "truss"
+BASETEN_REPO_URL = f"https://github.com/{BASETEN_ORG_NAME}/{BASETEN_REPO_NAME}"
+BASETEN_DOCU_URL = "https://docs.baseten.co/sitemap.xml"
+
 CACHE_DIR = "include/cache"
 
 # Evaluation constants
