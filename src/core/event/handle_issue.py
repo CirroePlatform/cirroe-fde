@@ -73,10 +73,12 @@ def debug_issue(
     with open(DEBUG_ISSUE_FILE, "r", encoding="utf8") as fp:
         sysprompt = fp.read()
 
-    # Initialize message stream with issue description
+    # Initialize message stream with issue description and any comments
     messages = [
         {"role": "user", "content": issue_req.issue.description},
     ]
+    for comment in issue_req.issue.comments:
+        messages.append({"role": "user", "content": comment})
 
     # Initialize tools and response tracking
     search_tools = SearchTools(issue_req.requestor_id, github_repos)
@@ -94,7 +96,7 @@ def debug_issue(
             response = client.messages.create(
                 model=MODEL_LIGHT,
                 system=sysprompt,
-                max_tokens=1024,
+                max_tokens=2048,
                 tools=DEBUG_TOOLS,
                 tool_choice={"type": "auto"},
                 messages=messages,

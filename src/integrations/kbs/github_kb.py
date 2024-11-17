@@ -50,10 +50,15 @@ class GithubIntegration(BaseKnowledgeBase):
         if self.gh_token is None:
             self.gh_token = self.get_github_token(org_id)
 
-        self.headers = {
+        self.greptile_headers = {
             "Authorization": f"Bearer {os.getenv('GREPTILE_API_KEY')}",
             "X-GitHub-Token": f"{self.gh_token}",
             "Content-Type": "application/json",
+        }
+        self.github_headers = {
+            "Authorization": f"Bearer {self.gh_token}",
+            "Accept": "application/vnd.github.v3+json",
+            "X-GitHub-Api-Version": "2022-11-28",
         }
         self.repos = repos
 
@@ -87,6 +92,7 @@ class GithubIntegration(BaseKnowledgeBase):
                     description=f"title: {issue['title']}, description: {issue['body']}",
                     comments=comments,
                     org_id=self.org_id,
+                    ticket_number=str(issue["number"]),
                 )
             )
 
@@ -111,23 +117,16 @@ class GithubIntegration(BaseKnowledgeBase):
         else:
             repo_name = repo_name
 
-        # Set up API request
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        }
-
         # Add parameters to exclude pull requests and filter by state and labels
         params = {"per_page": 100, "page": 1}
         if state is not None:
             params["state"] = state
 
-        url = f"https://api.github.com/repos/{self.org_name}/{repo_name}/issues"
+        url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repo_name}/issues"
 
         all_issues = []
         while True:
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=self.github_headers, params=params)
             response.raise_for_status()
             content = response.json()
 
@@ -143,7 +142,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
                 comments_url = issues[i]["comments_url"]
                 try:
-                    comments_response = requests.get(comments_url, headers=headers)
+                    comments_response = requests.get(comments_url, headers=self.github_headers)
                     comments_response.raise_for_status()
 
                     # Add comments to the issue object
@@ -161,12 +160,8 @@ class GithubIntegration(BaseKnowledgeBase):
                 should_add = True
                 if labels is not None:
                     should_add = False
-                    label_url = f"{url}/{issue_number}/labels"
-                    label_response = requests.get(label_url, headers=headers)
-                    label_response.raise_for_status()
-
                     issue_labels = set(
-                        [label["name"] for label in label_response.json()]
+                        self.get_labels(issue_number, url)
                     )
 
                     if set(labels).intersection(issue_labels):
@@ -185,15 +180,17 @@ class GithubIntegration(BaseKnowledgeBase):
 
         return all_issues
 
-    def index_user(self):
+    def get_labels(self, issue_number: int, base_url: str) -> List[str]:
         """
-        Index all of the organization's repositories.
+        Get the labels for an issue.
+
+        Accepts a base url to the issues endpoint (e.g. https://api.github.com/repos/{org_name}/{repo_name}/issues), and the issue number.
         """
-        # get users' github token from supabase, set the self.headers['X-GitHub-Token']
-        # TODO
-        repos = self.repos
-        for repo in repos:
-            self.index(repo)
+        label_url = f"{base_url}/{issue_number}/labels"
+        label_response = requests.get(label_url, headers=self.github_headers)
+        label_response.raise_for_status()
+        
+        return [label["name"] for label in label_response.json()]
 
     def list_repositories(
         self, repo_names: Optional[List[str]] = None, max_repos: int = 30
@@ -208,17 +205,13 @@ class GithubIntegration(BaseKnowledgeBase):
         Returns:
             Dict mapping repository names to Repository objects
         """
-        url = f"https://api.github.com/orgs/{self.org_name}/repos"
-        github_headers = {
-            "Authorization": f"Bearer {self.gh_token}",
-            "Accept": "application/vnd.github.v3+json",
-        }
+        url = f"{GITHUB_API_BASE}/orgs/{self.org_name}/repos"
 
         page = 1
         repos = []
         while True:
             response = requests.get(
-                url, headers=github_headers, params={"per_page": 100, "page": page}
+                url, headers=self.github_headers, params={"per_page": 100, "page": page}
             )
             if response.status_code != 200:
                 raise Exception(
@@ -241,7 +234,7 @@ class GithubIntegration(BaseKnowledgeBase):
                 continue
 
             url = f"{self.api_base}/repositories/{github_repo['id']}"
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.github_headers)
 
             if response.status_code == 200:
                 repo_data = response.json()

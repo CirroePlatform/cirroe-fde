@@ -1,5 +1,9 @@
 from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
+from src.core.event.poll import poll_for_issues
+from test.eval_agent import Orchestrator
+from uuid import UUID
 import asyncio
+
 from include.constants import (
     MEM0AI_ORG_ID,
     MEM0AI_ORG_NAME,
@@ -14,8 +18,6 @@ from include.constants import (
     QDRANT_REPO_NAME,
     QDRANT_DOCU_URL,
 )
-from uuid import UUID
-from test.eval_agent import Orchestrator
 
 
 def evaluate(
@@ -41,12 +43,4 @@ def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
 
 if __name__ == "__main__":
     # random sampling of 10% enabled at the moment.
-    evaluate(MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, enable_labels=True)
-    evaluate(
-        BASETEN_ORG_ID,
-        BASETEN_ORG_NAME,
-        BASETEN_REPO_NAME,
-        enable_labels=False,
-        test_train_ratio=0.99,
-    )
-    evaluate(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, test_train_ratio=0.01)
+    poll_for_issues(MEM0AI_ORG_ID, MEM0AI_REPO_NAME, debug=True)
