@@ -40,13 +40,17 @@ def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
 
 
 if __name__ == "__main__":
+    index(MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, MEM0AI_DOCU_URL)
+    index(BASETEN_ORG_ID, BASETEN_ORG_NAME, BASETEN_REPO_NAME, BASETEN_DOCU_URL)
+    index(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, QDRANT_DOCU_URL)
+    
     # random sampling of 10% enabled at the moment.
-    evaluate(MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, enable_labels=True)
-    evaluate(
-        BASETEN_ORG_ID,
-        BASETEN_ORG_NAME,
-        BASETEN_REPO_NAME,
-        enable_labels=False,
-        test_train_ratio=0.99,
-    )
-    evaluate(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, test_train_ratio=0.01)
+    # evaluate(MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, enable_labels=True)
+    # evaluate(
+    #     BASETEN_ORG_ID,
+    #     BASETEN_ORG_NAME,
+    #     BASETEN_REPO_NAME,
+    #     enable_labels=False,
+    #     test_train_ratio=0.99,
+    # )
+    # evaluate(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, test_train_ratio=0.01)

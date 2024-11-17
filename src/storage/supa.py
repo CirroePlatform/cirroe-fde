@@ -5,9 +5,10 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from supabase.client import ClientOptions
 from enum import StrEnum
+from typing import Optional
 import logging
 
-
+from src.model.code import CodePage
 class Table(StrEnum):
     USERS = "UserMetadata"
     CHAT_SESSIONS = "ChatSessions"

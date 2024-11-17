@@ -13,9 +13,9 @@ from pymilvus import DataType, CollectionSchema, FieldSchema
 from src.model.documentation import DocumentationPage
 from sentence_transformers import SentenceTransformer
 from pymilvus.milvus_client.index import IndexParams
-from typing import List, Any, Dict, Union
+from src.model.code import CodePage, CodePageType
+from typing import List, Any, Dict, Union, Optional
 from src.storage.supa import SupaClient
-from src.model.code import CodePage
 from pymilvus import MilvusClient
 from typeguard import typechecked
 from src.model.issue import Issue
@@ -227,9 +227,9 @@ class VectorDB:
 
     def __code_to_embeddable_string(self, code: CodePage) -> str:
         """
-        Convert a code to a string that can be embedded
+        Convert a code to a string that can be embedded. If it's a file, we use the code content, otherwise we use the summary.
         """
-        return code.content
+        return code.code_content if code.page_type == CodePageType.FILE else code.summary
 
     @typechecked
     def embed(self, data: Union[Issue, DocumentationPage, CodePage]) -> List[float]:
@@ -281,6 +281,38 @@ class VectorDB:
         ]
 
         self.client.upsert(ISSUE, data=entity)
+
+
+    def get_code_page(self, primary_key: str) -> Optional[CodePage]:
+        """
+        Get a code page from the vector db.
+        """
+        data = self.client.get(CODE, primary_key)
+        return CodePage(**data[0]) if len(data) > 0 else None
+
+    def add_code_page(self, page: CodePage):
+        """
+        Add a new code page to the vector db.
+        """
+
+        prev_data = self.client.get(CODE, page.primary_key)
+        if len(prev_data) > 0:
+            prev_data_page = CodePage(**prev_data[0])
+            if self.__code_to_embeddable_string(prev_data_page) == self.__code_to_embeddable_string(page):
+                return  # Page content is the same as existing page, just continue.
+
+        vector = self.embed(page)
+        entity = [
+            {
+                "primary_key": str(page.primary_key),
+                "vector": vector,
+                "content": page.content,
+                "org_id": str(page.org_id),
+                "page_type": page.page_type,
+            }
+        ]
+
+        self.client.upsert(CODE, data=entity)
 
     def get_all_issues(self) -> List[Issue]:
         """

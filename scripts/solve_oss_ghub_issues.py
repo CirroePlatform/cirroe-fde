@@ -30,30 +30,30 @@ async def setup_all_kbs_with_repo(
     doc_kb = DocumentationKnowledgeBase(org_id)
 
     # 2. Index the repository with each knowledge base
-    # await github.index(Repository(remote="github.com", repository=repo_name, branch="main"))
-    await doc_kb.index(docu_url)
+    await github.index(Repository(remote="github.com", repository=f"{org_name}/{repo_name}", branch="main"))
+    # await doc_kb.index(docu_url)
 
     # 2.a Index the issues, need to pull all issues from the repo then index only enough to allow for evaluationi
-    logging.info(f"Getting all issues for {org_name}/{repo_name}")
-    issues = github.get_all_issues_json(repo_name, CLOSED)
-    random.shuffle(issues)
-    indexable_issues = issues[: int(len(issues) * index_fraction)]
+    # logging.info(f"Getting all issues for {org_name}/{repo_name}")
+    # issues = github.get_all_issues_json(repo_name, CLOSED)
+    # random.shuffle(issues)
+    # indexable_issues = issues[: int(len(issues) * index_fraction)]
 
-    for issue in tqdm.tqdm(
-        indexable_issues, desc="Indexing issues", total=len(indexable_issues)
-    ):
-        comments = {}
-        for comment in issue["comments"]:
-            comments[comment["user"]["login"]] = comment["body"]
+    # for issue in tqdm.tqdm(
+    #     indexable_issues, desc="Indexing issues", total=len(indexable_issues)
+    # ):
+    #     comments = {}
+    #     for comment in issue["comments"]:
+    #         comments[comment["user"]["login"]] = comment["body"]
 
-        await issue_kb.index(
-            Issue(
-                primary_key=str(issue["id"]),
-                description=f"title: {issue['title']}, description: {issue['body']}",
-                comments=comments,
-                org_id=org_id,
-            )
-        )
+    #     await issue_kb.index(
+    #         Issue(
+    #             primary_key=str(issue["id"]),
+    #             description=f"title: {issue['title']}, description: {issue['body']}",
+    #             comments=comments,
+    #             org_id=org_id,
+    #         )
+    #     )
 
 
 def solve_issue(repo: str, issue_id: int):

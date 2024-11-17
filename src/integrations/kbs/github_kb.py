@@ -3,12 +3,16 @@ import traceback
 import time
 from uuid import UUID
 import requests
+from typeguard import typechecked
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
 
+from src.storage.supa import SupaClient
+from src.storage.vector import VectorDB
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
+from src.model.code import CodePage, CodePageType
 
 
 class Repository(BaseModel):
@@ -20,6 +24,30 @@ class Repository(BaseModel):
 class LinkGithubRequest(BaseModel):
     org_id: UUID
     org_name: str
+
+
+# This is basically a wrapper around a code page type that allows us to perform tree operations.
+class Node:
+    def __init__(
+        self,
+        primary_key: str,
+        org_id: str,
+        name: str,
+        page_type: CodePageType,
+        children_ids: List[str],
+        summary: Optional[str] = None,
+        code_content: Optional[str] = None,
+    ) -> None:
+        self.data = CodePage(
+            primary_key=primary_key,
+            org_id=org_id,
+            page_type=page_type,
+            name=name,
+            vector=[],
+            summary=summary,
+            code_content=code_content,
+        )
+        self.children_ids = children_ids
 
 
 class GithubIntegration(BaseKnowledgeBase):
@@ -55,6 +83,10 @@ class GithubIntegration(BaseKnowledgeBase):
             "Content-Type": "application/json",
         }
         self.repos = repos
+        self.treenode_cache: Dict[str, Node] = {}
+        
+        self.supa_client = SupaClient(self.org_id)
+        self.vector_db = VectorDB(self.org_id)
 
     def get_github_token(self, org_id: str) -> str:
         """
@@ -250,11 +282,112 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to index repository: {str(e)}")
             return False
 
-    def index_custom(self, repository: Repository) -> bool:
+    def __get_root_node_pkey(self, repository: Repository) -> Optional[str]:
+        """
+        Get the primary key of the root node from the vector db.
+        """
+        return f"{repository.remote}/{repository.repository}/-1"
+
+    def __repository_to_nodes(self, repository: Repository) -> Node:
+        """
+        Given a repository, loads the entire repo into a tree. Doesn't compute any embeddings or summaries,
+        just loads names and structure of node tree.
+
+        Make sure to add the nodes to the self.treenode_cache.
+
+        Args:
+            repository (Repository): the repo to construct from.
+
+        Returns:
+            Node: root node of the tree
+        """
+        # Create root node for repository, OR use the node from the vector db if it exists.
+        root_pkey = self.__get_root_node_pkey(repository)
+        
+        root = self.vector_db.get_code_page(root_pkey)
+        if root is not None:
+            return root
+
+        root = Node(
+            primary_key=root_pkey, # All root nodes have this pkey
+            org_id=str(self.org_id),
+            name=repository.repository,
+            page_type=CodePageType.DIRECTORY,
+            children_ids=[]
+        )
+        self.treenode_cache[root.data.primary_key] = root
+
+        # Get repository contents from GitHub API
+        repo_url = f"{GITHUB_API_BASE}/repositories/{repository.repository}/contents" # getting bad credentials error on this one.
+        contents = requests.get(repo_url, headers=self.headers).json()
+        contents.raise_for_status()
+
+        
+        # Recursively build tree
+        def build_tree(parent_node: Node, items: list, path: str = ""):
+            for item in items:
+                item_path = f"{path}/{item['name']}" if path else item['name']
+                node_id = f"{repository.remote}/{repository.repository}/{item_path}"
+                
+                # Create node for this item
+                node = Node(
+                    primary_key=node_id,
+                    org_id=self.org_id,
+                    name=item['name'],
+                    page_type=CodePageType.DIRECTORY if item['type'] == 'dir' else CodePageType.FILE,
+                    children_ids=[]
+                )
+                self.treenode_cache[node_id] = node
+                parent_node.children_ids.append(node_id)
+
+                # Recursively get contents if directory
+                if item['type'] == 'dir':
+                    subdir_url = f"{GITHUB_API_BASE}/repositories/{repository.repository}/contents/{item_path}"
+                    subdir_response = requests.get(subdir_url, headers=self.headers)
+                    subdir_response.raise_for_status()
+                    build_tree(node, subdir_response.json(), item_path)
+
+        # Build full tree starting from root
+        build_tree(root, contents)
+        
+        return root
+
+    def __index_tree(self, root: Node):
+        """DFS iterates through the structure, and adds each page to the vector db.
+
+        At each page, we generate a summary, and add the page to the vector db.
+        At directories, we generate a summary given the child summaries.
+
+        Args:
+            root (Node): root node to traverse through
+        """
+        # 1. Index the current node.
+        self.vector_db.add_code_page(root.data)
+
+        if root.page_type == CodePageType.DIRECTORY:
+            for node_id in root.children_ids:
+                # 2. load the page for this id from the treenode cache. If the node doesn't exist in the cache, load it from the vector db.
+                node = self.treenode_cache.get(node_id)
+                if node is None:
+                    node = self.vector_db.get_code_page(node_id)
+                
+                # 3. Traverse to each page, dfs style.
+                self.__index_tree(node)
+
+    def index_merkle(self, repository: Repository) -> bool:
         """
         Get a list of all the files in the repo, index each file with the vector DB
         """
-        pass
+
+        try:
+            # 1. Get the entire file structure of the repo
+            tree = self.__repository_to_nodes(repository)
+
+            # 2. dfs through the structure, add each page to the vector DB.
+            self.__index_tree(tree)
+        except Exception as e:
+            logging.error(f"Failed to query repositories: {str(e)}")
+            return False
 
     async def index(self, repository: Repository) -> bool:
         """
@@ -269,22 +402,11 @@ class GithubIntegration(BaseKnowledgeBase):
         if INDEX_WITH_GREPTILE:
             return self.index_greptile(repository)
         else:
-            return self.index_custom(repository)
+            return self.index_merkle(repository)
 
-    def query(
+    def query_greptile(
         self, query: str, limit: int = 5
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
-        """
-        Search code repositories with natural language queries
-
-        Args:
-            query: Natural language query about the codebase
-            limit: Maximum number of results to return
-
-        Returns:
-            Tuple of (List of KnowledgeBaseResponse objects containing search results,
-                      String answer to the query)
-        """
         try:
             url = f"{self.api_base}/query"
 
@@ -325,3 +447,40 @@ class GithubIntegration(BaseKnowledgeBase):
         except Exception as e:
             logging.error(f"Failed to query repositories: {str(e)}")
             return [], ""
+
+    def query_merkle(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
+        """Queries the merkle tree based search engine.
+
+        Args:
+            query: Natural language query about the codebase
+            limit: Maximum number of results to return
+
+        Returns:
+            Tuple of (List of KnowledgeBaseResponse objects containing search results,
+                      String answer to the query)
+        """
+        # 1. Load in the entire tree for the codebase (unsure on how I'm going to do this. )
+        # 2. Get the top k via vector db
+        # 3. In the sysprompt, specify the codebase structure with just the present nodes, as well as the nodes that are provided, and the content in those nodes.
+        # 4. Return some response to the user + those code pages. TODO Before you go barelling ahead into this, think about looing into graphRAG
+
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
+        """
+        Search code repositories with natural language queries
+
+        Args:
+            query: Natural language query about the codebase
+            limit: Maximum number of results to return
+
+        Returns:
+            Tuple of (List of KnowledgeBaseResponse objects containing search results,
+                      String answer to the query)
+        """
+        if INDEX_WITH_GREPTILE:
+            return self.query_greptile(query, limit)
+        else:
+            return self.query_merkle(query, limit)
