@@ -117,3 +117,6 @@ DOCUMENTATION = "documentation"
 RUNBOOK = "runbook"
 ISSUE = "issue"
 CODE = "code"
+
+# Poll constants
+POLL_INTERVAL = 10

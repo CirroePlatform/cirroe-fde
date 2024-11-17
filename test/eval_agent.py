@@ -85,6 +85,7 @@ class Orchestrator:
                     description=f"title: {issue['title']}, description: {issue['body']}",
                     comments=comments,
                     org_id=self.org_id,
+                    ticket_number=issue["number"],
                 )
             )
 

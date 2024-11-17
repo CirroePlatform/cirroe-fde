@@ -28,6 +28,10 @@ def append_message(messages: List[Dict[str, str]], role: str, content: str) -> N
         messages: List of message dictionaries
         role: Role of the message sender ('assistant' or 'user')
         content: The message content to append
+    
+    Returns:
+        {"response": final_response, "kb_responses": kb_responses}
+
     """
     messages.append({"role": role, "content": content})
 

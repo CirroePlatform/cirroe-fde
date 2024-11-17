@@ -14,6 +14,7 @@ class Issue(BaseModel):
     vector: Optional[List[float]] = None
     description: str
     comments: Dict[str, str]  # a dictionary of (requestor_name, comment) objects
+    ticket_number: Optional[str] = None
 
 
 # Merge models
