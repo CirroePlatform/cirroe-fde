@@ -18,3 +18,4 @@ requests
 typeguard
 einops
 datasets
+cerebras_cloud_sdk

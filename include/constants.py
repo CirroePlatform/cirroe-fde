@@ -42,6 +42,7 @@ DEBUG_ISSUE_FINAL_PROMPT = "include/prompts/debug_issue_final.txt"
 COALESCE_ISSUE_PROMPT = "include/prompts/coalesce_issue.txt"
 COALESCE_DOCU_PROMPT = "include/prompts/coalesce_docu.txt"
 EVAL_ISSUE_PREPROCESS_PROMPT = "include/prompts/eval_issue_preprocess.txt"
+BUG_ISSUE_PROMPT = "include/prompts/bug_issue_prompt.txt"
 
 # Model constants
 MODEL_LIGHT = "claude-3-5-haiku-latest"
@@ -120,3 +121,7 @@ CODE = "code"
 
 # Poll constants
 POLL_INTERVAL = 10
+BUG_LABELS = ["bug", "question"]
+
+# Finetune constants
+DEFAULT_BUG_OUTPUT_PATH = "include/bug_output.jsonl"
