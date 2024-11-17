@@ -112,8 +112,7 @@ class Orchestrator:
             f"Checking how many issues are already indexed in the vector db..."
         )
         indexed_issues = self.vector_db.get_all_issues()
-        indexed_issues_ids = set([issue.primary_key for issue in indexed_issues])
-        assert len(indexed_issues_ids) == len(indexed_issues)
+        indexed_issues_ids = set([issue.primary_key for issue in indexed_issues if issue.org_id == self.org_id])
         num_indexed_issues = len(indexed_issues_ids)
 
         test_set: List[Issue] = []
@@ -171,8 +170,8 @@ class Orchestrator:
         Main entry point to evaluate our agent on a specific org's issues.
         """
         # 1. Setup the test and train issues
-        # test_issues = self.setup_test_train_issues_splits(0.1)
-        test_issues = self.setup_test_train_issues_splits()
+        test_issues = self.setup_test_train_issues_splits(0.1)
+        # test_issues = self.setup_test_train_issues_splits()
         logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
         # 2. Evaluate the agent on the test issues
@@ -298,12 +297,15 @@ class Evaluator:
             f"Evaluation complete. test/train ratio: {self.test_train_ratio}. Total issues: {total_issues}, Total success: {total_success}, Success rate: {success_rate}."
         )
 
-        file_exists = os.path.exists(EVAL_OUTPUT_FILE)
+        # Create output filename based on org name
+        output_file = f"eval_results_{self.org_name}.csv"
+        file_exists = os.path.exists(output_file)
         # delete the file if it exists
         if file_exists:
-            os.remove(EVAL_OUTPUT_FILE)
-
-        with open(EVAL_OUTPUT_FILE, "a", newline="", encoding="utf-8") as f:
+            os.remove(output_file)
+        
+        # Write results to org-specific file
+        with open(output_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=eval_results[0].keys())
             writer.writeheader()
             writer.writerows(eval_results)

@@ -282,7 +282,7 @@ class VectorDB:
                 collection_name=ISSUE,
                 output_fields=output_fields,
                 limit=batch_size,
-                offset=offset,
+                offset=offset, # TODO: add filter by user_id
             )
 
             all_results.extend(results)

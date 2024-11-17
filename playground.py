@@ -28,5 +28,7 @@ def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
     asyncio.run(setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url))
 
 if __name__ == "__main__":
-    evaluate(BASETEN_ORG_ID, BASETEN_ORG_NAME, BASETEN_REPO_NAME, enable_labels=False)
-    evaluate(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, 0.05)
+    # random sampling of 10% enabled at the moment.
+    evaluate(MEM0AI_ORG_ID, MEM0AI_ORG_NAME, MEM0AI_REPO_NAME, enable_labels=True)
+    evaluate(BASETEN_ORG_ID, BASETEN_ORG_NAME, BASETEN_REPO_NAME, enable_labels=False, test_train_ratio=0.99)
+    evaluate(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, test_train_ratio=0.01)
