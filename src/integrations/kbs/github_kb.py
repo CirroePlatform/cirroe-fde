@@ -4,12 +4,13 @@ import time
 from uuid import UUID
 import requests
 import logging
+import tqdm
 from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
 
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
-
+from src.model.issue import Issue
 
 class Repository(BaseModel):
     remote: str  # e.g. "github.com"
@@ -62,6 +63,34 @@ class GithubIntegration(BaseKnowledgeBase):
         """
         # TODO
         return os.getenv("GITHUB_TEST_TOKEN")
+
+    def json_issues_to_issues(self, issues: List[Dict]) -> List[Issue]:
+        """
+        Convert a list of JSON issues to a list of Issue objects
+
+        Args:
+            issues (List[Dict]): List of JSON issues
+
+        Returns:
+            List[Issue]: List of Issue objects
+        """
+        issue_list = []
+
+        for issue in issues:
+            comments = {}
+            for comment in issue["comments"]:
+                comments[comment["user"]["login"]] = comment["body"]
+
+            issue_list.append(
+                Issue(
+                    primary_key=str(issue["id"]),
+                    description=f"title: {issue['title']}, description: {issue['body']}",
+                    comments=comments,
+                    org_id=self.org_id,
+                )
+            )
+
+        return issue_list
 
     def get_all_issues_json(
         self,
