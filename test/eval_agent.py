@@ -33,6 +33,7 @@ class Orchestrator:
         org_name: str,
         test_repo_name: str,
         test_train_ratio: float = DEFAULT_TEST_TRAIN_RATIO,
+        enable_labels: bool = True,
     ):
         self.org_id = org_id
         self.org_name = org_name
@@ -48,6 +49,7 @@ class Orchestrator:
 
         self.vector_db = VectorDB(org_id)
         self.github_kb = GithubIntegration(org_id, org_name, self.repos)
+        self.enable_labels = enable_labels
 
     def __get_closed_or_solved_issues(self) -> List[Issue]:
         """
@@ -64,7 +66,7 @@ class Orchestrator:
         else:
             logging.info(f"No cached closed issues found. Fetching from github...")
             issues = self.github_kb.get_all_issues_json(
-                self.test_repo_name, "closed", ["bug", "help wanted", "question"]
+                self.test_repo_name, "closed", ["bug", "help wanted", "question"] if self.enable_labels else None
             )
             with open(cache_file, "w", encoding="utf8") as fp:
                 json.dump(issues, fp)

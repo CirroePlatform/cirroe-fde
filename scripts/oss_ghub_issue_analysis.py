@@ -23,7 +23,7 @@ def analyze_github_issues(repo_url: str) -> Dict:
     """
 
     # Extract org/repo from URL if full URL provided
-    github = GithubIntegration(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1"), repo_url)
+    github = GithubIntegration(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1"), repo_url) # TODO this is wrong, arguments have changed.
     issues = github.get_all_issues_json(repo_url)
 
     time_deltas = []

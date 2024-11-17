@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
 
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
-
+from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
 
 class Repository(BaseModel):
     remote: str  # e.g. "github.com"
@@ -27,7 +27,7 @@ class GithubIntegration(BaseKnowledgeBase):
     """
 
     def __init__(
-        self, org_id: UUID, org_name: str, repos: Optional[List[Repository]] = None
+        self, org_id: UUID, org_name: str, repos: Optional[List[Repository]] = None, repo_names: Optional[List[str]] = None
     ):
         """
         Initialize Github integration for an organization
@@ -49,9 +49,7 @@ class GithubIntegration(BaseKnowledgeBase):
             "X-GitHub-Token": f"{self.gh_token}",
             "Content-Type": "application/json",
         }
-        self.repos = (
-            repos if repos is not None else self.list_repositories()
-        )  # Index on all repos if none are provided.
+        self.repos = repos
 
     def get_github_token(self, org_id: str) -> str:
         """
@@ -123,7 +121,9 @@ class GithubIntegration(BaseKnowledgeBase):
                     time.sleep(10)
                     i -= 1
 
+                should_add = True
                 if labels is not None:
+                    should_add = False
                     label_url = f"{url}/{issue_number}/labels"
                     label_response = requests.get(label_url, headers=headers)
                     label_response.raise_for_status()
@@ -131,7 +131,10 @@ class GithubIntegration(BaseKnowledgeBase):
                     issue_labels = set([label["name"] for label in label_response.json()])
 
                     if set(labels).intersection(issue_labels):
-                        final_issues.append(issues[i])
+                        should_add = True
+
+                if should_add:
+                    final_issues.append(issues[i])
 
             all_issues.extend(final_issues)
 
@@ -153,9 +156,13 @@ class GithubIntegration(BaseKnowledgeBase):
         for repo in repos:
             self.index(repo)
 
-    def list_repositories(self) -> Dict[str, Repository]:
+    def list_repositories(self, repo_names: Optional[List[str]] = None, max_repos: int = 30) -> Dict[str, Repository]:
         """
-        List all repositories for the organization
+        List repositories for the organization
+
+        Args:
+            repo_names: Optional list of repository names to filter by. If None, lists all repositories.
+            max_repos: Maximum number of repositories to request. Defaults to 300.
 
         Returns:
             Dict mapping repository names to Repository objects
@@ -178,36 +185,38 @@ class GithubIntegration(BaseKnowledgeBase):
                 )
 
             repos.extend(response.json())
-            if len(repos) == 0:
+            if len(repos) == 0 or len(repos) >= max_repos:
                 break
 
             page += 1
 
+        # Trim to max_repos if we exceeded it
+        repos = repos[:max_repos]
+
         repos_rv = {}
         for github_repo in repos:
+            # Skip if repo_names is specified and this repo is not in the list
+            if repo_names and github_repo['name'] not in repo_names:
+                continue
+                
             url = f"{self.api_base}/repositories/{github_repo['id']}"
             response = requests.get(url, headers=self.headers)
 
             if response.status_code == 200:
                 repo_data = response.json()
                 name = repo_data["repository"]
+     
                 repos_rv[name] = Repository(
-                    remote=repo_data["remote"],
+                    remote="github.com",
                     repository=name,
                     branch=repo_data.get("branch", "main"),
                 )
 
         return repos_rv
 
-    async def index(self, repository: Repository) -> bool:
+    def index_greptile(self, repository: Repository) -> bool:
         """
-        Index or reindex a repository for searching
-
-        Args:
-            repository: Repository to index
-
-        Returns:
-            bool indicating if indexing was successful
+        Index a repository with Greptile
         """
         try:
             url = f"{self.api_base}/repositories"
@@ -228,6 +237,27 @@ class GithubIntegration(BaseKnowledgeBase):
         except Exception as e:
             logging.error(f"Failed to index repository: {str(e)}")
             return False
+
+    def index_custom(self, repository: Repository) -> bool:
+        """
+        Get a list of all the files in the repo, index each file with the vector DB
+        """
+        pass
+
+    async def index(self, repository: Repository) -> bool:
+        """
+        Index or reindex a repository for searching
+
+        Args:
+            repository: Repository to index
+
+        Returns:
+            bool indicating if indexing was successful
+        """
+        if INDEX_WITH_GREPTILE:
+            return self.index_greptile(repository)
+        else:
+            return self.index_custom(repository)
 
     def query(
         self, query: str, limit: int = 5

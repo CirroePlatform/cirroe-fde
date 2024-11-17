@@ -18,9 +18,9 @@ from uuid import UUID
 from test.eval_agent import Orchestrator
 
 
-def evaluate(org_id: UUID, org_name: str, repo_name: str):
+def evaluate(org_id: UUID, org_name: str, repo_name: str, test_train_ratio: float = 0.2, enable_labels: bool = True):
     orchestrator = Orchestrator(
-        org_id, org_name, repo_name, test_train_ratio=0.2
+        org_id, org_name, repo_name, test_train_ratio=test_train_ratio, enable_labels=enable_labels
     )
     orchestrator.evaluate()
 
@@ -28,4 +28,5 @@ def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
     asyncio.run(setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url))
 
 if __name__ == "__main__":
-    index(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, QDRANT_DOCU_URL)
+    evaluate(BASETEN_ORG_ID, BASETEN_ORG_NAME, BASETEN_REPO_NAME, enable_labels=False)
+    evaluate(QDRANT_ORG_ID, QDRANT_ORG_NAME, QDRANT_REPO_NAME, 0.05)
