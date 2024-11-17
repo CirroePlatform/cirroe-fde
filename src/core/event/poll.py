@@ -3,18 +3,28 @@
     it will be handled by the issue handler.
 """
 
+from include.constants import POLL_INTERVAL, BUG_LABELS, REQUIRES_DEV_TEAM_PROMPT, GITHUB_API_BASE
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.model.issue import Issue, OpenIssueRequest
-from include.constants import POLL_INTERVAL
+from include.finetune import DatasetCollector
 from datetime import datetime, timedelta
 from src.storage.supa import SupaClient
+from cerebras.cloud.sdk import Cerebras
 from .handle_issue import debug_issue
 from typing import List
+import humanlayer
 import requests
 import logging
 import asyncio
 import time
 import os
+
+hl = humanlayer.HumanLayer()
+
+IGNORE_ISSUES = set([str(2030), str(2027)])
+
+cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
+dataset_collector = DatasetCollector()
 
 def get_issues_created_or_updated_recently(org_id: str, repo_name: str, github_kb: GithubIntegration) -> List[Issue]:
     """
@@ -49,6 +59,55 @@ def get_issues_created_or_updated_recently(org_id: str, repo_name: str, github_k
 
     return recent_issues
 
+def issue_needs_dev_team(issue: Issue, labels: List[str]) -> bool:
+    """
+    Determine if an issue needs the dev team based on its labels. If there are no labels, then we consider the description.
+    
+    Returns True if the issue needs the dev team, False otherwise.
+    """
+    if len(labels) > 0 and not (any(label in labels for label in BUG_LABELS)):
+        return False
+
+    # If there are no labels, we need to determine if the issue is a bug based on the description.
+    with open(REQUIRES_DEV_TEAM_PROMPT, "r") as f:
+        prompt = f.read()
+
+    chat_completion = cerebras_client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": prompt
+            },
+            {
+                "role": "user",
+                "content": issue.description,
+            }
+        ],
+        model="llama3.1-8b", max_tokens=256,
+    )
+
+    # Guard with humanlayer
+    approval = hl.fetch_approval(
+        humanlayer.FunctionCallSpec(
+            fn="issue needs a dev team's response",
+            kwargs={
+                "issue description": issue.description,
+                "issue labels": labels,
+                "decision": chat_completion.choices[0].message.content,
+            }
+        ),
+    )
+
+    completed = approval.as_completed() 
+    decision = chat_completion.choices[0].message.content.lower() == "yes"
+    if not completed.approved: # if the action is not approved, we want to do the opposite of the model's decision.
+        decision = not decision
+
+    # For later model training
+    completion_comment = completed.comment
+    dataset_collector.collect_needs_dev_team_output(issue, actual_decision=decision, additional_info=completion_comment)
+
+    return decision
 
 def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
     """
@@ -72,12 +131,20 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
         if not on_init:
             issues = get_issues_created_or_updated_recently(org_id, repo_name, github_kb)
         else:
-            issues = github_kb.get_all_issues_json(repo_name, state="open") # TODO add a logging msg here.
+            issues = github_kb.get_all_issues_json(repo_name, state="open")
+            logging.info(f"Polling for EVERY issue in {repo_name}. Found {len(issues)} issues.")
             on_init = False
 
         # 2. call debug_issue for each issue.
         issue_objs = github_kb.json_issues_to_issues(issues)
         for issue in issue_objs:
+
+            # Get the labels for the issue to help classify whether we should handle it or not.
+            issue_labels = github_kb.get_labels(issue.ticket_number, f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues")
+            if issue.ticket_number in IGNORE_ISSUES or issue_needs_dev_team(issue, issue_labels):
+                logging.info(f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping...")
+                continue
+
             issue_req = OpenIssueRequest(
                 issue=issue,
                 requestor_id=org_id,
