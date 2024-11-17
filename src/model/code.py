@@ -2,9 +2,11 @@ from pydantic import BaseModel
 from enum import StrEnum
 from typing import List
 
+
 class CodePageType(StrEnum):
     CODE = "code"
     DIRECTORY = "directory"
+
 
 class CodePage(BaseModel):
     primary_key: str

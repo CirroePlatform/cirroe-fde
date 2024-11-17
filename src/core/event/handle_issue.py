@@ -19,55 +19,49 @@ load_dotenv()
 
 client = anthropic.Anthropic()
 
+
 def append_message(messages: List[Dict[str, str]], role: str, content: str) -> None:
     """
     Appends a message to the message stream.
-    
+
     Args:
         messages: List of message dictionaries
         role: Role of the message sender ('assistant' or 'user')
         content: The message content to append
     """
-    messages.append({
-        "role": role,
-        "content": content
-    })
+    messages.append({"role": role, "content": content})
+
 
 def handle_tool_response(
     tool_name: str,
     function_response: str,
     kb_responses: List[KnowledgeBaseResponse],
-    messages: List[Dict[str, str]]
+    messages: List[Dict[str, str]],
 ) -> None:
     """
     Handles the tool response and updates messages and KB responses accordingly.
-    
+
     Args:
         tool_name: Name of the tool that was called
         function_response: Response from the tool
         kb_responses: List of knowledge base responses to update
         messages: List of message dictionaries to update
     """
-    append_message(
-        messages,
-        "user",
-        f"Results from {tool_name}: {function_response}"
-    )
+    append_message(messages, "user", f"Results from {tool_name}: {function_response}")
+
 
 def debug_issue(
-    issue_req: OpenIssueRequest,
-    github_repos: List[Repository],
-    max_tool_calls: int = 3
+    issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 3
 ) -> Dict[str, Any]:
     """
     Given some issue, the agent will try to solve it using chain-of-thought reasoning
     and available tools to return a response comment to the issue.
-    
+
     Args:
         issue_req: The issue request containing description and metadata
         github_repos: List of GitHub repositories to search
         max_tool_calls: Maximum number of tool calls allowed (default: 3)
-    
+
     Returns:
         Dict containing the final response and collected KB responses
     """
@@ -84,7 +78,7 @@ def debug_issue(
     search_tools = SearchTools(issue_req.requestor_id, github_repos)
     kb_responses = []
     tool_calls_made = 0
-    
+
     TOOLS_MAP = {
         "execute_codebase_search": search_tools.execute_codebase_search,
         "execute_documentation_search": search_tools.execute_documentation_search,
@@ -101,19 +95,19 @@ def debug_issue(
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
-            
+
             # Handle the response content
             if not response.content:
                 break
 
             for content in response.content:
                 # Check if it's a text thought
-                if hasattr(content, 'text'):
+                if hasattr(content, "text"):
                     append_message(messages, "assistant", content.text)
                     continue
-                
+
                 # Check if it's a tool call
-                if hasattr(content, 'name') and hasattr(content, 'input'):
+                if hasattr(content, "name") and hasattr(content, "input"):
                     tool_name = content.name
                     tool_input = content.input
 
@@ -124,24 +118,30 @@ def debug_issue(
                         append_message(
                             messages,
                             "assistant",
-                            "Invalid tool requested. Let me reconsider my approach."
+                            "Invalid tool requested. Let me reconsider my approach.",
                         )
                         continue
 
                     # Execute tool call
                     try:
                         kbres, function_response = TOOLS_MAP[tool_name](**tool_input)
-                        kb_responses.extend([KnowledgeBaseResponse.model_validate(kb) for kb in kbres])
-                        handle_tool_response(tool_name, function_response, kb_responses, messages)
+                        kb_responses.extend(
+                            [KnowledgeBaseResponse.model_validate(kb) for kb in kbres]
+                        )
+                        handle_tool_response(
+                            tool_name, function_response, kb_responses, messages
+                        )
                     except Exception as e:
                         logger.error("Tool execution error: %s", str(e))
                         append_message(
                             messages,
                             "assistant",
-                            f"Encountered an error with {tool_name}. Let me try a different approach."
+                            f"Encountered an error with {tool_name}. Let me try a different approach.",
                         )
                         function_response = str(e)
-                        handle_tool_response(tool_name, function_response, kb_responses, messages)
+                        handle_tool_response(
+                            tool_name, function_response, kb_responses, messages
+                        )
 
                     tool_calls_made += 1
 
@@ -154,7 +154,7 @@ def debug_issue(
             append_message(
                 messages,
                 "assistant",
-                "Encountered an unexpected error. Let me try to formulate a response with the information I have."
+                "Encountered an unexpected error. Let me try to formulate a response with the information I have.",
             )
             break
 
@@ -164,7 +164,7 @@ def debug_issue(
         final_response = None
         if response.stop_reason != "tool_use" and response.content:
             for content in response.content:
-                if hasattr(content, 'text'):
+                if hasattr(content, "text"):
                     final_response = content.text
                     break
 
@@ -184,15 +184,21 @@ def debug_issue(
                 temperature=0.1,
             )
 
-            if (final_call.content and 
-                len(final_call.content) > 0 and 
-                hasattr(final_call.content[0], 'text') and
-                "<failure>" not in final_call.content[0].text):
+            if (
+                final_call.content
+                and len(final_call.content) > 0
+                and hasattr(final_call.content[0], "text")
+                and "<failure>" not in final_call.content[0].text
+            ):
                 final_response = final_call.content[0].text
             else:
                 logger.error(
-                    "Failed to generate final response: %s", 
-                    final_call.content[0].text if final_call.content and hasattr(final_call.content[0], 'text') else "No content"
+                    "Failed to generate final response: %s",
+                    (
+                        final_call.content[0].text
+                        if final_call.content and hasattr(final_call.content[0], "text")
+                        else "No content"
+                    ),
                 )
                 final_response = "Unable to generate a complete response. Please review the collected information."
 

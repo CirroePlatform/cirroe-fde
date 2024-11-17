@@ -66,7 +66,9 @@ class Orchestrator:
         else:
             logging.info(f"No cached closed issues found. Fetching from github...")
             issues = self.github_kb.get_all_issues_json(
-                self.test_repo_name, "closed", ["bug", "help wanted", "question"] if self.enable_labels else None
+                self.test_repo_name,
+                "closed",
+                ["bug", "help wanted", "question"] if self.enable_labels else None,
             )
             with open(cache_file, "w", encoding="utf8") as fp:
                 json.dump(issues, fp)
@@ -88,7 +90,9 @@ class Orchestrator:
 
         return solved_or_closed_issues
 
-    def setup_test_train_issues_splits(self, test_subset: Optional[float] = None) -> List[Issue]:
+    def setup_test_train_issues_splits(
+        self, test_subset: Optional[float] = None
+    ) -> List[Issue]:
         """
         The issue knowledgebase is a bit different, because we are evaluating inbound issues, we need to make sure the knowledgebase
         isn't indexed with any issues from the org in our test set.
@@ -112,7 +116,13 @@ class Orchestrator:
             f"Checking how many issues are already indexed in the vector db..."
         )
         indexed_issues = self.vector_db.get_all_issues()
-        indexed_issues_ids = set([issue.primary_key for issue in indexed_issues if issue.org_id == self.org_id])
+        indexed_issues_ids = set(
+            [
+                issue.primary_key
+                for issue in indexed_issues
+                if issue.org_id == self.org_id
+            ]
+        )
         num_indexed_issues = len(indexed_issues_ids)
 
         test_set: List[Issue] = []
@@ -215,9 +225,8 @@ class Evaluator:
         response = self.judge_client.messages.create(
             model=MODEL_LIGHT,
             system=sysprompt,
-            max_tokens=len(
-                issue.description.split()
-            ) * 2,  # roughly 2 tokens per word assumption
+            max_tokens=len(issue.description.split())
+            * 2,  # roughly 2 tokens per word assumption
             messages=messages,
         )
 
@@ -303,7 +312,7 @@ class Evaluator:
         # delete the file if it exists
         if file_exists:
             os.remove(output_file)
-        
+
         # Write results to org-specific file
         with open(output_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=eval_results[0].keys())

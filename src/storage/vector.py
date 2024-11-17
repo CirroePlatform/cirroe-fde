@@ -1,4 +1,14 @@
-from include.constants import DOCUMENTATION, ISSUE, RUNBOOK, CODE, NVIDIA_EMBED, OPENAI_EMBED, DIMENSION_OPENAI, DIMENSION_NVIDIA, SUPPORTED_MODELS
+from include.constants import (
+    DOCUMENTATION,
+    ISSUE,
+    RUNBOOK,
+    CODE,
+    NVIDIA_EMBED,
+    OPENAI_EMBED,
+    DIMENSION_OPENAI,
+    DIMENSION_NVIDIA,
+    SUPPORTED_MODELS,
+)
 from pymilvus import DataType, CollectionSchema, FieldSchema
 from src.model.documentation import DocumentationPage
 from sentence_transformers import SentenceTransformer
@@ -37,7 +47,9 @@ class EmbeddingModel:
         elif name.lower() == NVIDIA_EMBED.lower():
             return SentenceTransformer(name, trust_remote_code=True)
         else:
-            raise ValueError(f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}")
+            raise ValueError(
+                f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
+            )
 
     def encode(self, text: str) -> List[List[float]]:
         """
@@ -53,7 +65,9 @@ class EmbeddingModel:
         elif self.model_name.lower() == NVIDIA_EMBED.lower():
             return self.client.encode([text])[0]
         else:
-            raise ValueError(f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}")
+            raise ValueError(
+                f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
+            )
 
 
 # VectorDB class wrapping Milvus client and an embedding model
@@ -88,6 +102,7 @@ class VectorDB:
         self.create_issue_collection()
         self.create_documentation_collection()
         self.create_code_collection()
+
     def create_runbook_collection(self):
         """
         Create a runbook collection if doesn't exist, and load it into memory. If exists in db
@@ -282,7 +297,7 @@ class VectorDB:
                 collection_name=ISSUE,
                 output_fields=output_fields,
                 limit=batch_size,
-                offset=offset, # TODO: add filter by user_id
+                offset=offset,  # TODO: add filter by user_id
             )
 
             all_results.extend(results)

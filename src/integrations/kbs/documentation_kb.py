@@ -1,7 +1,12 @@
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
-from include.constants import MODEL_HEAVY, COALESCE_DOCU_PROMPT, NVIDIA_EMBED, DIMENSION_NVIDIA
+from include.constants import (
+    MODEL_HEAVY,
+    COALESCE_DOCU_PROMPT,
+    NVIDIA_EMBED,
+    DIMENSION_NVIDIA,
+)
 from src.storage.vector import VectorDB
 from anthropic import Anthropic
 from typing import List, Tuple

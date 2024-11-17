@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
 
+
 class Repository(BaseModel):
     remote: str  # e.g. "github.com"
     repository: str  # e.g. "username/repo"
@@ -27,7 +28,11 @@ class GithubIntegration(BaseKnowledgeBase):
     """
 
     def __init__(
-        self, org_id: UUID, org_name: str, repos: Optional[List[Repository]] = None, repo_names: Optional[List[str]] = None
+        self,
+        org_id: UUID,
+        org_name: str,
+        repos: Optional[List[Repository]] = None,
+        repo_names: Optional[List[str]] = None,
     ):
         """
         Initialize Github integration for an organization
@@ -59,7 +64,10 @@ class GithubIntegration(BaseKnowledgeBase):
         return os.getenv("GITHUB_TEST_TOKEN")
 
     def get_all_issues_json(
-        self, repo_name: str, state: Optional[str] = None, labels: Optional[List[str]] = None
+        self,
+        repo_name: str,
+        state: Optional[str] = None,
+        labels: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """
         Get all issues (excluding pull requests) for some provided repository.
@@ -128,7 +136,9 @@ class GithubIntegration(BaseKnowledgeBase):
                     label_response = requests.get(label_url, headers=headers)
                     label_response.raise_for_status()
 
-                    issue_labels = set([label["name"] for label in label_response.json()])
+                    issue_labels = set(
+                        [label["name"] for label in label_response.json()]
+                    )
 
                     if set(labels).intersection(issue_labels):
                         should_add = True
@@ -156,7 +166,9 @@ class GithubIntegration(BaseKnowledgeBase):
         for repo in repos:
             self.index(repo)
 
-    def list_repositories(self, repo_names: Optional[List[str]] = None, max_repos: int = 30) -> Dict[str, Repository]:
+    def list_repositories(
+        self, repo_names: Optional[List[str]] = None, max_repos: int = 30
+    ) -> Dict[str, Repository]:
         """
         List repositories for the organization
 
@@ -196,16 +208,16 @@ class GithubIntegration(BaseKnowledgeBase):
         repos_rv = {}
         for github_repo in repos:
             # Skip if repo_names is specified and this repo is not in the list
-            if repo_names and github_repo['name'] not in repo_names:
+            if repo_names and github_repo["name"] not in repo_names:
                 continue
-                
+
             url = f"{self.api_base}/repositories/{github_repo['id']}"
             response = requests.get(url, headers=self.headers)
 
             if response.status_code == 200:
                 repo_data = response.json()
                 name = repo_data["repository"]
-     
+
                 repos_rv[name] = Repository(
                     remote="github.com",
                     repository=name,
