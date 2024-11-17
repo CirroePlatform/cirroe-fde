@@ -12,6 +12,7 @@ from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseRespons
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
 from src.model.issue import Issue
 
+
 class Repository(BaseModel):
     remote: str  # e.g. "github.com"
     repository: str  # e.g. "username/repo"
@@ -142,7 +143,9 @@ class GithubIntegration(BaseKnowledgeBase):
 
                 comments_url = issues[i]["comments_url"]
                 try:
-                    comments_response = requests.get(comments_url, headers=self.github_headers)
+                    comments_response = requests.get(
+                        comments_url, headers=self.github_headers
+                    )
                     comments_response.raise_for_status()
 
                     # Add comments to the issue object
@@ -160,9 +163,7 @@ class GithubIntegration(BaseKnowledgeBase):
                 should_add = True
                 if labels is not None:
                     should_add = False
-                    issue_labels = set(
-                        self.get_labels(issue_number, url)
-                    )
+                    issue_labels = set(self.get_labels(issue_number, url))
 
                     if set(labels).intersection(issue_labels):
                         should_add = True
@@ -189,7 +190,7 @@ class GithubIntegration(BaseKnowledgeBase):
         label_url = f"{base_url}/{issue_number}/labels"
         label_response = requests.get(label_url, headers=self.github_headers)
         label_response.raise_for_status()
-        
+
         return [label["name"] for label in label_response.json()]
 
     def list_repositories(

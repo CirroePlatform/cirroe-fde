@@ -12,6 +12,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/poll_for_issues/{org_id}/{repo_name}")
 def poll_for_issues(org_id: str, repo_name: str, background_tasks: BackgroundTasks):
     """

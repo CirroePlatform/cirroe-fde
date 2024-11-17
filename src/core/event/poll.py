@@ -3,7 +3,12 @@
     it will be handled by the issue handler.
 """
 
-from include.constants import POLL_INTERVAL, BUG_LABELS, REQUIRES_DEV_TEAM_PROMPT, GITHUB_API_BASE
+from include.constants import (
+    POLL_INTERVAL,
+    BUG_LABELS,
+    REQUIRES_DEV_TEAM_PROMPT,
+    GITHUB_API_BASE,
+)
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.model.issue import Issue, OpenIssueRequest
 from include.finetune import DatasetCollector
@@ -26,16 +31,19 @@ IGNORE_ISSUES = set([str(2030), str(2027)])
 cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 dataset_collector = DatasetCollector()
 
-def get_issues_created_or_updated_recently(org_id: str, repo_name: str, github_kb: GithubIntegration) -> List[Issue]:
+
+def get_issues_created_or_updated_recently(
+    org_id: str, repo_name: str, github_kb: GithubIntegration
+) -> List[Issue]:
     """
     Get all issues created in the last POLL_INTERVAL seconds in the provided repo.
     """
     # Get all issues from repo
     issues = github_kb.get_all_issues_json(repo_name, state="open")
-    
+
     # Get current time in seconds
     current_time = datetime.now()
-    
+
     # Convert POLL_INTERVAL to a timedelta
     poll_interval_timedelta = timedelta(seconds=POLL_INTERVAL)
 
@@ -43,15 +51,17 @@ def get_issues_created_or_updated_recently(org_id: str, repo_name: str, github_k
     recent_issues = []
     for issue in issues:
         # Convert issue timestamps to seconds since epoch
-        created_time = issue["created_at"] 
+        created_time = issue["created_at"]
         updated_time = issue["updated_at"]
 
         created_time = datetime.strptime(created_time, "%Y-%m-%dT%H:%M:%SZ")
         updated_time = datetime.strptime(updated_time, "%Y-%m-%dT%H:%M:%SZ")
 
         # Check if issue was created or updated within interval
-        if (current_time - created_time <= poll_interval_timedelta or 
-            current_time - updated_time <= poll_interval_timedelta):
+        if (
+            current_time - created_time <= poll_interval_timedelta
+            or current_time - updated_time <= poll_interval_timedelta
+        ):
             recent_issues.append(issue)
 
     # Convert to Issue objects
@@ -59,10 +69,11 @@ def get_issues_created_or_updated_recently(org_id: str, repo_name: str, github_k
 
     return recent_issues
 
+
 def issue_needs_dev_team(issue: Issue, labels: List[str]) -> bool:
     """
     Determine if an issue needs the dev team based on its labels. If there are no labels, then we consider the description.
-    
+
     Returns True if the issue needs the dev team, False otherwise.
     """
     if len(labels) > 0 and not (any(label in labels for label in BUG_LABELS)):
@@ -74,16 +85,14 @@ def issue_needs_dev_team(issue: Issue, labels: List[str]) -> bool:
 
     chat_completion = cerebras_client.chat.completions.create(
         messages=[
-            {
-                "role": "system",
-                "content": prompt
-            },
+            {"role": "system", "content": prompt},
             {
                 "role": "user",
                 "content": issue.description,
-            }
+            },
         ],
-        model="llama3.1-8b", max_tokens=256,
+        model="llama3.1-8b",
+        max_tokens=256,
     )
 
     # Guard with humanlayer
@@ -94,25 +103,30 @@ def issue_needs_dev_team(issue: Issue, labels: List[str]) -> bool:
                 "issue description": issue.description,
                 "issue labels": labels,
                 "decision": chat_completion.choices[0].message.content,
-            }
+            },
         ),
     )
 
-    completed = approval.as_completed() 
+    completed = approval.as_completed()
     decision = chat_completion.choices[0].message.content.lower() == "yes"
-    if not completed.approved: # if the action is not approved, we want to do the opposite of the model's decision.
+    if (
+        not completed.approved
+    ):  # if the action is not approved, we want to do the opposite of the model's decision.
         decision = not decision
 
     # For later model training
     completion_comment = completed.comment
-    dataset_collector.collect_needs_dev_team_output(issue, actual_decision=decision, additional_info=completion_comment)
+    dataset_collector.collect_needs_dev_team_output(
+        issue, actual_decision=decision, additional_info=completion_comment
+    )
 
     return decision
+
 
 def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
     """
     Polls for new issues in a repository. If a new issue is found, or an existing issue is updated,
-    it will be handled by the issue handler. Then, we will comment on the issue with the response, guarded 
+    it will be handled by the issue handler. Then, we will comment on the issue with the response, guarded
     by humanlayer.
 
     TODO issue fetches are slowing this function down, we should most likely try to cache existing issues or only query by time period per poll.
@@ -129,10 +143,14 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
 
         # 1. Get all issues created or modified in the last POLL_INTERVAL seconds. If this is the first time we're polling, we want to get all unsolved issues, regardless of time.
         if not on_init:
-            issues = get_issues_created_or_updated_recently(org_id, repo_name, github_kb)
+            issues = get_issues_created_or_updated_recently(
+                org_id, repo_name, github_kb
+            )
         else:
             issues = github_kb.get_all_issues_json(repo_name, state="open")
-            logging.info(f"Polling for EVERY issue in {repo_name}. Found {len(issues)} issues.")
+            logging.info(
+                f"Polling for EVERY issue in {repo_name}. Found {len(issues)} issues."
+            )
             on_init = False
 
         # 2. call debug_issue for each issue.
@@ -140,31 +158,41 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
         for issue in issue_objs:
 
             # Get the labels for the issue to help classify whether we should handle it or not.
-            issue_labels = github_kb.get_labels(issue.ticket_number, f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues")
-            if issue.ticket_number in IGNORE_ISSUES or issue_needs_dev_team(issue, issue_labels):
-                logging.info(f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping...")
+            issue_labels = github_kb.get_labels(
+                issue.ticket_number,
+                f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
+            )
+            if issue.ticket_number in IGNORE_ISSUES or issue_needs_dev_team(
+                issue, issue_labels
+            ):
+                logging.info(
+                    f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping..."
+                )
                 continue
 
             issue_req = OpenIssueRequest(
                 issue=issue,
                 requestor_id=org_id,
             )
-            
+
             response = debug_issue(issue_req, [repo_obj])
             text_response = response["response"]
 
             # 3. comment on the issue with the response, guarded by humanlayer. TODO untested, but this shouldn't block the main thread. It should just fire off the coroutine.
             asyncio.run(comment_on_issue(org_name, repo_name, issue, text_response))
-        
+
         if debug:
             break
 
         # 4. Sleep for POLL_INTERVAL seconds. If our poll interval is longer than the processing time, don't sleep at all.
         processing_time = time.time() - processing_start_time
         if processing_time > POLL_INTERVAL:
-            logging.warning(f"Poll interval of {POLL_INTERVAL} seconds exceeded by {processing_time} seconds. Skipping sleep.")
-        
+            logging.warning(
+                f"Poll interval of {POLL_INTERVAL} seconds exceeded by {processing_time} seconds. Skipping sleep."
+            )
+
         time.sleep(max(0, POLL_INTERVAL - processing_time))
+
 
 async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str):
     """
@@ -174,12 +202,10 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
 
     headers = {
         "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
-        "Accept": "application/vnd.github+json"
+        "Accept": "application/vnd.github+json",
     }
 
-    data = {
-        "body": response
-    }
+    data = {"body": response}
 
     # Post the comment
     response = requests.post(url, json=data, headers=headers)

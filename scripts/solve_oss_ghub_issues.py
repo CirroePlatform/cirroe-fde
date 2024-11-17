@@ -40,9 +40,12 @@ async def setup_all_kbs_with_repo(
     indexable_issues = issues[: int(len(issues) * index_fraction)]
 
     for issue in tqdm.tqdm(
-        github.json_issues_to_issues(indexable_issues), desc="Indexing issues", total=len(indexable_issues)
+        github.json_issues_to_issues(indexable_issues),
+        desc="Indexing issues",
+        total=len(indexable_issues),
     ):
         await issue_kb.index(issue)
+
 
 def solve_issue(repo: str, issue_id: int):
     """
