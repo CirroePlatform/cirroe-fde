@@ -148,6 +148,7 @@ class VectorDB:
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="comments", dtype=DataType.JSON),
             FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
+            FieldSchema(name="ticket_number", dtype=DataType.VARCHAR, max_length=36),
         ]
         schema = CollectionSchema(fields=fields, description="Issue collection")
 
