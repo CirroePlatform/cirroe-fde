@@ -109,9 +109,11 @@ DEBUG_TOOLS = [
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
 OPENAI_EMBED = "text-embedding-3-small"
 SUPPORTED_MODELS = [NVIDIA_EMBED, OPENAI_EMBED]
-DIMENSION = 1536
+DIMENSION_OPENAI = 1536
+DIMENSION_NVIDIA = 4096
 
 # Vector DB constants
 DOCUMENTATION = "documentation"
 RUNBOOK = "runbook"
 ISSUE = "issue"
+CODE = "code"

@@ -1,17 +1,17 @@
+from include.constants import DOCUMENTATION, ISSUE, RUNBOOK, CODE, NVIDIA_EMBED, OPENAI_EMBED, DIMENSION_OPENAI, DIMENSION_NVIDIA, SUPPORTED_MODELS
 from pymilvus import DataType, CollectionSchema, FieldSchema
 from src.model.documentation import DocumentationPage
 from sentence_transformers import SentenceTransformer
 from pymilvus.milvus_client.index import IndexParams
 from typing import List, Any, Dict, Union
 from src.storage.supa import SupaClient
-from include.constants import DOCUMENTATION, ISSUE, RUNBOOK, NVIDIA_EMBED, OPENAI_EMBED, DIMENSION, SUPPORTED_MODELS
+from src.model.code import CodePage
 from pymilvus import MilvusClient
 from typeguard import typechecked
 from src.model.issue import Issue
 from dotenv import load_dotenv
 from openai import OpenAI
 from uuid import UUID
-import json
 import os
 
 
@@ -66,7 +66,7 @@ class VectorDB:
         self,
         user_id: UUID,
         embedding_model_name: str = OPENAI_EMBED,
-        dimension: int = DIMENSION,
+        dimension: int = DIMENSION_OPENAI,
     ):
         self.client = MilvusClient(
             uri=os.environ.get("MILVUS_URL"),
@@ -87,7 +87,7 @@ class VectorDB:
 
         self.create_issue_collection()
         self.create_documentation_collection()
-
+        self.create_code_collection()
     def create_runbook_collection(self):
         """
         Create a runbook collection if doesn't exist, and load it into memory. If exists in db
@@ -167,6 +167,31 @@ class VectorDB:
 
         self.client.load_collection(DOCUMENTATION)
 
+    def create_code_collection(self):
+        """
+        Create a code collection if doesn't exist, and load it into memory. If exists in db
+        already, then we just load into memory
+        """
+        fields = [
+            FieldSchema(
+                name="primary_key",
+                dtype=DataType.VARCHAR,
+                is_primary=True,
+                max_length=36,
+            ),
+            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
+            FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=65535),
+            FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
+            FieldSchema(name="page_type", dtype=DataType.VARCHAR, max_length=32),
+        ]
+        schema = CollectionSchema(fields=fields, description="Code collection")
+
+        if not self.client.has_collection(CODE):
+            self.client.create_collection(CODE, schema=schema)
+            self.client.create_index(CODE, IndexParams("vector"))
+
+        self.client.load_collection(CODE)
+
     def vanilla_embed(self, text: str) -> List[float]:
         """
         Embed a string using the embedding model.
@@ -185,8 +210,14 @@ class VectorDB:
         """
         return f"{page.url} {page.content}"
 
+    def __code_to_embeddable_string(self, code: CodePage) -> str:
+        """
+        Convert a code to a string that can be embedded
+        """
+        return code.content
+
     @typechecked
-    def embed(self, data: Union[Issue, DocumentationPage]) -> List[float]:
+    def embed(self, data: Union[Issue, DocumentationPage, CodePage]) -> List[float]:
         """
         Embed either an issue or documentation page and return the embedding.
 
@@ -201,8 +232,10 @@ class VectorDB:
 
         if isinstance(data, Issue):
             text = self.__issue_to_embeddable_string(data)
-        else:
+        elif isinstance(data, DocumentationPage):
             text = self.__docu_page_to_embeddable_string(data)
+        else:
+            text = self.__code_to_embeddable_string(data)
 
         return self.model.encode(text)
 

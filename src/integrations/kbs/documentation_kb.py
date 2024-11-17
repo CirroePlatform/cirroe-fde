@@ -1,7 +1,7 @@
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
-from include.constants import MODEL_HEAVY, COALESCE_DOCU_PROMPT, NVIDIA_EMBED
+from include.constants import MODEL_HEAVY, COALESCE_DOCU_PROMPT, NVIDIA_EMBED, DIMENSION_NVIDIA
 from src.storage.vector import VectorDB
 from anthropic import Anthropic
 from typing import List, Tuple
@@ -18,7 +18,7 @@ import tqdm
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
-        self.vector_db = VectorDB(org_id, embedding_model_name=NVIDIA_EMBED)
+        self.vector_db = VectorDB(org_id, embedding_model_name=NVIDIA_EMBED, dimension=DIMENSION_NVIDIA)
         self.html_cleaner = HTMLCleaner()
         self.client = Anthropic()
         super().__init__(org_id)
