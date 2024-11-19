@@ -1,5 +1,7 @@
 import json
 import re
+import base64
+import httpx
 from typing import Dict, List, Tuple
 from uuid import UUID
 from anthropic import Anthropic
@@ -29,14 +31,6 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         super().__init__(org_id)
         self.vector_db = VectorDB(org_id)
         self.client = Anthropic()
-
-    def __respond_to_query(
-        self, issues: List[KnowledgeBaseResponse], query: str
-    ) -> str:
-        """
-        Generate a natural language response to a query given a list of KnowledgeBaseResponse objects
-        """
-        pass
 
     async def index(self, data: Issue = None) -> bool:
         """
@@ -106,7 +100,14 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
                 )
 
                 image_links = self.__get_git_image_links_from_kbres(results[-1])
-                # TODO do something with me...
+
+                image_data = []
+                for link in image_links:
+                    image_data.append(
+                        base64.standard_b64encode(httpx.get(link).content).decode(
+                            "utf-8"
+                        )
+                    )
 
             with open(COALESCE_ISSUE_PROMPT, "r", encoding="utf8") as fp:
                 sysprompt = fp.read()
@@ -114,7 +115,23 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             messages = [
                 {
                     "role": "user",
-                    "content": f"input query: {query}\nsimilar_issues: {json.dumps(issues)}",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"input query: {query}\nsimilar_issues: {json.dumps(issues)}",
+                        },
+                        *[
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": data,
+                                },
+                            }
+                            for data in image_data
+                        ],
+                    ],
                 }
             ]
 
