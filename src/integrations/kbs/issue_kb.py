@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Dict, List, Tuple
 from uuid import UUID
 from anthropic import Anthropic
@@ -57,6 +58,22 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             logger.error(f"Failed to index issues: {str(e)}")
             return False
 
+    def __get_git_image_links_from_kbres(
+        self, kbres: KnowledgeBaseResponse
+    ) -> List[str]:
+        """
+        Extract image links from a KnowledgeBaseResponse object
+        Args:
+            kbres (KnowledgeBaseResponse): KnowledgeBaseResponse object
+
+        Returns:
+            List[str]: List of image links
+        """
+        pattern = r'!\[[^\]]*\]\((.*?)\s*("(?:.*[^"])")?\s*\)'
+        matches = re.findall(pattern, kbres.content)
+
+        return [match[0] for match in matches]
+
     def query(
         self, query: str, limit: int = 5
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
@@ -87,6 +104,9 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
                         relevance_score=issue_data["similarity"],
                     )
                 )
+
+                image_links = self.__get_git_image_links_from_kbres(results[-1])
+                # TODO do something with me...
 
             with open(COALESCE_ISSUE_PROMPT, "r", encoding="utf8") as fp:
                 sysprompt = fp.read()
