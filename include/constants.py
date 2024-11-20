@@ -122,6 +122,7 @@ CODE = "code"
 # Poll constants
 POLL_INTERVAL = 10
 BUG_LABELS = ["bug", "question"]
+IGNORE_ISSUES_FILE = "include/cache/ignore_issues.json"
 
 # Finetune constants
 DEFAULT_NEEDS_DEV_TEAM_OUTPUT_PATH = "include/needs_dev_team_output.jsonl"

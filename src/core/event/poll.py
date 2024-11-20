@@ -4,6 +4,7 @@
 """
 
 from include.constants import (
+    IGNORE_ISSUES_FILE,
     POLL_INTERVAL,
     BUG_LABELS,
     REQUIRES_DEV_TEAM_PROMPT,
@@ -27,36 +28,39 @@ import os
 
 hl = humanlayer.HumanLayer()
 
-IGNORE_ISSUES_FILE = "ignore_issues.json"
-
-def get_ignore_issues() -> List[str]:
+def get_ignore_issues(repo_name: str) -> List[str]:
     """
     Get the issues that we should ignore.
     
     file should be in the format:
     {
-        "issues": [
+        "repo_name": [
             "1234",
             "5678",
         ]
     }
     """
     with open(IGNORE_ISSUES_FILE, "r") as f:
-        return json.load(f)["issues"]
+        return json.load(f).get(repo_name, [])
 
-def add_ignore_issue(issue_number: str):
+def add_ignore_issue(repo_name: str, issue_number: str):
     """
     Add an issue to the ignore list.
     """
-    issues = get_ignore_issues()
-    issues.append(str(issue_number))
 
     with open(IGNORE_ISSUES_FILE, "w") as fp:
-        issues_dict = {"issues": issues}
-        json.dump(issues_dict, fp)
+        with open(IGNORE_ISSUES_FILE, "r") as f:
+            issues_dict = json.load(f)
+            
+            # Get the issues for the repo
+            issues = issues_dict.get(repo_name, [])
+            issues.append(str(issue_number))
 
-IGNORE_ISSUES = get_ignore_issues()
+            # Update the issues for the repo
+            issues_dict[repo_name] = issues
 
+            # Write the updated issues to the file
+            json.dump(issues_dict, fp)
 
 cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 dataset_collector = DatasetCollector()
@@ -118,7 +122,7 @@ def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool 
             {"role": "system", "content": prompt},
             {
                 "role": "user",
-                "content": f"Issue description: {issue.description}\nAny possible comments: {json.dumps(issue.comments)}",
+                "content": f"<issue_description>{issue.description}</issue_description>\n<comments>{json.dumps(issue.comments)}</comments>",
             },
         ],
         model="llama3.1-8b",
@@ -193,12 +197,15 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
                 issue.ticket_number,
                 f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
             )
-            if issue.ticket_number in IGNORE_ISSUES or issue_needs_dev_team(
+
+            ignore_issues = get_ignore_issues(repo_name)
+            if issue.ticket_number in ignore_issues or issue_needs_dev_team(
                 issue, issue_labels, False
             ):
                 logging.info(
                     f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping..."
                 )
+                add_ignore_issue(repo_name, issue.ticket_number)
                 continue
 
             issue_req = OpenIssueRequest(
@@ -241,4 +248,4 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
 
-    add_ignore_issue(issue.ticket_number)
+    add_ignore_issue(repo, issue.ticket_number)
