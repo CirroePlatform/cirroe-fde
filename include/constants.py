@@ -18,7 +18,7 @@ BASETEN_REPO_URL = f"https://github.com/{BASETEN_ORG_NAME}/{BASETEN_REPO_NAME}"
 BASETEN_DOCU_URL = "https://docs.baseten.co/sitemap.xml"
 
 # Qdrant
-QDRANT_ORG_ID = UUID("802f083b-5d7e-4418-bebc-6052f5634f8e")
+QDRANT_ORG_ID = UUID("a54c3511-0424-4663-8309-1d7ba3953aa6")
 QDRANT_ORG_NAME = "qdrant"
 QDRANT_REPO_NAME = "qdrant"
 QDRANT_REPO_URL = f"https://github.com/{QDRANT_ORG_NAME}/{QDRANT_REPO_NAME}"

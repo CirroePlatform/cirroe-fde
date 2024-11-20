@@ -2,6 +2,7 @@ from logger import logger
 from uuid import UUID
 from typing import List, Dict, Any
 import anthropic
+import json
 from dotenv import load_dotenv
 
 from src.model.issue import OpenIssueRequest
@@ -14,6 +15,8 @@ from include.constants import (
     DEBUG_ISSUE_FINAL_PROMPT,
     MODEL_LIGHT,
 )
+SOLUTION_TAG_OPEN = "<solution>"
+SOLUTION_TAG_CLOSE = "</solution>"
 
 load_dotenv()
 
@@ -75,10 +78,8 @@ def debug_issue(
 
     # Initialize message stream with issue description and any comments
     messages = [
-        {"role": "user", "content": issue_req.issue.description},
+        {"role": "user", "content": f"<user_issue>{issue_req.issue.description}</user_issue>\n<user_comments>{json.dumps(issue_req.issue.comments)}</user_comments>"},
     ]
-    for comment in issue_req.issue.comments:
-        messages.append({"role": "user", "content": comment})
 
     # Initialize tools and response tracking
     search_tools = SearchTools(issue_req.requestor_id, github_repos)
@@ -171,7 +172,11 @@ def debug_issue(
         if response.stop_reason != "tool_use" and response.content:
             for content in response.content:
                 if hasattr(content, "text"):
-                    final_response = content.text
+                    if SOLUTION_TAG_OPEN in content.text and SOLUTION_TAG_CLOSE in content.text:
+                        final_response = content.text.split(SOLUTION_TAG_OPEN)[1].split(SOLUTION_TAG_CLOSE)[0].strip()
+                    else:
+                        final_response = content.text
+
                     break
 
         if not final_response:

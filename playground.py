@@ -42,5 +42,4 @@ def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
 
 
 if __name__ == "__main__":
-    # random sampling of 10% enabled at the moment.
     poll_for_issues(MEM0AI_ORG_ID, MEM0AI_REPO_NAME, debug=True)
