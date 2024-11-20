@@ -1,16 +1,19 @@
 import os
+import json
 import traceback
 import time
 from uuid import UUID
 import requests
 import logging
-import tqdm
 from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
 
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
+from src.model.code import CodePage
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
 from src.model.issue import Issue
+
+from src.storage.vector import VectorDB
 
 
 class Repository(BaseModel):
@@ -62,6 +65,7 @@ class GithubIntegration(BaseKnowledgeBase):
             "X-GitHub-Api-Version": "2022-11-28",
         }
         self.repos = repos
+        self.vector_db = VectorDB(self.org_id)
 
     def get_github_token(self, org_id: str) -> str:
         """
@@ -273,11 +277,73 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to index repository: {str(e)}")
             return False
 
+    def get_files(self, repository: Repository) -> List[CodePage]:
+        """
+        Get a list of all the files' contents in the repo by recursively fetching from GitHub API
+        
+        Args:
+            repository: Repository object containing repo details
+            
+        Returns:
+            List of CodePage objects containing file contents and metadata
+        """
+        code_pages = []
+        
+        def fetch_contents(path: str = ""):
+            url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository.repository}/contents/{path}"
+            response = requests.get(url, headers=self.github_headers)
+            response.raise_for_status()
+            
+            contents = response.json()
+            
+            # Handle both single file and directory responses
+            if not isinstance(contents, list):
+                contents = [contents]
+                
+            for item in contents:
+                if item["type"] == "file":
+                    # Get raw file content
+                    content_response = requests.get(item["download_url"], headers=self.github_headers)
+                    content_response.raise_for_status()
+                    
+                    code_pages.append(
+                        CodePage(
+                            primary_key=item["sha"],
+                            content=content_response.text,
+                            org_id=self.org_id,
+                            page_type=item["name"].split(".")[-1] if "." in item["name"] else "txt"
+                        )
+                    )
+                    
+                elif item["type"] == "dir":
+                    # Recursively fetch directory contents
+                    fetch_contents(item["path"])
+                    
+        try:
+            fetch_contents()
+            return code_pages
+            
+        except Exception as e:
+            logging.error(f"Failed to fetch repository contents: {str(e)}")
+            return []
+
     def index_custom(self, repository: Repository) -> bool:
         """
         Get a list of all the files in the repo, index each file with the vector DB
         """
-        pass
+        
+        try:
+            # 1. Get all the files in the repo
+            files = self.get_files(repository)
+
+            # 2. Add each file to the vector db
+            for file in files:
+                self.vector_db.add_code_file(file)
+
+            return True
+        except Exception as e:
+            logging.error(f"Failed to index repository: {str(e)}")
+            return False
 
     async def index(self, repository: Repository) -> bool:
         """
@@ -294,19 +360,17 @@ class GithubIntegration(BaseKnowledgeBase):
         else:
             return self.index_custom(repository)
 
-    def query(
-        self, query: str, limit: int = 5
-    ) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def __query_greptile(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
-        Search code repositories with natural language queries
+        Query the Greptile API for code search
 
         Args:
-            query: Natural language query about the codebase
-            limit: Maximum number of results to return
+            query (str): Natural language query about the codebase
+            limit (int, optional): Maximum number of results to return. Defaults to 5.
 
         Returns:
-            Tuple of (List of KnowledgeBaseResponse objects containing search results,
-                      String answer to the query)
+            Tuple[List[KnowledgeBaseResponse], str]: List of KnowledgeBaseResponse objects containing search results,
+                      String answer to the query
         """
         try:
             url = f"{self.api_base}/query"
@@ -348,3 +412,57 @@ class GithubIntegration(BaseKnowledgeBase):
         except Exception as e:
             logging.error(f"Failed to query repositories: {str(e)}")
             return [], ""
+
+    def __query_custom(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+        """
+        Query the vector db for code search
+
+        Args:
+            query (str): Natural language query about the codebase
+            limit (int, optional): Maximum number of results to return
+
+        Returns:
+            Tuple[List[KnowledgeBaseResponse], str]: List of KnowledgeBaseResponse objects containing search results,
+                      String answer to the query
+        """
+        try:
+            query_vector = self.vector_db.vanilla_embed(query)
+            results = self.vector_db.get_top_k_code(limit, query_vector)
+
+            kb_responses = []
+            for result in results.values():
+                metadata = json.loads(result["metadata"])
+                kb_response = KnowledgeBaseResponse(
+                    source="github",
+                    content=metadata["content"],
+                    relevance_score=result["similarity"],
+                    metadata=metadata,
+                )
+                kb_responses.append(kb_response)
+
+            return kb_responses, f"<code_pages>{json.dumps(results)}</code_pages>"
+
+        except Exception as e:
+            logging.error(f"Failed to query documentation: {str(e)}")
+            logging.error(traceback.format_exc())
+            return [], str(e)
+
+
+    def query(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
+        """
+        Search code repositories with natural language queries
+
+        Args:
+            query: Natural language query about the codebase
+            limit: Maximum number of results to return
+
+        Returns:
+            Tuple of (List of KnowledgeBaseResponse objects containing search results,
+                      String answer to the query)
+        """
+        if INDEX_WITH_GREPTILE:
+            return self.__query_greptile(query, limit)
+        else:
+            return self.__query_custom(query, limit)

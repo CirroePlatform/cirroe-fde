@@ -418,3 +418,68 @@ class VectorDB:
             }
 
         return docs
+
+    def add_code_file(self, file: CodePage):
+        """
+        Add a code file to the vector db
+        """
+        # Check if issue already exists
+        prev_data = self.client.get(CODE, file.primary_key)
+        if len(prev_data) > 0:
+            # compare content, if there's even a slight difference, we should update the issue vector.
+            prev_data_code = CodePage(**prev_data[0])
+            if self.__code_to_embeddable_string(
+                prev_data_code
+            ) == self.__code_to_embeddable_string(file):
+                return  # Issue content is the same as existing issue, just continue.
+
+        vector = self.embed(file)
+        entity = [
+            {
+                "primary_key": str(file.primary_key),
+                "vector": vector,
+                "content": file.content,
+                "org_id": str(file.org_id),
+                "page_type": file.page_type,
+            }
+        ]
+
+        self.client.upsert(CODE, data=entity)
+
+    def get_top_k_code(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
+        """
+        Get top k code files
+        """
+        search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+        results = self.client.search(
+            collection_name=CODE,
+            data=[query_vector],
+            anns_field="vector",
+            search_params=search_params,
+            limit=k,
+            output_fields=["vector", "content", "org_id", "page_type"],
+        )
+
+        code = {}
+        for result in results[0]:
+            code_id = result["id"]
+            distance = result["distance"]
+            content = result["entity"]["content"]
+            org_id = result["entity"]["org_id"]
+            page_type = result["entity"]["page_type"]
+            vector = result["entity"]["vector"]
+
+            code_file = CodePage(
+                primary_key=code_id,
+                vector=vector,
+                org_id=org_id,
+                content=content,
+                page_type=page_type,
+            )
+
+            code[code_id] = {
+                "similarity": distance,
+                "metadata": code_file.model_dump_json(),
+            }
+
+        return code
