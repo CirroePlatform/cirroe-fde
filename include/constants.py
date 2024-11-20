@@ -32,7 +32,7 @@ EVAL_OUTPUT_FILE = "include/eval_output.csv"
 
 # Github constants
 CLOSED = "closed"
-INDEX_WITH_GREPTILE = True
+INDEX_WITH_GREPTILE = False
 GITHUB_API_BASE = "https://api.github.com"
 
 # Prompt constants
@@ -40,7 +40,6 @@ EVAL_AGENT_RESPONSE_PROMPT = "include/prompts/eval_agent_response.txt"
 DEBUG_ISSUE_FILE = "include/prompts/debug_issue_tools.txt"
 DEBUG_ISSUE_FINAL_PROMPT = "include/prompts/debug_issue_final.txt"
 COALESCE_ISSUE_PROMPT = "include/prompts/coalesce_issue.txt"
-COALESCE_DOCU_PROMPT = "include/prompts/coalesce_docu.txt"
 EVAL_ISSUE_PREPROCESS_PROMPT = "include/prompts/eval_issue_preprocess.txt"
 REQUIRES_DEV_TEAM_PROMPT = "include/prompts/requires_dev_team_prompt.txt"
 

@@ -1,4 +1,5 @@
 import os
+import tqdm
 import json
 import traceback
 import time
@@ -9,7 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
 
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
-from src.model.code import CodePage
+from src.model.code import CodePage, CodePageType
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
 from src.model.issue import Issue
 
@@ -288,18 +289,18 @@ class GithubIntegration(BaseKnowledgeBase):
             List of CodePage objects containing file contents and metadata
         """
         code_pages = []
-        
+
         def fetch_contents(path: str = ""):
             url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository.repository}/contents/{path}"
             response = requests.get(url, headers=self.github_headers)
             response.raise_for_status()
-            
+
             contents = response.json()
-            
+
             # Handle both single file and directory responses
             if not isinstance(contents, list):
                 contents = [contents]
-                
+
             for item in contents:
                 if item["type"] == "file":
                     # Get raw file content
@@ -308,23 +309,25 @@ class GithubIntegration(BaseKnowledgeBase):
                     
                     code_pages.append(
                         CodePage(
-                            primary_key=item["sha"],
+                            primary_key=item["path"],
                             content=content_response.text,
-                            org_id=self.org_id,
-                            page_type=item["name"].split(".")[-1] if "." in item["name"] else "txt"
+                            org_id=str(self.org_id),
+                            page_type=CodePageType.CODE,
+                            sha=item["sha"]
                         )
                     )
-                    
+
                 elif item["type"] == "dir":
-                    # Recursively fetch directory contents
+                    # TODO switch to postorder traversal, add AI summaries, can do merkle tree of the files.
                     fetch_contents(item["path"])
                     
         try:
-            fetch_contents()
+            fetch_contents() 
             return code_pages
             
         except Exception as e:
             logging.error(f"Failed to fetch repository contents: {str(e)}")
+            logging.error(traceback.format_exc())
             return []
 
     def index_custom(self, repository: Repository) -> bool:
@@ -337,7 +340,7 @@ class GithubIntegration(BaseKnowledgeBase):
             files = self.get_files(repository)
 
             # 2. Add each file to the vector db
-            for file in files:
+            for file in tqdm.tqdm(files, desc=f"Indexing code files for {repository}"):
                 self.vector_db.add_code_file(file)
 
             return True

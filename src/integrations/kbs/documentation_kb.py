@@ -2,8 +2,6 @@ from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseRespons
 from src.integrations.cleaners.html_cleaner import HTMLCleaner
 from src.model.documentation import DocumentationPage
 from include.constants import (
-    MODEL_HEAVY,
-    COALESCE_DOCU_PROMPT,
     NVIDIA_EMBED,
     DIMENSION_NVIDIA,
 )
@@ -168,24 +166,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
                 )
                 kb_responses.append(kb_response)
 
-            with open(COALESCE_DOCU_PROMPT, "r", encoding="utf8") as fp:
-                sysprompt = fp.read()
-
-            messages = [
-                {
-                    "role": "user",
-                    "content": f"issue: {query}\n\ndocumentation pages: {json.dumps(results)}",
-                },
-            ]
-
-            response = self.client.messages.create(
-                model=MODEL_HEAVY,
-                max_tokens=1024,
-                system=sysprompt,
-                messages=messages,
-            )
-
-            return kb_responses, response.content[0].text
+            return kb_responses, f"<documentation_pages>{json.dumps(results)}</documentation_pages>"
         except Exception as e:
             logging.error(f"Failed to query documentation: {str(e)}")
             logging.error(traceback.format_exc())

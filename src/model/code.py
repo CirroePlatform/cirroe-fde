@@ -11,6 +11,6 @@ class CodePageType(StrEnum):
 class CodePage(BaseModel):
     primary_key: str
     content: str
-    vector: List[float]
     org_id: str
     page_type: CodePageType
+    sha: str
