@@ -25,6 +25,7 @@ QDRANT_REPO_URL = f"https://github.com/{QDRANT_ORG_NAME}/{QDRANT_REPO_NAME}"
 QDRANT_DOCU_URL = "https://qdrant.tech/sitemap.xml"
 
 CACHE_DIR = "include/cache"
+GITFILES_CACHE_DIR = f"{CACHE_DIR}/gitfiles"
 
 # Evaluation constants
 DEFAULT_TEST_TRAIN_RATIO = 0.2

@@ -13,11 +13,14 @@ from pymilvus import DataType, CollectionSchema, FieldSchema
 from src.model.documentation import DocumentationPage
 from sentence_transformers import SentenceTransformer
 from pymilvus.milvus_client.index import IndexParams
+from include.utils import num_tokens_from_string
 from typing import List, Any, Dict, Union
 from src.storage.supa import SupaClient
 from src.model.code import CodePage
 from pymilvus import MilvusClient
 from typeguard import typechecked
+import traceback
+import logging
 from src.model.issue import Issue
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -98,6 +101,7 @@ class VectorDB:
 
         self.is_debug_mode = os.environ.get("DEBUG_MODE").lower() == "true"
         self.user_id = user_id
+        self.chunk_size = 8192
 
         self.create_issue_collection()
         self.create_documentation_collection()
@@ -193,12 +197,13 @@ class VectorDB:
                 name="primary_key",
                 dtype=DataType.VARCHAR,
                 is_primary=True,
-                max_length=36,
+                max_length=1024,
             ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=65535),
             FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
             FieldSchema(name="page_type", dtype=DataType.VARCHAR, max_length=32),
+            FieldSchema(name="sha", dtype=DataType.VARCHAR, max_length=64),
         ]
         schema = CollectionSchema(fields=fields, description="Code collection")
 
@@ -419,32 +424,48 @@ class VectorDB:
 
         return docs
 
+    def __chunk_code(self, content: str) -> List[str]:
+        """
+        Chunk the code into several smaller chunks, each of character length of num_tokens_from_string(content, self.model.model_name). 
+        """
+        chunks = [content[i : i + self.chunk_size] for i in range(0, len(content), self.chunk_size)]
+        return chunks
+
     def add_code_file(self, file: CodePage):
         """
         Add a code file to the vector db
         """
-        # Check if issue already exists
-        prev_data = self.client.get(CODE, file.primary_key)
-        if len(prev_data) > 0:
-            # compare content, if there's even a slight difference, we should update the issue vector.
-            prev_data_code = CodePage(**prev_data[0])
-            if self.__code_to_embeddable_string(
-                prev_data_code
-            ) == self.__code_to_embeddable_string(file):
-                return  # Issue content is the same as existing issue, just continue.
+        chunks = self.__chunk_code(file.content)
 
-        vector = self.embed(file)
-        entity = [
-            {
-                "primary_key": str(file.primary_key),
-                "vector": vector,
-                "content": file.content,
-                "org_id": str(file.org_id),
-                "page_type": file.page_type,
-            }
-        ]
+        for i, chunk in enumerate(chunks):
+            chunk_key = f"{file.primary_key}-{i}"
+            prev_data = self.client.get(CODE, chunk_key)
+            if len(prev_data) > 0:
+                # compare content, if there's even a slight difference, we should update the code vector.
+                prev_data_code = CodePage(**prev_data[0])
+                if self.__code_to_embeddable_string(
+                    prev_data_code
+                ) == chunk: # This is ok so long as the code to embeddable string is just the content.
+                    continue
 
-        self.client.upsert(CODE, data=entity)
+            try:
+                vector = self.vanilla_embed(chunk)
+            except Exception as e:
+                logging.error(f"Failed to embed chunk {i}: {str(e)}")
+                logging.error(traceback.format_exc())
+
+            entity = [
+                {
+                    "primary_key": f"{file.primary_key}-{i}",
+                    "vector": vector,
+                    "content": chunk,
+                    "org_id": str(file.org_id),
+                    "page_type": file.page_type.value,
+                    "sha": file.sha,
+                }
+            ]
+
+            self.client.upsert(CODE, data=entity)
 
     def get_top_k_code(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """
@@ -457,7 +478,7 @@ class VectorDB:
             anns_field="vector",
             search_params=search_params,
             limit=k,
-            output_fields=["vector", "content", "org_id", "page_type"],
+            output_fields=["vector", "content", "org_id", "page_type", "sha"],
         )
 
         code = {}
@@ -468,6 +489,7 @@ class VectorDB:
             org_id = result["entity"]["org_id"]
             page_type = result["entity"]["page_type"]
             vector = result["entity"]["vector"]
+            sha = result["entity"]["sha"]
 
             code_file = CodePage(
                 primary_key=code_id,
@@ -475,6 +497,7 @@ class VectorDB:
                 org_id=org_id,
                 content=content,
                 page_type=page_type,
+                sha=sha,
             )
 
             code[code_id] = {

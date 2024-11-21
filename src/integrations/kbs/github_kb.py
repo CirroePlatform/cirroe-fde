@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.model.code import CodePage, CodePageType
-from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE
+from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE, GITFILES_CACHE_DIR
 from src.model.issue import Issue
 
 from src.storage.vector import VectorDB
@@ -278,20 +278,27 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to index repository: {str(e)}")
             return False
 
-    def get_files(self, repository: Repository) -> List[CodePage]:
+    def get_files(self, repository: str) -> List[CodePage]:
         """
         Get a list of all the files' contents in the repo by recursively fetching from GitHub API
         
         Args:
-            repository: Repository object containing repo details
+            repository: Repository name
             
         Returns:
             List of CodePage objects containing file contents and metadata
         """
         code_pages = []
+        
+        # 1. Get all the files in the repo from cache if already exists
+        if os.path.exists(f"{GITFILES_CACHE_DIR}/{repository}"):
+            with open(f"{GITFILES_CACHE_DIR}/{repository}", "r") as f:
+                code_json = json.load(f)
+                code_pages = [CodePage(**code_page) for code_page in code_json["code_pages"]]
+            return code_pages
 
         def fetch_contents(path: str = ""):
-            url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository.repository}/contents/{path}"
+            url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
             response = requests.get(url, headers=self.github_headers)
             response.raise_for_status()
 
@@ -303,6 +310,10 @@ class GithubIntegration(BaseKnowledgeBase):
 
             for item in contents:
                 if item["type"] == "file":
+                    # If file is non-text data, skip it
+                    if item["name"].lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".ico", ".webp")):
+                        continue
+
                     # Get raw file content
                     content_response = requests.get(item["download_url"], headers=self.github_headers)
                     content_response.raise_for_status()
@@ -322,7 +333,14 @@ class GithubIntegration(BaseKnowledgeBase):
                     fetch_contents(item["path"])
                     
         try:
-            fetch_contents() 
+            fetch_contents()
+
+            # Cache the files for future use
+            os.makedirs(GITFILES_CACHE_DIR, exist_ok=True)
+            with open(f"{GITFILES_CACHE_DIR}/{repository}", "w") as f:
+                code_json = {"code_pages": [code_page.model_dump() for code_page in code_pages]}
+                json.dump(code_json, f)
+
             return code_pages
             
         except Exception as e:
@@ -337,7 +355,7 @@ class GithubIntegration(BaseKnowledgeBase):
         
         try:
             # 1. Get all the files in the repo
-            files = self.get_files(repository)
+            files = self.get_files(repository.repository)
 
             # 2. Add each file to the vector db
             for file in tqdm.tqdm(files, desc=f"Indexing code files for {repository}"):
@@ -346,6 +364,7 @@ class GithubIntegration(BaseKnowledgeBase):
             return True
         except Exception as e:
             logging.error(f"Failed to index repository: {str(e)}")
+            logging.error(traceback.format_exc())
             return False
 
     async def index(self, repository: Repository) -> bool:

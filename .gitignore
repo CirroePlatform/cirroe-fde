@@ -167,3 +167,4 @@ scripts/scriptv
 *.json
 *.jsonl
 *.csv
+include/cache
