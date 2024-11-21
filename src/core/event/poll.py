@@ -4,11 +4,12 @@
 """
 
 from include.constants import (
-    IGNORE_ISSUES_FILE,
     POLL_INTERVAL,
     BUG_LABELS,
     REQUIRES_DEV_TEAM_PROMPT,
     GITHUB_API_BASE,
+    CIRROE_USERNAME,
+    ABHIGYA_USERNAME,
 )
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.model.issue import Issue, OpenIssueRequest
@@ -27,40 +28,6 @@ import time
 import os
 
 hl = humanlayer.HumanLayer()
-
-def get_ignore_issues(repo_name: str) -> List[str]:
-    """
-    Get the issues that we should ignore.
-    
-    file should be in the format:
-    {
-        "repo_name": [
-            "1234",
-            "5678",
-        ]
-    }
-    """
-    with open(IGNORE_ISSUES_FILE, "r") as f:
-        return json.load(f).get(repo_name, [])
-
-def add_ignore_issue(repo_name: str, issue_number: str):
-    """
-    Add an issue to the ignore list.
-    """
-
-    with open(IGNORE_ISSUES_FILE, "w") as fp:
-        with open(IGNORE_ISSUES_FILE, "r") as f:
-            issues_dict = json.load(f)
-            
-            # Get the issues for the repo
-            issues = issues_dict.get(repo_name, [])
-            issues.append(str(issue_number))
-
-            # Update the issues for the repo
-            issues_dict[repo_name] = issues
-
-            # Write the updated issues to the file
-            json.dump(issues_dict, fp)
 
 cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 dataset_collector = DatasetCollector()
@@ -198,14 +165,15 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
                 f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
             )
 
-            ignore_issues = get_ignore_issues(repo_name)
-            if issue.ticket_number in ignore_issues or issue_needs_dev_team(
+            commenters = list(issue.comments.keys())
+            last_commenter = commenters[0] if commenters else None
+            last_issue_was_from_cirr0e = last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
+            if last_issue_was_from_cirr0e or issue_needs_dev_team(
                 issue, issue_labels, False
             ):
                 logging.info(
                     f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping..."
                 )
-                add_ignore_issue(repo_name, issue.ticket_number)
                 continue
 
             issue_req = OpenIssueRequest(
@@ -247,5 +215,3 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     # Post the comment
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
-
-    add_ignore_issue(repo, issue.ticket_number)

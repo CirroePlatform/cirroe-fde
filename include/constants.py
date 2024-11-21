@@ -3,6 +3,13 @@ from uuid import UUID
 # Supabase constants
 ORG_NAME = "org_name"
 
+# Unsloth
+UNSLOTH_ORG_ID = UUID("b3848a28-a535-4d5d-b773-34b23e195687")
+UNSLOTH_REPO_NAME = "unsloth"
+UNSLOTH_DOCU_URL = "https://docs.unsloth.ai/sitemap.xml"
+UNSLOTH_ORG_NAME = "unslothai"
+UNSLOTH_REPO_URL = f"https://github.com/{UNSLOTH_ORG_NAME}/{UNSLOTH_REPO_NAME}"
+
 # Mem0
 MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
 MEM0AI_ORG_NAME = "mem0ai"
@@ -122,7 +129,8 @@ CODE = "code"
 # Poll constants
 POLL_INTERVAL = 10
 BUG_LABELS = ["bug", "question"]
-IGNORE_ISSUES_FILE = "include/cache/ignore_issues.json"
+ABHIGYA_USERNAME = "AbhigyaWangoo"
+CIRROE_USERNAME = "Cirr0e"
 
 # Finetune constants
 DEFAULT_NEEDS_DEV_TEAM_OUTPUT_PATH = "include/needs_dev_team_output.jsonl"
