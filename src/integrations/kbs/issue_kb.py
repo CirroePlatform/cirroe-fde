@@ -1,7 +1,6 @@
-import json
 import re
-import base64
-import httpx
+import json
+import traceback
 from typing import Dict, List, Tuple
 from uuid import UUID
 from anthropic import Anthropic
@@ -84,66 +83,24 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         """
         try:
             query_vector = self.vector_db.vanilla_embed(query)
-
             issues = self.vector_db.get_top_k_issues(limit, query_vector)
 
             results = []
-            for issue_id, issue_data in issues.items():
+            # for _, issue_data in issues.items(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
+            #     metadata = json.loads(issue_data["metadata"])
 
-                results.append(
-                    KnowledgeBaseResponse(
-                        content=issue_data["metadata"],
-                        metadata=json.loads(issue_data["metadata"]),
-                        source=f"Ticket #{issue_id}",
-                        relevance_score=issue_data["similarity"],
-                    )
-                )
+            #     results.append(
+            #         KnowledgeBaseResponse(
+            #             content=issue_data["metadata"],
+            #             metadata=metadata,
+            #             source=f"Issue #{metadata['ticket_number']}" if metadata["ticket_number"] else "",
+            #             relevance_score=issue_data["similarity"],
+            #         )
+            #     )
 
-                image_links = self.__get_git_image_links_from_kbres(results[-1])
-
-                image_data = []
-                for link in image_links:
-                    image_data.append(
-                        base64.standard_b64encode(httpx.get(link).content).decode(
-                            "utf-8"
-                        )
-                    )
-
-            with open(COALESCE_ISSUE_PROMPT, "r", encoding="utf8") as fp:
-                sysprompt = fp.read()
-
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"input query: {query}\nsimilar_issues: {json.dumps(issues)}",
-                        },
-                        *[
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/jpeg",
-                                    "data": data,
-                                },
-                            }
-                            for data in image_data
-                        ],
-                    ],
-                }
-            ]
-
-            response = self.client.messages.create(
-                model=MODEL_HEAVY,
-                system=sysprompt,
-                max_tokens=1024,
-                messages=messages,
-            )
-
-            return results, response.content[0].text
+            return results, f"<issues>{json.dumps(issues)}</issues>"
 
         except Exception as e:
             logger.error(f"Failed to query issues: {str(e)}")
+            logger.error(traceback.format_exc())
             return []

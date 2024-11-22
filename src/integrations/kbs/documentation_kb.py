@@ -156,15 +156,15 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             results = self.vector_db.get_top_k_documentation(limit, query_vector)
 
             kb_responses = []
-            for result in results.values():
-                metadata = json.loads(result["metadata"])
-                kb_response = KnowledgeBaseResponse(
-                    source="documentation",
-                    content=metadata["content"],
-                    relevance_score=result["similarity"],
-                    metadata=metadata,
-                )
-                kb_responses.append(kb_response)
+            # for result in results.values(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
+            #     metadata = json.loads(result["metadata"])
+            #     kb_response = KnowledgeBaseResponse(
+            #         source="documentation",
+            #         content=metadata["content"],
+            #         relevance_score=result["similarity"],
+            #         metadata=metadata,
+            #     )
+            #     kb_responses.append(kb_response)
 
             return kb_responses, f"<documentation_pages>{json.dumps(results)}</documentation_pages>"
         except Exception as e:

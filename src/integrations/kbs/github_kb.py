@@ -452,15 +452,15 @@ class GithubIntegration(BaseKnowledgeBase):
             results = self.vector_db.get_top_k_code(limit, query_vector)
 
             kb_responses = []
-            for result in results.values():
-                metadata = json.loads(result["metadata"])
-                kb_response = KnowledgeBaseResponse(
-                    source="github",
-                    content=metadata["content"],
-                    relevance_score=result["similarity"],
-                    metadata=metadata,
-                )
-                kb_responses.append(kb_response)
+            # for result in results.values(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
+            #     metadata = json.loads(result["metadata"])
+            #     kb_response = KnowledgeBaseResponse(
+            #         source="github",
+            #         content=metadata["content"],
+            #         relevance_score=result["similarity"],
+            #         metadata=metadata,
+            #     )
+            #     kb_responses.append(kb_response)
 
             return kb_responses, f"<code_pages>{json.dumps(results)}</code_pages>"
 
