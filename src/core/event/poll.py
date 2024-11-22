@@ -165,8 +165,8 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
                 f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
             )
 
-            commenters = list(issue.comments.keys())
-            last_commenter = commenters[0] if commenters else None
+            commenters = list(issue.comments.keys()) # TODO fix this, the order of comments is not guaranteed, sometimes we miss followups.
+            last_commenter = commenters[-1] if commenters else None
             last_issue_was_from_cirr0e = last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
             if last_issue_was_from_cirr0e or issue_needs_dev_team(
                 issue, issue_labels, False

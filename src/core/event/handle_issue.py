@@ -1,26 +1,28 @@
-from logger import logger
-from uuid import UUID
 from typing import List, Dict, Any
-import anthropic
-import json
 from dotenv import load_dotenv
+from logger import logger
+import anthropic
+import traceback
+import json
+import os
 
+from src.integrations.kbs.base_kb import KnowledgeBaseResponse
+from src.integrations.kbs.github_kb import Repository
 from src.model.issue import OpenIssueRequest
 from src.core.tools import SearchTools
-from src.integrations.kbs.github_kb import Repository
-from src.integrations.kbs.base_kb import KnowledgeBaseResponse
 from include.constants import (
     DEBUG_ISSUE_FILE,
     DEBUG_TOOLS,
     DEBUG_ISSUE_FINAL_PROMPT,
-    MODEL_LIGHT,
+    MODEL_HEAVY,
 )
 SOLUTION_TAG_OPEN = "<solution>"
 SOLUTION_TAG_CLOSE = "</solution>"
 
 load_dotenv()
 
-client = anthropic.Anthropic()
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
 def append_message(messages: List[Dict[str, str]], role: str, content: str) -> None:
@@ -42,7 +44,6 @@ def append_message(messages: List[Dict[str, str]], role: str, content: str) -> N
 def handle_tool_response(
     tool_name: str,
     function_response: str,
-    kb_responses: List[KnowledgeBaseResponse],
     messages: List[Dict[str, str]],
 ) -> None:
     """
@@ -51,7 +52,6 @@ def handle_tool_response(
     Args:
         tool_name: Name of the tool that was called
         function_response: Response from the tool
-        kb_responses: List of knowledge base responses to update
         messages: List of message dictionaries to update
     """
     append_message(messages, "user", f"Results from {tool_name}: {function_response}")
@@ -92,17 +92,16 @@ def debug_issue(
         "execute_issue_search": search_tools.execute_issue_search,
     }
 
+    response = client.messages.create(
+        model=MODEL_HEAVY,
+        system=sysprompt,
+        max_tokens=2048,
+        tools=DEBUG_TOOLS,
+        tool_choice={"type": "auto"},
+        messages=messages,
+    )
     while tool_calls_made < max_tool_calls:
         try:
-            response = client.messages.create(
-                model=MODEL_LIGHT,
-                system=sysprompt,
-                max_tokens=2048,
-                tools=DEBUG_TOOLS,
-                tool_choice={"type": "auto"},
-                messages=messages,
-            )
-
             # Handle the response content
             if not response.content:
                 break
@@ -131,12 +130,12 @@ def debug_issue(
 
                     # Execute tool call
                     try:
-                        kbres, function_response = TOOLS_MAP[tool_name](**tool_input)
-                        kb_responses.extend(
-                            [KnowledgeBaseResponse.model_validate(kb) for kb in kbres]
-                        )
+                        _, function_response = TOOLS_MAP[tool_name](**tool_input) # TODO use kbres only, not the function response.
+                        # kb_responses.extend(
+                        #     [KnowledgeBaseResponse.model_validate(kb) for kb in kbres]
+                        # )
                         handle_tool_response(
-                            tool_name, function_response, kb_responses, messages
+                            tool_name, function_response, messages
                         )
                     except Exception as e:
                         logger.error("Tool execution error: %s", str(e))
@@ -147,7 +146,7 @@ def debug_issue(
                         )
                         function_response = str(e)
                         handle_tool_response(
-                            tool_name, function_response, kb_responses, messages
+                            tool_name, function_response, messages
                         )
 
                     tool_calls_made += 1
@@ -155,6 +154,15 @@ def debug_issue(
             # Check if we should continue
             if response.stop_reason != "tool_use":
                 break
+
+            response = client.messages.create(
+                model=MODEL_HEAVY,
+                system=sysprompt,
+                max_tokens=2048,
+                tools=DEBUG_TOOLS,
+                tool_choice={"type": "auto"},
+                messages=messages,
+            )
 
         except Exception as e:
             logger.error("Error in main loop: %s", str(e))
@@ -174,9 +182,6 @@ def debug_issue(
                 if hasattr(content, "text"):
                     if SOLUTION_TAG_OPEN in content.text and SOLUTION_TAG_CLOSE in content.text:
                         final_response = content.text.split(SOLUTION_TAG_OPEN)[1].split(SOLUTION_TAG_CLOSE)[0].strip()
-                    else:
-                        final_response = content.text
-
                     break
 
         if not final_response:
@@ -188,9 +193,9 @@ def debug_issue(
                 final_sysprompt += "\n\nNote: Maximum tool calls reached. Please provide a response based on available information."
 
             final_call = client.messages.create(
-                model=MODEL_LIGHT,
+                model=MODEL_HEAVY,
                 system=final_sysprompt,
-                max_tokens=1024,
+                max_tokens=2048,
                 messages=messages,
                 temperature=0.1,
             )
@@ -218,4 +223,5 @@ def debug_issue(
 
     except Exception as e:
         logger.error("Error generating final response: %s", str(e))
+        logger.error(traceback.format_exc())
         raise RuntimeError(f"Failed to generate final response: {str(e)}")
