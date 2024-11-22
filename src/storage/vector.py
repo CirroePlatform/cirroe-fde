@@ -153,6 +153,7 @@ class VectorDB:
             FieldSchema(name="comments", dtype=DataType.JSON),
             FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
             FieldSchema(name="ticket_number", dtype=DataType.VARCHAR, max_length=36),
+            FieldSchema(name="metadata", dtype=DataType.JSON), # TODO remove this when the issue table becomes set in stone. This is for backwards compatibility in case we need to add new fields.
         ]
         schema = CollectionSchema(fields=fields, description="Issue collection")
 
@@ -283,6 +284,8 @@ class VectorDB:
                 "description": issue.description,
                 "comments": issue.comments,
                 "org_id": str(issue.org_id),
+                "ticket_number": issue.ticket_number,
+                "metadata": {}, # Nothing for now, but we can add new fields here in the future.
             }
         ]
 
@@ -293,7 +296,7 @@ class VectorDB:
         Get all issues from the vector db
         """
         # Get all primary keys from the collection
-        output_fields = ["primary_key", "description", "comments", "org_id", "vector"]
+        output_fields = ["primary_key", "description", "comments", "org_id", "vector", "ticket_number"]
         batch_size = 100
         offset = 0
         all_results = []
@@ -316,25 +319,30 @@ class VectorDB:
 
     def get_top_k_issues(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """
-        Get top k issues
+        Get top k issues matching the org_id of this vector db instance
         """
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+        
+        # TODO enforce org id filter over search for this and other collections.
+        # expr = f'org_id == "{str(self.user_id)}"'
         results = self.client.search(
             collection_name=ISSUE,
             data=[query_vector],
             anns_field="vector",
             search_params=search_params,
             limit=k,
-            output_fields=["vector", "description", "comments"],
+            output_fields=["vector", "description", "comments", "org_id", "ticket_number"],
+            # expr=expr
         )
 
         issues = {}
-        for result in results[0]:
+        for result in results[0]: # TODO make sure we're returning the ticket number correctly, not doing that right at the moment. The primary key is returned, and the ticket number is null.
             issue_id = result["id"]
             distance = result["distance"]
             problem_description = result["entity"]["description"]
             comments = result["entity"]["comments"]
             vector = result["entity"]["vector"]
+            ticket_number = result["entity"]["ticket_number"]
 
             issue = Issue(
                 primary_key=issue_id,
@@ -342,6 +350,7 @@ class VectorDB:
                 comments=comments,
                 vector=vector,
                 org_id=self.user_id,
+                ticket_number=ticket_number,
             )
 
             issues[issue_id] = {
@@ -350,7 +359,6 @@ class VectorDB:
             }
 
         return issues
-
     def add_documentation_page(self, doc: DocumentationPage):
         """
         Add documentation page to vector db
