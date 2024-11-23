@@ -34,9 +34,9 @@ def test_clean_traceback():
                 TypeError: string indices must be integers, not 'str'```
             """,
             expected_steps=[
-                TracebackStep(file="c:\\...\memo_base.py", code="response = chat_turn(user_input, user_id)"),
-                TracebackStep(file="c:\\...\memo_base.py", code="context = retrieve_context(user_input, user_id)"),
-                TracebackStep(file="c:\\...\memo_base.py", code="seralized_memories = ' '.join([mem['memory'] for mem in memories])")
+                TracebackStep(file="memo_base.py", code="response = chat_turn(user_input, user_id)"),
+                TracebackStep(file="memo_base.py", code="context = retrieve_context(user_input, user_id)"),
+                TracebackStep(file="memo_base.py", code="seralized_memories = ' '.join([mem['memory'] for mem in memories])")
             ]
         )
     ]
