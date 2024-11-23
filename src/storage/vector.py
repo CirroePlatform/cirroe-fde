@@ -13,10 +13,9 @@ from pymilvus import DataType, CollectionSchema, FieldSchema
 from src.model.documentation import DocumentationPage
 from sentence_transformers import SentenceTransformer
 from pymilvus.milvus_client.index import IndexParams
-from include.utils import num_tokens_from_string
-from typing import List, Any, Dict, Union
+from typing import List, Any, Dict, Union, Optional
 from src.storage.supa import SupaClient
-from src.model.code import CodePage
+from src.model.code import CodePage, CodePageType
 from pymilvus import MilvusClient
 from typeguard import typechecked
 import traceback
@@ -27,6 +26,7 @@ from openai import OpenAI
 from uuid import UUID
 import os
 
+PRIMARY_KEY_FIELD = "primary_key"
 
 load_dotenv()
 
@@ -143,7 +143,7 @@ class VectorDB:
         """
         fields = [
             FieldSchema(
-                name="primary_key",
+                name=PRIMARY_KEY_FIELD,
                 dtype=DataType.VARCHAR,
                 is_primary=True,
                 max_length=36,
@@ -170,7 +170,7 @@ class VectorDB:
         """
         fields = [
             FieldSchema(
-                name="primary_key",
+                name=PRIMARY_KEY_FIELD,
                 dtype=DataType.VARCHAR,
                 is_primary=True,
                 max_length=64,  # 16 bytes -> 32 hex characters for SHA3-256 hash
@@ -195,7 +195,7 @@ class VectorDB:
         """
         fields = [
             FieldSchema(
-                name="primary_key",
+                name=PRIMARY_KEY_FIELD,
                 dtype=DataType.VARCHAR,
                 is_primary=True,
                 max_length=1024,
@@ -279,7 +279,7 @@ class VectorDB:
         vector = self.embed(issue)
         entity = [
             {
-                "primary_key": str(issue.primary_key),
+                PRIMARY_KEY_FIELD: str(issue.primary_key),
                 "vector": vector,
                 "description": issue.description,
                 "comments": issue.comments,
@@ -296,7 +296,7 @@ class VectorDB:
         Get all issues from the vector db
         """
         # Get all primary keys from the collection
-        output_fields = ["primary_key", "description", "comments", "org_id", "vector", "ticket_number"]
+        output_fields = [PRIMARY_KEY_FIELD, "description", "comments", "org_id", "vector", "ticket_number"]
         batch_size = 100
         offset = 0
         all_results = []
@@ -324,7 +324,7 @@ class VectorDB:
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
         
         # TODO enforce org id filter over search for this and other collections.
-        # expr = f'org_id == "{str(self.user_id)}"'
+        filter = f'org_id == "{str(self.user_id)}"'
         results = self.client.search(
             collection_name=ISSUE,
             data=[query_vector],
@@ -332,7 +332,7 @@ class VectorDB:
             search_params=search_params,
             limit=k,
             output_fields=["vector", "description", "comments", "org_id", "ticket_number"],
-            # expr=expr
+            filter=filter
         )
 
         issues = {}
@@ -359,6 +359,7 @@ class VectorDB:
             }
 
         return issues
+
     def add_documentation_page(self, doc: DocumentationPage):
         """
         Add documentation page to vector db
@@ -376,7 +377,7 @@ class VectorDB:
         vector = self.embed(doc)
         entity = [
             {
-                "primary_key": str(doc.primary_key),
+                PRIMARY_KEY_FIELD: str(doc.primary_key),
                 "vector": vector,
                 "url": doc.url,
                 "content": doc.content,
@@ -400,6 +401,7 @@ class VectorDB:
         Get top k documentation pages
         """
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+        filter = f"org_id == '{str(self.user_id)}'"
         results = self.client.search(
             collection_name=DOCUMENTATION,
             data=[query_vector],
@@ -407,6 +409,7 @@ class VectorDB:
             search_params=search_params,
             limit=k,
             output_fields=["vector", "url", "content"],
+            filter=filter
         )
 
         docs = {}
@@ -464,7 +467,7 @@ class VectorDB:
 
             entity = [
                 {
-                    "primary_key": f"{file.primary_key}-{i}",
+                    PRIMARY_KEY_FIELD: f"{file.primary_key}-{i}",
                     "vector": vector,
                     "content": chunk,
                     "org_id": str(file.org_id),
@@ -480,6 +483,7 @@ class VectorDB:
         Get top k code files
         """
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
+        filter = f"org_id == '{str(self.user_id)}'"
         results = self.client.search(
             collection_name=CODE,
             data=[query_vector],
@@ -487,6 +491,7 @@ class VectorDB:
             search_params=search_params,
             limit=k,
             output_fields=["vector", "content", "org_id", "page_type", "sha"],
+            filter=filter
         )
 
         code = {}
@@ -514,3 +519,33 @@ class VectorDB:
             }
 
         return code
+
+    def get_code_pages(self, filename_filter: Optional[str] = None) -> List[CodePage]:
+        """
+        Get all code pages from the vector db
+        """
+        # Get all primary keys from the collection
+        output_fields = [PRIMARY_KEY_FIELD, "content", "org_id", "page_type", "sha"]
+        batch_size = 100
+        offset = 0
+        all_results = []
+        expr = f"page_type == '{CodePageType.CODE.value}' and org_id == '{str(self.user_id)}'"
+        if filename_filter is not None:
+            expr += f" and {PRIMARY_KEY_FIELD} like \"%{filename_filter}%\""
+
+        while True:
+            results = self.client.query(
+                collection_name=CODE,
+                output_fields=output_fields,
+                limit=batch_size,
+                offset=offset,
+                filter=expr
+            )
+
+            all_results.extend(results)
+            offset += batch_size
+
+            if len(results) < batch_size:
+                break
+
+        return [CodePage(**code) for code in all_results]
