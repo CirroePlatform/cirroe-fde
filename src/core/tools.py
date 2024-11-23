@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from typeguard import typechecked
 
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
@@ -30,7 +30,7 @@ class SearchTools:
         return userdata[ORG_NAME]
 
     def execute_codebase_search(
-        self, query: str, limit: int
+        self, query: str, limit: int, traceback: Optional[str] = None
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
             Execute a command over git repos using the Greptile API integration.
@@ -38,12 +38,13 @@ class SearchTools:
         Args:
             query (str): The search query in natural language format.
             limit (int): The number of chunks to retrieve from the codebase
+            traceback (Optional[str]): The traceback to use for cleaning the results
 
         Returns:
             List[KnowledgeBaseResponse]: List of codebase responses that match the search query
         """
         try:
-            response = self.github.query(query, limit=limit)
+            response = self.github.query(query, limit=limit, tb=traceback)
             return response
         except Exception as e:
             return [], str(e)

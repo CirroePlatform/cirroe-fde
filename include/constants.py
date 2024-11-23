@@ -59,7 +59,7 @@ MODEL_HEAVY = "claude-3-5-sonnet-latest"
 DEBUG_TOOLS = [
     {
         "name": "execute_codebase_search",
-        "description": "A function to search the teams codebase for relevant code snippets. This will return the top k chunks of code from the teams various codebases relevant to the provided search query.",
+        "description": "A function to search the teams codebase for relevant code snippets. This will return the top k chunks of code from the teams' code base that's relevant to the provided search query.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -70,6 +70,10 @@ DEBUG_TOOLS = [
                 "limit": {
                     "type": "integer",
                     "description": "The number of chunks to retrieve from the codebase",
+                },
+                "traceback": {
+                    "type": "string",
+                    "description": "A traceback from the user containing error details that can be used to augment the search for relevant code snippets",
                 },
             },
             "required": ["query", "limit"],

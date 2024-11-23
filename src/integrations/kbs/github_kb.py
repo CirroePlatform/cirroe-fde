@@ -9,6 +9,7 @@ import logging
 from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
 
+from src.integrations.cleaners.traceback_cleaner import TracebackCleaner
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.model.code import CodePage, CodePageType
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE, GITFILES_CACHE_DIR
@@ -38,7 +39,6 @@ class GithubIntegration(BaseKnowledgeBase):
         org_id: UUID,
         org_name: str,
         repos: Optional[List[Repository]] = None,
-        repo_names: Optional[List[str]] = None,
     ):
         """
         Initialize Github integration for an organization
@@ -67,6 +67,7 @@ class GithubIntegration(BaseKnowledgeBase):
         }
         self.repos = repos
         self.vector_db = VectorDB(self.org_id)
+        self.traceback_cleaner = TracebackCleaner(self.vector_db)
 
     def get_github_token(self, org_id: str) -> str:
         """
@@ -435,7 +436,7 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to query repositories: {str(e)}")
             return [], ""
 
-    def __query_custom(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def __query_custom(self, query: str, limit: int = 5, tb: Optional[str] = None) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the vector db for code search
 
@@ -449,8 +450,14 @@ class GithubIntegration(BaseKnowledgeBase):
         """
         try:
             query_vector = self.vector_db.vanilla_embed(query)
-            results = self.vector_db.get_top_k_code(limit, query_vector)
+            results = self.vector_db.get_top_k_code(limit, query_vector, tb)
+            response = f"<code_pages>{json.dumps(results)}"
 
+            if tb is not None:
+                cleaned_results = self.traceback_cleaner.clean(tb)
+                response += {json.dumps([step.model_dump() for step in cleaned_results])} # TODO not sure if we should surround this with tags? also untested rn.
+
+            response += "</code_pages>"
             kb_responses = []
             # for result in results.values(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
             #     metadata = json.loads(result["metadata"])
@@ -462,7 +469,7 @@ class GithubIntegration(BaseKnowledgeBase):
             #     )
             #     kb_responses.append(kb_response)
 
-            return kb_responses, f"<code_pages>{json.dumps(results)}</code_pages>"
+            return kb_responses, response
 
         except Exception as e:
             logging.error(f"Failed to query documentation: {str(e)}")
@@ -471,7 +478,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
 
     def query(
-        self, query: str, limit: int = 5
+        self, query: str, limit: int = 5, tb: Optional[str] = None
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search code repositories with natural language queries
@@ -487,4 +494,4 @@ class GithubIntegration(BaseKnowledgeBase):
         if INDEX_WITH_GREPTILE:
             return self.__query_greptile(query, limit)
         else:
-            return self.__query_custom(query, limit)
+            return self.__query_custom(query, limit, tb)
