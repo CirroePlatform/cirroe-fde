@@ -1,8 +1,13 @@
+from include.utils import get_git_image_links
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 from logger import logger
+from PIL import Image
 import anthropic
 import traceback
+import requests
+import base64
+import httpx
 import json
 import os
 
@@ -57,6 +62,58 @@ def handle_tool_response(
     append_message(messages, "user", f"Results from {tool_name}: {function_response}")
 
 
+def construct_initial_messages(issue_content: str) -> List[Dict[str, Any]]:
+    """
+    Construct the initial message stream for the issue.
+
+    Args:
+        issue_content (str): The issue content to construct the message stream for
+
+    Returns:
+        List[Dict[str, Any]]: The initial message stream
+    """
+    image_links = get_git_image_links(issue_content)
+
+    image_base64s = []
+    for link in image_links:
+        # Might get a redirect to an s3 bucket, so just need to follow it.
+        response = httpx.get(link)
+        if response.status_code == 302:
+            response = httpx.get(response.headers["Location"])
+        else:
+            logger.error("Failed to get image from link: %s", link)
+            continue
+
+        media_type = response.headers["Content-Type"]
+        img_data = base64.standard_b64encode(response.content).decode("utf-8")
+        image_base64s.append((img_data, media_type))
+
+    # Initialize message stream with issue description and any comments
+    messages = [
+        {"role": "user", "content": issue_content},
+    ]
+
+    if image_base64s:
+        messages[0]["content"] = [
+            {
+                "type": "text",
+                "text": messages[0]["content"]
+            },
+            *[
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": data,
+                    },
+                }
+                for data, media_type in image_base64s
+            ],
+        ]
+
+    return messages
+
 def debug_issue(
     issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 3
 ) -> Dict[str, Any]:
@@ -76,10 +133,8 @@ def debug_issue(
     with open(DEBUG_ISSUE_FILE, "r", encoding="utf8") as fp:
         sysprompt = fp.read()
 
-    # Initialize message stream with issue description and any comments
-    messages = [
-        {"role": "user", "content": f"<user_issue>{issue_req.issue.description}</user_issue>\n<user_comments>{json.dumps(issue_req.issue.comments)}</user_comments>"},
-    ]
+    # Construct initial message stream
+    messages = construct_initial_messages(f"<user_issue>{issue_req.issue.description}</user_issue>\n<user_comments>{json.dumps(issue_req.issue.comments)}</user_comments>")
 
     # Initialize tools and response tracking
     search_tools = SearchTools(issue_req.requestor_id, github_repos)

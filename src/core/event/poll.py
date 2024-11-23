@@ -18,7 +18,8 @@ from datetime import datetime, timedelta
 from src.storage.supa import SupaClient
 from cerebras.cloud.sdk import Cerebras
 from .handle_issue import debug_issue
-from typing import List
+from typing import List, Optional
+from uuid import UUID
 import humanlayer
 import requests
 import logging
@@ -125,7 +126,7 @@ def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool 
     return decision
 
 
-def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
+def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_numbers: Optional[set[str]] = None):
     """
     Polls for new issues in a repository. If a new issue is found, or an existing issue is updated,
     it will be handled by the issue handler. Then, we will comment on the issue with the response, guarded
@@ -158,6 +159,8 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False):
         # 2. call debug_issue for each issue.
         issue_objs = github_kb.json_issues_to_issues(issues)
         for issue in issue_objs:
+            if ticket_numbers and str(issue.ticket_number) not in ticket_numbers:
+                continue
 
             # Get the labels for the issue to help classify whether we should handle it or not.
             issue_labels = github_kb.get_labels(

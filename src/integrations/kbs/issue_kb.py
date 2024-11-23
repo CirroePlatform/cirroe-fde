@@ -1,18 +1,12 @@
-import re
-import json
-import traceback
-from typing import Dict, List, Tuple
-from uuid import UUID
-from anthropic import Anthropic
-from src.model.issue import Issue
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
-
 from src.storage.vector import VectorDB
-
+from src.model.issue import Issue
+from anthropic import Anthropic
+from typing import List, Tuple
 from logger import logger
-
-from include.constants import MODEL_HEAVY, COALESCE_ISSUE_PROMPT
-
+from uuid import UUID
+import traceback
+import json
 
 class IssueKnowledgeBase(BaseKnowledgeBase):
     """
@@ -45,27 +39,12 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             # If specific ticket provided, just index that one
             if data:
                 self.vector_db.add_issue(data)
+
             return True
 
         except Exception as e:
             logger.error(f"Failed to index issues: {str(e)}")
             return False
-
-    def __get_git_image_links_from_kbres(
-        self, kbres: KnowledgeBaseResponse
-    ) -> List[str]:
-        """
-        Extract image links from a KnowledgeBaseResponse object
-        Args:
-            kbres (KnowledgeBaseResponse): KnowledgeBaseResponse object
-
-        Returns:
-            List[str]: List of image links
-        """
-        pattern = r'!\[[^\]]*\]\((.*?)\s*("(?:.*[^"])")?\s*\)'
-        matches = re.findall(pattern, kbres.content)
-
-        return [match[0] for match in matches]
 
     def query(
         self, query: str, limit: int = 5
