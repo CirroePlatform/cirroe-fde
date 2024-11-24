@@ -105,30 +105,30 @@ def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool 
     )
 
     # Guard with humanlayer
-    approval = hl.fetch_approval(
-        humanlayer.FunctionCallSpec(
-            fn="issue needs a dev team's response",
-            kwargs={
-                "issue description": issue.description,
-                "issue labels": labels,
-                "any possible comments": issue.comments,
-                "decision": chat_completion.choices[0].message.content,
-            },
-        ),
-    )
+    # approval = hl.fetch_approval(
+    #     humanlayer.FunctionCallSpec(
+    #         fn="issue needs a dev team's response",
+    #         kwargs={
+    #             "issue description": issue.description,
+    #             "issue labels": labels,
+    #             "any possible comments": issue.comments,
+    #             "decision": chat_completion.choices[0].message.content,
+    #         },
+    #     ),
+    # )
 
-    completed = approval.as_completed()
     decision = chat_completion.choices[0].message.content.lower() == "yes"
-    if (
-        not completed.approved
-    ):  # if the action is not approved, we want to do the opposite of the model's decision.
-        decision = not decision
+    # completed = approval.as_completed()
+    # if (
+    #     not completed.approved
+    # ):  # if the action is not approved, we want to do the opposite of the model's decision.
+    #     decision = not decision
 
     # For later model training
-    completion_comment = completed.comment
-    dataset_collector.collect_needs_dev_team_output(
-        issue, actual_decision=decision, additional_info=completion_comment
-    )
+    # completion_comment = completed.comment
+    # dataset_collector.collect_needs_dev_team_output(
+    #     issue, actual_decision=decision, additional_info=completion_comment
+    # )
 
     return decision
 
@@ -142,7 +142,7 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
     TODO issue fetches are slowing this function down, we should most likely try to cache existing issues or only query by time period per poll.
     """
 
-    org_name = SupaClient(org_id).get_user_data("org_name")["org_name"]
+    org_name = SupaClient(org_id).get_user_data("org_name", debug=debug)["org_name"]
     github_kb = GithubIntegration(org_id, org_name, repos=[Repository(remote="github.com", repository=repo_name, branch="main")])
     on_init = True
     repo_obj = github_kb.repos
@@ -177,9 +177,10 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
 
             last_commenter = issue.comments[-1].requestor_name if issue.comments else None
             last_issue_was_from_cirr0e = last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
-            if last_issue_was_from_cirr0e or issue_needs_dev_team(
-                issue, issue_labels, False
-            ):
+            if False:
+            # last_issue_was_from_cirr0e or issue_needs_dev_team(
+            #     issue, issue_labels, False
+            # ):
                 logging.info(
                     f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping..."
                 )
