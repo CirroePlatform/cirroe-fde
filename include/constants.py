@@ -2,36 +2,19 @@ from uuid import UUID
 
 # Supabase constants
 ORG_NAME = "org_name"
-
-# Unsloth
-UNSLOTH_ORG_ID = UUID("b3848a28-a535-4d5d-b773-34b23e195687")
-UNSLOTH_REPO_NAME = "unsloth"
-UNSLOTH_DOCU_URL = "https://docs.unsloth.ai/sitemap.xml"
-UNSLOTH_ORG_NAME = "unslothai"
-UNSLOTH_REPO_URL = f"https://github.com/{UNSLOTH_ORG_NAME}/{UNSLOTH_REPO_NAME}"
-
-# Mem0
-MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
-MEM0AI_ORG_NAME = "mem0ai"
-MEM0AI_REPO_NAME = "mem0"
-MEM0AI_REPO_URL = f"https://github.com/{MEM0AI_ORG_NAME}/{MEM0AI_REPO_NAME}"
-MEM0AI_DOCU_URL = "https://docs.mem0.ai/sitemap.xml"
-
-# Baseten
-BASETEN_ORG_ID = UUID("802f083b-5d7e-4418-bebc-6052f5634f8e")
-BASETEN_ORG_NAME = "basetenlabs"
-BASETEN_REPO_NAME = "truss"
-BASETEN_REPO_URL = f"https://github.com/{BASETEN_ORG_NAME}/{BASETEN_REPO_NAME}"
-BASETEN_DOCU_URL = "https://docs.baseten.co/sitemap.xml"
-
-# Qdrant
-QDRANT_ORG_ID = UUID("a54c3511-0424-4663-8309-1d7ba3953aa6")
-QDRANT_ORG_NAME = "qdrant"
-QDRANT_REPO_NAME = "qdrant"
-QDRANT_REPO_URL = f"https://github.com/{QDRANT_ORG_NAME}/{QDRANT_REPO_NAME}"
-QDRANT_DOCU_URL = "https://qdrant.tech/sitemap.xml"
-
 CACHE_DIR = "include/cache"
+CACHED_USER_DATA_FILE = f"{CACHE_DIR}/cached_user_data.json"
+
+# Org IDs
+BASETEN_ORG_ID = UUID("802f083b-5d7e-4418-bebc-6052f5634f8e")
+QDRANT_ORG_ID = UUID("a54c3511-0424-4663-8309-1d7ba3953aa6")
+
+UNSLOTH_ORG_ID = UUID("b3848a28-a535-4d5d-b773-34b23e195687")
+MEM0AI_ORG_ID = UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1")
+TRIGGER_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174000")
+MILVUS_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174001")
+UEBERDOSIS_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174002")
+
 GITFILES_CACHE_DIR = f"{CACHE_DIR}/gitfiles"
 
 # Evaluation constants
