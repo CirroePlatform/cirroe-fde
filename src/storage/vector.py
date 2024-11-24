@@ -283,8 +283,15 @@ class VectorDB:
         # Check if issue already exists
         prev_data = self.client.get(ISSUE, issue.primary_key)
         if len(prev_data) > 0:
-            # compare content, if there's even a slight difference, we should update the issue vector.
+            # Need to load comments in to comply with Issue model
+            comments = [
+                Comment.model_validate_json(comment_json)
+                for comment_json in prev_data[0]["comments"]
+            ]
+            prev_data[0]["comments"] = comments
             prev_data_issue = Issue(**prev_data[0])
+
+            # compare content, if there's even a slight difference, we should update the issue vector.
             if self.__issue_to_embeddable_string(
                 prev_data_issue
             ) == self.__issue_to_embeddable_string(issue):
