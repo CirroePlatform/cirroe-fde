@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from itertools import chain
 from typing import List
 import tiktoken
 import uuid
@@ -24,10 +25,9 @@ def get_git_image_links(content: str) -> List[str]:
     pattern = r'!\[[^\]]*\]\((.*?)\s*("(?:.*[^"])")?\s*\)'
     matches = re.findall(pattern, content)
 
-    retval = [match for match in matches]
-
-    if retval and retval[0].startswith("http"):
-        return retval
+    valid_links = [match for match in list(chain(*matches)) if match.startswith("http")]
+    if valid_links:
+        return valid_links
 
     # Basic pattern for GitHub user attachment links
     pattern = r'https://github\.com/user-attachments/assets/[a-fA-F0-9-]+'
@@ -36,7 +36,6 @@ def get_git_image_links(content: str) -> List[str]:
     potential_links = re.findall(pattern, content)
     
     # Validate each link to ensure the UUID part is valid
-    valid_links = []
     for link in potential_links:
         # Extract the UUID part (everything after the last /)
         potential_uuid = link.split('/')[-1]

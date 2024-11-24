@@ -72,7 +72,7 @@ def construct_initial_messages(issue: Issue) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: The initial message stream
     """
-    issue_content = f"<issue_description>{issue.description}</issue_description>"
+    issue_content = issue.description + "\n\n" + "\n".join([comment.comment for comment in issue.comments])
     image_links = get_git_image_links(issue_content)
 
     image_base64s = []

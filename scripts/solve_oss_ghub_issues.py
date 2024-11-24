@@ -4,6 +4,7 @@ A basic script that solves a few subsets of issues from some commercial oss proj
 
 import random
 import logging
+from time import sleep
 
 from uuid import UUID
 
@@ -30,8 +31,8 @@ async def setup_all_kbs_with_repo(
     doc_kb = DocumentationKnowledgeBase(org_id)
 
     # 2. Index the repository with each knowledge base
-    # await github.index(Repository(remote="github.com", repository=repo_name, branch="main"))
     await doc_kb.index(docu_url)
+    await github.index(Repository(remote="github.com", repository=repo_name, branch="main"))
 
     # 2.a Index the issues, need to pull all issues from the repo then index only enough to allow for evaluationi
     logging.info(f"Getting all issues for {org_name}/{repo_name}")
@@ -44,7 +45,10 @@ async def setup_all_kbs_with_repo(
         desc="Indexing issues",
         total=len(indexable_issues),
     ):
-        await issue_kb.index(issue)
+        success = await issue_kb.index(issue)
+        if not success:
+            logging.error(f"Failed to index issue {issue.ticket_number}. Sleeping for 5 seconds...")
+            sleep(5)
 
 
 def solve_issue(repo: str, issue_id: int):

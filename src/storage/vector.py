@@ -16,6 +16,7 @@ from pymilvus.milvus_client.index import IndexParams
 from typing import List, Any, Dict, Union, Optional
 from src.storage.supa import SupaClient
 from src.model.code import CodePage, CodePageType
+from src.model.issue import Comment
 from pymilvus import MilvusClient
 from typeguard import typechecked
 import traceback
@@ -345,10 +346,11 @@ class VectorDB:
             vector = result["entity"]["vector"]
             ticket_number = result["entity"]["ticket_number"]
 
+            loaded_comments = [Comment.model_validate_json(comment_json) for comment_json in comments]
             issue = Issue(
                 primary_key=issue_id,
                 description=problem_description,
-                comments=comments,
+                comments=loaded_comments,
                 vector=vector,
                 org_id=self.user_id,
                 ticket_number=ticket_number,

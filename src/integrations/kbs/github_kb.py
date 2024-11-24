@@ -146,7 +146,6 @@ class GithubIntegration(BaseKnowledgeBase):
 
                 # Get labels if they exist, and remove this from the set if it doesn't satisfy label constraints
                 issue_number = issues[i]["number"]
-
                 comments_url = issues[i]["comments_url"]
                 try:
                     comments_response = requests.get(
@@ -455,7 +454,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
             if tb is not None:
                 cleaned_results = self.traceback_cleaner.clean(tb)
-                response += {json.dumps([step.model_dump() for step in cleaned_results])} # TODO not sure if we should surround this with tags? also untested rn.
+                response += f"{json.dumps([step.model_dump() for step in cleaned_results])}" # TODO not sure if we should surround this with tags? also untested rn.
 
             response += "</code_pages>"
             kb_responses = []
