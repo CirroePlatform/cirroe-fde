@@ -9,6 +9,8 @@ from enum import StrEnum
 import logging
 
 from include.constants import CACHED_USER_DATA_FILE
+
+
 class Table(StrEnum):
     USERS = "UserMetadata"
     CHAT_SESSIONS = "ChatSessions"
@@ -52,7 +54,7 @@ class SupaClient:
     def get_user_data(self, *columns, debug: bool = False):
         """
         Gets user data based on requested columns
-        
+
         Args:
             *columns: Column names to retrieve
             debug: Whether to run in debug mode
@@ -60,7 +62,9 @@ class SupaClient:
 
         def __mock_get_user_data_from_file(self):
             if not os.path.exists(CACHED_USER_DATA_FILE):
-                logging.error(f"Cached user data file does not exist at {CACHED_USER_DATA_FILE}, even though debug is true")
+                logging.error(
+                    f"Cached user data file does not exist at {CACHED_USER_DATA_FILE}, even though debug is true"
+                )
                 return None
 
             with open(CACHED_USER_DATA_FILE, "r") as f:
@@ -86,6 +90,7 @@ class SupaClient:
         """
         Sets user data based on provided kwargs.
         """
+
         def __mock_set_user_data(self, **kwargs):
             with open(CACHED_USER_DATA_FILE, "r") as f:
                 cached_user_data = json.load(f)

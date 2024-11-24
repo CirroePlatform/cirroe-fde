@@ -21,6 +21,7 @@ from include.constants import (
     DEBUG_ISSUE_FINAL_PROMPT,
     MODEL_HEAVY,
 )
+
 SOLUTION_TAG_OPEN = "<solution>"
 SOLUTION_TAG_CLOSE = "</solution>"
 
@@ -72,7 +73,11 @@ def construct_initial_messages(issue: Issue) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: The initial message stream
     """
-    issue_content = issue.description + "\n\n" + "\n".join([comment.comment for comment in issue.comments])
+    issue_content = (
+        issue.description
+        + "\n\n"
+        + "\n".join([comment.comment for comment in issue.comments])
+    )
     image_links = get_git_image_links(issue_content)
 
     image_base64s = []
@@ -96,10 +101,7 @@ def construct_initial_messages(issue: Issue) -> List[Dict[str, Any]]:
 
     if image_base64s:
         messages[0]["content"] = [
-            {
-                "type": "text",
-                "text": messages[0]["content"]
-            },
+            {"type": "text", "text": messages[0]["content"]},
             *[
                 {
                     "type": "text",
@@ -121,6 +123,7 @@ def construct_initial_messages(issue: Issue) -> List[Dict[str, Any]]:
         ]
 
     return messages
+
 
 def debug_issue(
     issue_req: OpenIssueRequest, github_repos: List[Repository], max_tool_calls: int = 3
@@ -193,13 +196,13 @@ def debug_issue(
 
                     # Execute tool call
                     try:
-                        _, function_response = TOOLS_MAP[tool_name](**tool_input) # TODO use kbres only, not the function response.
+                        _, function_response = TOOLS_MAP[tool_name](
+                            **tool_input
+                        )  # TODO use kbres only, not the function response.
                         # kb_responses.extend(
                         #     [KnowledgeBaseResponse.model_validate(kb) for kb in kbres]
                         # )
-                        handle_tool_response(
-                            tool_name, function_response, messages
-                        )
+                        handle_tool_response(tool_name, function_response, messages)
                     except Exception as e:
                         logger.error("Tool execution error: %s", str(e))
                         append_message(
@@ -208,9 +211,7 @@ def debug_issue(
                             f"Encountered an error with {tool_name}. Let me try a different approach.",
                         )
                         function_response = str(e)
-                        handle_tool_response(
-                            tool_name, function_response, messages
-                        )
+                        handle_tool_response(tool_name, function_response, messages)
 
                     tool_calls_made += 1
 
@@ -243,8 +244,15 @@ def debug_issue(
         if response.stop_reason != "tool_use" and response.content:
             for content in response.content:
                 if hasattr(content, "text"):
-                    if SOLUTION_TAG_OPEN in content.text and SOLUTION_TAG_CLOSE in content.text:
-                        final_response = content.text.split(SOLUTION_TAG_OPEN)[1].split(SOLUTION_TAG_CLOSE)[0].strip()
+                    if (
+                        SOLUTION_TAG_OPEN in content.text
+                        and SOLUTION_TAG_CLOSE in content.text
+                    ):
+                        final_response = (
+                            content.text.split(SOLUTION_TAG_OPEN)[1]
+                            .split(SOLUTION_TAG_CLOSE)[0]
+                            .strip()
+                        )
                     break
 
         if not final_response:

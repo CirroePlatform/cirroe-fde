@@ -152,10 +152,18 @@ class VectorDB:
             ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),
-            FieldSchema(name="comments", dtype=DataType.ARRAY, element_type=DataType.VARCHAR, max_capacity=36, max_length=65535),
+            FieldSchema(
+                name="comments",
+                dtype=DataType.ARRAY,
+                element_type=DataType.VARCHAR,
+                max_capacity=36,
+                max_length=65535,
+            ),
             FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
             FieldSchema(name="ticket_number", dtype=DataType.VARCHAR, max_length=36),
-            FieldSchema(name="metadata", dtype=DataType.JSON), # TODO remove this when the issue table becomes set in stone. This is for backwards compatibility in case we need to add new fields.
+            FieldSchema(
+                name="metadata", dtype=DataType.JSON
+            ),  # TODO remove this when the issue table becomes set in stone. This is for backwards compatibility in case we need to add new fields.
         ]
         schema = CollectionSchema(fields=fields, description="Issue collection")
 
@@ -226,7 +234,11 @@ class VectorDB:
         """
         Convert an issue to a string that can be embedded
         """
-        return issue.description + " " + json.dumps([comment.model_dump_json() for comment in issue.comments])
+        return (
+            issue.description
+            + " "
+            + json.dumps([comment.model_dump_json() for comment in issue.comments])
+        )
 
     def __docu_page_to_embeddable_string(self, page: DocumentationPage) -> str:
         """
@@ -287,7 +299,7 @@ class VectorDB:
                 "comments": [comment.model_dump_json() for comment in issue.comments],
                 "org_id": str(issue.org_id),
                 "ticket_number": issue.ticket_number,
-                "metadata": {}, # Nothing for now, but we can add new fields here in the future.
+                "metadata": {},  # Nothing for now, but we can add new fields here in the future.
             }
         ]
 
@@ -298,7 +310,14 @@ class VectorDB:
         Get all issues from the vector db
         """
         # Get all primary keys from the collection
-        output_fields = [PRIMARY_KEY_FIELD, "description", "comments", "org_id", "vector", "ticket_number"]
+        output_fields = [
+            PRIMARY_KEY_FIELD,
+            "description",
+            "comments",
+            "org_id",
+            "vector",
+            "ticket_number",
+        ]
         batch_size = 100
         offset = 0
         all_results = []
@@ -324,7 +343,7 @@ class VectorDB:
         Get top k issues matching the org_id of this vector db instance
         """
         search_params = {"metric_type": "COSINE", "params": {"nprobe": 10}}
-        
+
         # TODO enforce org id filter over search for this and other collections.
         filter = f'org_id == "{str(self.user_id)}"'
         results = self.client.search(
@@ -333,12 +352,20 @@ class VectorDB:
             anns_field="vector",
             search_params=search_params,
             limit=k,
-            output_fields=["vector", "description", "comments", "org_id", "ticket_number"],
-            filter=filter
+            output_fields=[
+                "vector",
+                "description",
+                "comments",
+                "org_id",
+                "ticket_number",
+            ],
+            filter=filter,
         )
 
         issues = {}
-        for result in results[0]: # TODO make sure we're returning the ticket number correctly, not doing that right at the moment. The primary key is returned, and the ticket number is null.
+        for result in results[
+            0
+        ]:  # TODO make sure we're returning the ticket number correctly, not doing that right at the moment. The primary key is returned, and the ticket number is null.
             issue_id = result["id"]
             distance = result["distance"]
             problem_description = result["entity"]["description"]
@@ -346,7 +373,9 @@ class VectorDB:
             vector = result["entity"]["vector"]
             ticket_number = result["entity"]["ticket_number"]
 
-            loaded_comments = [Comment.model_validate_json(comment_json) for comment_json in comments]
+            loaded_comments = [
+                Comment.model_validate_json(comment_json) for comment_json in comments
+            ]
             issue = Issue(
                 primary_key=issue_id,
                 description=problem_description,
@@ -412,7 +441,7 @@ class VectorDB:
             search_params=search_params,
             limit=k,
             output_fields=["vector", "url", "content"],
-            filter=filter
+            filter=filter,
         )
 
         docs = {}
@@ -440,9 +469,12 @@ class VectorDB:
 
     def __chunk_code(self, content: str) -> List[str]:
         """
-        Chunk the code into several smaller chunks, each of character length of num_tokens_from_string(content, self.model.model_name). 
+        Chunk the code into several smaller chunks, each of character length of num_tokens_from_string(content, self.model.model_name).
         """
-        chunks = [content[i : i + self.chunk_size] for i in range(0, len(content), self.chunk_size)]
+        chunks = [
+            content[i : i + self.chunk_size]
+            for i in range(0, len(content), self.chunk_size)
+        ]
         return chunks
 
     def add_code_file(self, file: CodePage):
@@ -457,9 +489,9 @@ class VectorDB:
             if len(prev_data) > 0:
                 # compare content, if there's even a slight difference, we should update the code vector.
                 prev_data_code = CodePage(**prev_data[0])
-                if self.__code_to_embeddable_string(
-                    prev_data_code
-                ) == chunk: # This is ok so long as the code to embeddable string is just the content.
+                if (
+                    self.__code_to_embeddable_string(prev_data_code) == chunk
+                ):  # This is ok so long as the code to embeddable string is just the content.
                     continue
 
             try:
@@ -494,7 +526,7 @@ class VectorDB:
             search_params=search_params,
             limit=k,
             output_fields=["vector", "content", "org_id", "page_type", "sha"],
-            filter=filter
+            filter=filter,
         )
 
         code = {}
@@ -534,7 +566,7 @@ class VectorDB:
         all_results = []
         expr = f"page_type == '{CodePageType.CODE.value}' and org_id == '{str(self.user_id)}'"
         if filename_filter is not None:
-            expr += f" and {PRIMARY_KEY_FIELD} like \"%{filename_filter}%\""
+            expr += f' and {PRIMARY_KEY_FIELD} like "%{filename_filter}%"'
 
         while True:
             results = self.client.query(
@@ -542,7 +574,7 @@ class VectorDB:
                 output_fields=output_fields,
                 limit=batch_size,
                 offset=offset,
-                filter=expr
+                filter=expr,
             )
 
             all_results.extend(results)

@@ -36,8 +36,15 @@ def evaluate(
 def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
     asyncio.run(setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url))
 
+
 if __name__ == "__main__":
-    orgs = [UNSLOTH_ORG_ID, MEM0AI_ORG_ID, TRIGGER_ORG_ID, MILVUS_ORG_ID, UEBERDOSIS_ORG_ID]
+    orgs = [
+        UNSLOTH_ORG_ID,
+        MEM0AI_ORG_ID,
+        TRIGGER_ORG_ID,
+        MILVUS_ORG_ID,
+        UEBERDOSIS_ORG_ID,
+    ]
 
     for org in orgs:
         # 1. get repo info

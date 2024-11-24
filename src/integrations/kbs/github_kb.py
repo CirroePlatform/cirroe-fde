@@ -91,7 +91,11 @@ class GithubIntegration(BaseKnowledgeBase):
         for issue in issues:
             comments = []
             for comment in issue["comments"]:
-                comments.append(Comment(requestor_name=comment["user"]["login"], comment=comment["body"]))
+                comments.append(
+                    Comment(
+                        requestor_name=comment["user"]["login"], comment=comment["body"]
+                    )
+                )
 
             issue_list.append(
                 Issue(
@@ -281,24 +285,28 @@ class GithubIntegration(BaseKnowledgeBase):
     def get_files(self, repository: str) -> List[CodePage]:
         """
         Get a list of all the files' contents in the repo by recursively fetching from GitHub API
-        
+
         Args:
             repository: Repository name
-            
+
         Returns:
             List of CodePage objects containing file contents and metadata
         """
         code_pages = []
-        
+
         # 1. Get all the files in the repo from cache if already exists
         if os.path.exists(f"{GITFILES_CACHE_DIR}/{repository}"):
             with open(f"{GITFILES_CACHE_DIR}/{repository}", "r") as f:
                 code_json = json.load(f)
-                code_pages = [CodePage(**code_page) for code_page in code_json["code_pages"]]
+                code_pages = [
+                    CodePage(**code_page) for code_page in code_json["code_pages"]
+                ]
             return code_pages
 
         def fetch_contents(path: str = ""):
-            url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
+            url = (
+                f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
+            )
             response = requests.get(url, headers=self.github_headers)
             response.raise_for_status()
 
@@ -311,38 +319,57 @@ class GithubIntegration(BaseKnowledgeBase):
             for item in contents:
                 if item["type"] == "file":
                     # If file is non-text data, skip it
-                    if item["name"].lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".ico", ".webp")):
+                    if (
+                        item["name"]
+                        .lower()
+                        .endswith(
+                            (
+                                ".png",
+                                ".jpg",
+                                ".jpeg",
+                                ".gif",
+                                ".bmp",
+                                ".tiff",
+                                ".ico",
+                                ".webp",
+                            )
+                        )
+                    ):
                         continue
 
                     # Get raw file content
-                    content_response = requests.get(item["download_url"], headers=self.github_headers)
+                    content_response = requests.get(
+                        item["download_url"], headers=self.github_headers
+                    )
                     content_response.raise_for_status()
-                    
+
                     code_pages.append(
                         CodePage(
                             primary_key=item["path"],
                             content=content_response.text,
                             org_id=str(self.org_id),
                             page_type=CodePageType.CODE,
-                            sha=item["sha"]
+                            sha=item["sha"],
                         )
                     )
 
                 elif item["type"] == "dir":
                     # TODO switch to postorder traversal, add AI summaries, can do merkle tree of the files.
                     fetch_contents(item["path"])
-                    
+
         try:
             fetch_contents()
 
             # Cache the files for future use
             os.makedirs(GITFILES_CACHE_DIR, exist_ok=True)
             with open(f"{GITFILES_CACHE_DIR}/{repository}", "w") as f:
-                code_json = {"code_pages": [code_page.model_dump() for code_page in code_pages]}
+                code_json = {
+                    "code_pages": [code_page.model_dump() for code_page in code_pages]
+                }
                 json.dump(code_json, f)
 
             return code_pages
-            
+
         except Exception as e:
             logging.error(f"Failed to fetch repository contents: {str(e)}")
             logging.error(traceback.format_exc())
@@ -352,7 +379,7 @@ class GithubIntegration(BaseKnowledgeBase):
         """
         Get a list of all the files in the repo, index each file with the vector DB
         """
-        
+
         try:
             # 1. Get all the files in the repo
             files = self.get_files(repository.repository)
@@ -382,7 +409,9 @@ class GithubIntegration(BaseKnowledgeBase):
         else:
             return self.index_custom(repository)
 
-    def __query_greptile(self, query: str, limit: int = 5) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def __query_greptile(
+        self, query: str, limit: int = 5
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the Greptile API for code search
 
@@ -435,7 +464,9 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to query repositories: {str(e)}")
             return [], ""
 
-    def __query_custom(self, query: str, limit: int = 5, tb: Optional[str] = None) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def __query_custom(
+        self, query: str, limit: int = 5, tb: Optional[str] = None
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the vector db for code search
 
@@ -454,7 +485,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
             if tb is not None:
                 cleaned_results = self.traceback_cleaner.clean(tb)
-                response += f"{json.dumps([step.model_dump() for step in cleaned_results])}" # TODO not sure if we should surround this with tags? also untested rn.
+                response += f"{json.dumps([step.model_dump() for step in cleaned_results])}"  # TODO not sure if we should surround this with tags? also untested rn.
 
             response += "</code_pages>"
             kb_responses = []
@@ -474,7 +505,6 @@ class GithubIntegration(BaseKnowledgeBase):
             logging.error(f"Failed to query documentation: {str(e)}")
             logging.error(traceback.format_exc())
             return [], str(e)
-
 
     def query(
         self, query: str, limit: int = 5, tb: Optional[str] = None

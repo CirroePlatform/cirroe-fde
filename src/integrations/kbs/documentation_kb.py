@@ -166,7 +166,10 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             #     )
             #     kb_responses.append(kb_response)
 
-            return kb_responses, f"<documentation_pages>{json.dumps(results)}</documentation_pages>"
+            return (
+                kb_responses,
+                f"<documentation_pages>{json.dumps(results)}</documentation_pages>",
+            )
         except Exception as e:
             logging.error(f"Failed to query documentation: {str(e)}")
             logging.error(traceback.format_exc())

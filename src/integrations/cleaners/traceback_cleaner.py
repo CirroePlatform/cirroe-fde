@@ -4,17 +4,21 @@ from src.model.code import CodePage
 from pydantic import BaseModel
 from typing import List
 
+
 class TracebackStep(BaseModel):
     """
     A step in the traceback
     """
+
     file: str
     code: str
+
 
 class TracebackCleaner(BaseCleaner):
     """
     Cleans a traceback by removing unwanted elements and normalizing whitespace.
     """
+
     def __init__(self, vector_db: VectorDB):
         self.vector_db = vector_db
 
@@ -34,11 +38,11 @@ class TracebackCleaner(BaseCleaner):
 
             line = line.lstrip().rstrip()
             if line.startswith("File"):
-                splitted = line.split(",") # Note: line number is usually at the idx 1
+                splitted = line.split(",")  # Note: line number is usually at the idx 1
 
                 fp1 = splitted[0]
                 fp2 = fp1.split(" ")[1].strip('"')
-                fp2 = fp2.split("\\")[-1] # removing the leading path
+                fp2 = fp2.split("\\")[-1]  # removing the leading path
 
                 file_paths.append(fp2)
 
@@ -47,7 +51,7 @@ class TracebackCleaner(BaseCleaner):
     def __get_code_pages_from_file_paths(self, file_paths: List[str]) -> List[CodePage]:
         """
         Get the code pages from a list of file paths.
-        
+
         TODO: Right now, we haven't tested the positive case, so not sure if this will work.
         """
         pages = self.vector_db.get_code_pages(filename_filter=file_paths)

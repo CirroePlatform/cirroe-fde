@@ -8,6 +8,7 @@ from uuid import UUID
 import traceback
 import json
 
+
 class IssueKnowledgeBase(BaseKnowledgeBase):
     """
     Knowledge base for searching and indexing historical support tickets/issues.

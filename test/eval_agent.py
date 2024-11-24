@@ -77,7 +77,11 @@ class Orchestrator:
         for issue in issues:
             comments = []
             for comment in issue["comments"]:
-                comments.append(Comment(requestor_name=comment["user"]["login"], comment=comment["body"]))
+                comments.append(
+                    Comment(
+                        requestor_name=comment["user"]["login"], comment=comment["body"]
+                    )
+                )
 
             solved_or_closed_issues.append(
                 Issue(
@@ -296,7 +300,9 @@ class Evaluator:
                     "agent_response": response,
                     "actual_issue_description": issue.description,
                     "cleaned_issue_description": cleaned_issue_description,
-                    "issue_comments": json.dumps([comment.model_dump_json() for comment in comments]),
+                    "issue_comments": json.dumps(
+                        [comment.model_dump_json() for comment in comments]
+                    ),
                 }
             )
 

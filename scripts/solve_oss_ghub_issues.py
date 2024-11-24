@@ -32,7 +32,9 @@ async def setup_all_kbs_with_repo(
 
     # 2. Index the repository with each knowledge base
     await doc_kb.index(docu_url)
-    await github.index(Repository(remote="github.com", repository=repo_name, branch="main"))
+    await github.index(
+        Repository(remote="github.com", repository=repo_name, branch="main")
+    )
 
     # 2.a Index the issues, need to pull all issues from the repo then index only enough to allow for evaluationi
     logging.info(f"Getting all issues for {org_name}/{repo_name}")
@@ -47,7 +49,9 @@ async def setup_all_kbs_with_repo(
     ):
         success = await issue_kb.index(issue)
         if not success:
-            logging.error(f"Failed to index issue {issue.ticket_number}. Sleeping for 5 seconds...")
+            logging.error(
+                f"Failed to index issue {issue.ticket_number}. Sleeping for 5 seconds..."
+            )
             sleep(5)
 
 

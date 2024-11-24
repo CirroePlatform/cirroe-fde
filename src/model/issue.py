@@ -3,9 +3,11 @@ from typing import Optional, List, Tuple
 from uuid import UUID
 from datetime import datetime
 
+
 class Comment(BaseModel):
     requestor_name: str
     comment: str
+
 
 class Issue(BaseModel):
     """

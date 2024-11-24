@@ -7,11 +7,13 @@ import re
 
 load_dotenv()
 
+
 def num_tokens_from_string(string: str, model_name: str) -> int:
     """Returns the number of tokens in a text string."""
     encoding = tiktoken.encoding_for_model(model_name)
     num_tokens = len(encoding.encode(string))
     return num_tokens
+
 
 def get_git_image_links(content: str) -> List[str]:
     """
@@ -30,16 +32,16 @@ def get_git_image_links(content: str) -> List[str]:
         return valid_links
 
     # Basic pattern for GitHub user attachment links
-    pattern = r'https://github\.com/user-attachments/assets/[a-fA-F0-9-]+'
-    
+    pattern = r"https://github\.com/user-attachments/assets/[a-fA-F0-9-]+"
+
     # Find all potential matches
     potential_links = re.findall(pattern, content)
-    
+
     # Validate each link to ensure the UUID part is valid
     for link in potential_links:
         # Extract the UUID part (everything after the last /)
-        potential_uuid = link.split('/')[-1]
-        
+        potential_uuid = link.split("/")[-1]
+
         try:
             # Try to parse it as a UUID to validate
             uuid.UUID(potential_uuid)

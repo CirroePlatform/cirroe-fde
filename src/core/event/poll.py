@@ -72,13 +72,19 @@ def get_issues_created_or_updated_recently(
     return recent_issues
 
 
-def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool = True) -> bool:
+def issue_needs_dev_team(
+    issue: Issue, labels: List[str], consider_labels: bool = True
+) -> bool:
     """
     Determine if an issue needs the dev team based on its labels. If there are no labels, then we consider the description.
 
     Returns True if the issue needs the dev team, False otherwise.
     """
-    if consider_labels and len(labels) > 0 and not (any(label in labels for label in BUG_LABELS)):
+    if (
+        consider_labels
+        and len(labels) > 0
+        and not (any(label in labels for label in BUG_LABELS))
+    ):
         return False
 
     # If there are no labels, we need to determine if the issue is a bug based on the description.
@@ -98,7 +104,7 @@ def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool 
                     "content": f"<comment>{json.dumps(comment.model_dump_json())}</comment>",
                 }
                 for comment in issue.comments
-            ]
+            ],
         ],
         model="llama3.1-8b",
         max_tokens=256,
@@ -133,7 +139,12 @@ def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool 
     return decision
 
 
-def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_numbers: Optional[set[str]] = None):
+def poll_for_issues(
+    org_id: str,
+    repo_name: str,
+    debug: bool = False,
+    ticket_numbers: Optional[set[str]] = None,
+):
     """
     Polls for new issues in a repository. If a new issue is found, or an existing issue is updated,
     it will be handled by the issue handler. Then, we will comment on the issue with the response, guarded
@@ -143,7 +154,11 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
     """
 
     org_name = SupaClient(org_id).get_user_data("org_name", debug=debug)["org_name"]
-    github_kb = GithubIntegration(org_id, org_name, repos=[Repository(remote="github.com", repository=repo_name, branch="main")])
+    github_kb = GithubIntegration(
+        org_id,
+        org_name,
+        repos=[Repository(remote="github.com", repository=repo_name, branch="main")],
+    )
     on_init = True
     repo_obj = github_kb.repos
 
@@ -153,9 +168,7 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
 
         # 1. Get all issues created or modified in the last POLL_INTERVAL seconds. If this is the first time we're polling, we want to get all unsolved issues, regardless of time.
         if not on_init:
-            issues = get_issues_created_or_updated_recently(
-                repo_name, github_kb
-            )
+            issues = get_issues_created_or_updated_recently(repo_name, github_kb)
         else:
             issues = github_kb.get_all_issues_json(repo_name, state="open")
             logging.info(
@@ -175,12 +188,16 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
                 f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
             )
 
-            last_commenter = issue.comments[-1].requestor_name if issue.comments else None
-            last_issue_was_from_cirr0e = last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
+            last_commenter = (
+                issue.comments[-1].requestor_name if issue.comments else None
+            )
+            last_issue_was_from_cirr0e = (
+                last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
+            )
             if False:
-            # last_issue_was_from_cirr0e or issue_needs_dev_team(
-            #     issue, issue_labels, False
-            # ):
+                # last_issue_was_from_cirr0e or issue_needs_dev_team(
+                #     issue, issue_labels, False
+                # ):
                 logging.info(
                     f"Issue {issue.ticket_number} needs the dev team, not something we should handle. Skipping..."
                 )
@@ -208,6 +225,7 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
             )
 
         time.sleep(max(0, POLL_INTERVAL - processing_time))
+
 
 async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str):
     """
