@@ -1,8 +1,11 @@
 from pydantic import BaseModel, HttpUrl, EmailStr, UUID4
-from typing import Optional, List, Dict
+from typing import Optional, List, Tuple
 from uuid import UUID
 from datetime import datetime
 
+class Comment(BaseModel):
+    requestor_name: str
+    comment: str
 
 class Issue(BaseModel):
     """
@@ -13,7 +16,7 @@ class Issue(BaseModel):
     org_id: UUID
     vector: Optional[List[float]] = None
     description: str
-    comments: Dict[str, str]  # a dictionary of (requestor_name, comment) objects
+    comments: List[Comment]  # a list of comments, sorted by earliest comment first
     ticket_number: Optional[str] = None
 
 

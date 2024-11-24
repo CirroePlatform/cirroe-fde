@@ -20,6 +20,7 @@ from pymilvus import MilvusClient
 from typeguard import typechecked
 import traceback
 import logging
+import json
 from src.model.issue import Issue
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -150,7 +151,7 @@ class VectorDB:
             ),
             FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.dimension),
             FieldSchema(name="description", dtype=DataType.VARCHAR, max_length=65535),
-            FieldSchema(name="comments", dtype=DataType.JSON),
+            FieldSchema(name="comments", dtype=DataType.ARRAY, element_type=DataType.VARCHAR, max_capacity=36, max_length=65535),
             FieldSchema(name="org_id", dtype=DataType.VARCHAR, max_length=36),
             FieldSchema(name="ticket_number", dtype=DataType.VARCHAR, max_length=36),
             FieldSchema(name="metadata", dtype=DataType.JSON), # TODO remove this when the issue table becomes set in stone. This is for backwards compatibility in case we need to add new fields.
@@ -224,7 +225,7 @@ class VectorDB:
         """
         Convert an issue to a string that can be embedded
         """
-        return issue.description + " " + " ".join(issue.comments.values())
+        return issue.description + " " + json.dumps([comment.model_dump_json() for comment in issue.comments])
 
     def __docu_page_to_embeddable_string(self, page: DocumentationPage) -> str:
         """
@@ -282,7 +283,7 @@ class VectorDB:
                 PRIMARY_KEY_FIELD: str(issue.primary_key),
                 "vector": vector,
                 "description": issue.description,
-                "comments": issue.comments,
+                "comments": [comment.model_dump_json() for comment in issue.comments],
                 "org_id": str(issue.org_id),
                 "ticket_number": issue.ticket_number,
                 "metadata": {}, # Nothing for now, but we can add new fields here in the future.

@@ -90,8 +90,15 @@ def issue_needs_dev_team(issue: Issue, labels: List[str], consider_labels: bool 
             {"role": "system", "content": prompt},
             {
                 "role": "user",
-                "content": f"<issue_description>{issue.description}</issue_description>\n<comments>{json.dumps(issue.comments)}</comments>",
+                "content": f"<issue_description>{issue.description}</issue_description>",
             },
+            *[
+                {
+                    "role": "user",
+                    "content": f"<comment>{json.dumps(comment.model_dump_json())}</comment>",
+                }
+                for comment in issue.comments
+            ]
         ],
         model="llama3.1-8b",
         max_tokens=256,
@@ -136,9 +143,9 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
     """
 
     org_name = SupaClient(org_id).get_user_data("org_name")["org_name"]
-    github_kb = GithubIntegration(org_id, org_name, repo_names=[repo_name])
+    github_kb = GithubIntegration(org_id, org_name, repos=[Repository(remote="github.com", repository=repo_name, branch="main")])
     on_init = True
-    repo_obj = Repository(remote="github.com", repository=repo_name, branch="main")
+    repo_obj = github_kb.repos
 
     while True:
         processing_start_time = time.time()
@@ -168,8 +175,7 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
                 f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
             )
 
-            commenters = list(issue.comments.keys()) # TODO fix this, the order of comments is not guaranteed, sometimes we miss followups.
-            last_commenter = commenters[-1] if commenters else None
+            last_commenter = issue.comments[-1].requestor_name if issue.comments else None
             last_issue_was_from_cirr0e = last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
             if last_issue_was_from_cirr0e or issue_needs_dev_team(
                 issue, issue_labels, False
@@ -184,7 +190,7 @@ def poll_for_issues(org_id: str, repo_name: str, debug: bool = False, ticket_num
                 requestor_id=org_id,
             )
 
-            response = debug_issue(issue_req, [repo_obj])
+            response = debug_issue(issue_req, repo_obj)
             text_response = response["response"]
 
             # 3. comment on the issue with the response, guarded by humanlayer. TODO untested, but this shouldn't block the main thread. It should just fire off the coroutine.

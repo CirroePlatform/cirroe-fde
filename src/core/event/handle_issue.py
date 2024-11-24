@@ -1,8 +1,8 @@
 from include.utils import get_git_image_links
 from typing import List, Dict, Any
+from src.model.issue import Issue
 from dotenv import load_dotenv
 from logger import logger
-from PIL import Image
 import anthropic
 import traceback
 import requests
@@ -62,7 +62,7 @@ def handle_tool_response(
     append_message(messages, "user", f"Results from {tool_name}: {function_response}")
 
 
-def construct_initial_messages(issue_content: str) -> List[Dict[str, Any]]:
+def construct_initial_messages(issue: Issue) -> List[Dict[str, Any]]:
     """
     Construct the initial message stream for the issue.
 
@@ -72,6 +72,7 @@ def construct_initial_messages(issue_content: str) -> List[Dict[str, Any]]:
     Returns:
         List[Dict[str, Any]]: The initial message stream
     """
+    issue_content = f"<issue_description>{issue.description}</issue_description>"
     image_links = get_git_image_links(issue_content)
 
     image_base64s = []
@@ -99,6 +100,13 @@ def construct_initial_messages(issue_content: str) -> List[Dict[str, Any]]:
                 "type": "text",
                 "text": messages[0]["content"]
             },
+            *[
+                {
+                    "type": "text",
+                    "text": f"<comment>{json.dumps(comment.model_dump_json())}</comment>",
+                }
+                for comment in issue.comments
+            ],
             *[
                 {
                     "type": "image",
@@ -134,7 +142,7 @@ def debug_issue(
         sysprompt = fp.read()
 
     # Construct initial message stream
-    messages = construct_initial_messages(f"<user_issue>{issue_req.issue.description}</user_issue>\n<user_comments>{json.dumps(issue_req.issue.comments)}</user_comments>")
+    messages = construct_initial_messages(issue_req.issue)
 
     # Initialize tools and response tracking
     search_tools = SearchTools(issue_req.requestor_id, github_repos)

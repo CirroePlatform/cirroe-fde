@@ -13,7 +13,7 @@ from src.integrations.cleaners.traceback_cleaner import TracebackCleaner
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.model.code import CodePage, CodePageType
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE, GITFILES_CACHE_DIR
-from src.model.issue import Issue
+from src.model.issue import Issue, Comment
 
 from src.storage.vector import VectorDB
 
@@ -89,9 +89,9 @@ class GithubIntegration(BaseKnowledgeBase):
         issue_list = []
 
         for issue in issues:
-            comments = {}
+            comments = []
             for comment in issue["comments"]:
-                comments[comment["user"]["login"]] = comment["body"]
+                comments.append(Comment(requestor_name=comment["user"]["login"], comment=comment["body"]))
 
             issue_list.append(
                 Issue(
@@ -450,7 +450,7 @@ class GithubIntegration(BaseKnowledgeBase):
         """
         try:
             query_vector = self.vector_db.vanilla_embed(query)
-            results = self.vector_db.get_top_k_code(limit, query_vector, tb)
+            results = self.vector_db.get_top_k_code(limit, query_vector)
             response = f"<code_pages>{json.dumps(results)}"
 
             if tb is not None:

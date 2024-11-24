@@ -1,4 +1,4 @@
-from src.model.issue import Issue, OpenIssueRequest
+from src.model.issue import Issue, OpenIssueRequest, Comment
 from typing import List, Tuple, Optional
 from uuid import UUID
 import anthropic
@@ -75,9 +75,9 @@ class Orchestrator:
 
         solved_or_closed_issues = []
         for issue in issues:
-            comments = {}
+            comments = []
             for comment in issue["comments"]:
-                comments[comment["user"]["login"]] = comment["body"]
+                comments.append(Comment(requestor_name=comment["user"]["login"], comment=comment["body"]))
 
             solved_or_closed_issues.append(
                 Issue(
@@ -244,7 +244,7 @@ class Evaluator:
         messages = [
             {
                 "role": "user",
-                "content": f"<issue>{issue.description}</issue>\n<comments>{issue.comments}</comments>\n<agent_response>{response}</agent_response>",
+                "content": f"<issue>{issue.description}</issue>\n<comments>{json.dumps([comment.model_dump_json() for comment in issue.comments])}</comments>\n<agent_response>{response}</agent_response>",
             },
         ]
 
@@ -275,8 +275,8 @@ class Evaluator:
                 continue
 
             comments = issue.comments
+            issue.comments = []
 
-            issue.comments = {}
             issue.description = cleaned_issue_description
             response = debug_issue(
                 OpenIssueRequest(requestor_id=self.org_id, issue=issue),
@@ -296,7 +296,7 @@ class Evaluator:
                     "agent_response": response,
                     "actual_issue_description": issue.description,
                     "cleaned_issue_description": cleaned_issue_description,
-                    "issue_comments": json.dumps(comments),
+                    "issue_comments": json.dumps([comment.model_dump_json() for comment in comments]),
                 }
             )
 
