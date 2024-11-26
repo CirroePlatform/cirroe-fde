@@ -474,9 +474,9 @@ class VectorDB:
 
         return docs
 
-    def __chunk_code(self, content: str) -> List[str]:
+    def __chunk_data(self, content: str) -> List[str]:
         """
-        Chunk the code into several smaller chunks, each of character length of num_tokens_from_string(content, self.model.model_name).
+        Chunk the data into several smaller chunks, each of character length of num_tokens_from_string(content, self.model.model_name).
         """
         chunks = [
             content[i : i + self.chunk_size]
@@ -488,7 +488,7 @@ class VectorDB:
         """
         Add a code file to the vector db
         """
-        chunks = self.__chunk_code(file.content)
+        chunks = self.__chunk_data(file.content)
 
         for i, chunk in enumerate(chunks):
             chunk_key = f"{file.primary_key}-{i}"
