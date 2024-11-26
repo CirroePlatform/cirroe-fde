@@ -9,6 +9,7 @@ import requests
 import base64
 import httpx
 import json
+import time
 import os
 
 from src.integrations.kbs.base_kb import KnowledgeBaseResponse
@@ -227,6 +228,7 @@ def debug_issue(
                 tool_choice={"type": "auto"},
                 messages=messages,
             )
+            time.sleep(200) # TODO remove this. It's so we don't get rate limited by anthropic. Currently not able to call over 20k toks per minute.
 
         except Exception as e:
             logger.error("Error in main loop: %s", str(e))

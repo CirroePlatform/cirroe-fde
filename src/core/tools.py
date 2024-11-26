@@ -26,7 +26,7 @@ class SearchTools:
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
 
     def get_org_name(self):
-        userdata = self.supa.get_user_data()
+        userdata = self.supa.get_user_data(ORG_NAME, debug=True)
         return userdata[ORG_NAME]
 
     def execute_codebase_search(

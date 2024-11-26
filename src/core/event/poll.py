@@ -140,7 +140,7 @@ def issue_needs_dev_team(
 
 
 def poll_for_issues(
-    org_id: str,
+    org_id: UUID,
     repo_name: str,
     debug: bool = False,
     ticket_numbers: Optional[set[str]] = None,
@@ -194,7 +194,7 @@ def poll_for_issues(
             last_issue_was_from_cirr0e = (
                 last_commenter == CIRROE_USERNAME or last_commenter == ABHIGYA_USERNAME
             )
-            if False:
+            if last_issue_was_from_cirr0e:
                 # last_issue_was_from_cirr0e or issue_needs_dev_team(
                 #     issue, issue_labels, False
                 # ):

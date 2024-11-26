@@ -90,12 +90,14 @@ class GithubIntegration(BaseKnowledgeBase):
 
         for issue in issues:
             comments = []
-            for comment in issue["comments"]:
-                comments.append(
-                    Comment(
-                        requestor_name=comment["user"]["login"], comment=comment["body"]
+            if "comments" in issue:
+                for comment in issue["comments"]:
+                    comments.append(
+                        Comment(
+                            requestor_name=comment["user"]["login"],
+                            comment=comment["body"],
+                        )
                     )
-                )
 
             issue_list.append(
                 Issue(
@@ -137,16 +139,26 @@ class GithubIntegration(BaseKnowledgeBase):
 
         all_issues = []
         while True:
-            response = requests.get(url, headers=self.github_headers, params=params)
-            response.raise_for_status()
-            content = response.json()
+            try:
+                response = requests.get(url, headers=self.github_headers, params=params)
+                response.raise_for_status()
+                content = response.json()
+            except (requests.exceptions.HTTPError, requests.exceptions.RequestException) as e:
+                if response.status_code == 403:
+                    logging.warning(f"Received 403 Forbidden response for {url}")
+                else:
+                    logging.warning(f"Request failed for {url}: {str(e)}")
+                content = []
 
             # Filter out pull requests from the response
             issues = [issue for issue in content if "pull_request" not in issue]
             final_issues = []
 
             # Fetch comments for each issue
-            for i in range(len(issues)):
+            for i in tqdm.tqdm(
+                range(len(issues)),
+                desc=f"Fetching comments for {len(issues)} issues",
+            ):
 
                 # Get labels if they exist, and remove this from the set if it doesn't satisfy label constraints
                 issue_number = issues[i]["number"]
@@ -160,7 +172,9 @@ class GithubIntegration(BaseKnowledgeBase):
                     # Add comments to the issue object
                     issues[i]["comments"] = comments_response.json()
                 except (
-                    requests.exceptions.Timeout or requests.exceptions.RateLimitError
+                    requests.exceptions.Timeout,
+                    requests.exceptions.ReadTimeout,
+                    requests.exceptions.ConnectTimeout,
                 ) as e:  # TODO this handler and catch is untested.
                     logging.error(
                         f"request timed out or was rate limited. Sleeping for a few secs then retrying. {e}"
@@ -302,7 +316,7 @@ class GithubIntegration(BaseKnowledgeBase):
                     CodePage(**code_page) for code_page in code_json["code_pages"]
                 ]
             return code_pages
-
+        logging.info(f"Fetching and indexing contents for {repository}")
         def fetch_contents(path: str = ""):
             url = (
                 f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
