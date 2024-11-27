@@ -120,7 +120,7 @@ class BaseActionHandler:
                 )
                 break
 
-        return {"response": self.generate_final_response(messages), "kb_responses": kb_responses}
+        return {"response": self.generate_final_response(response), "kb_responses": kb_responses}
 
     def append_message(self, messages: List[Dict[str, str]], role: str, content: str) -> None:
         """
@@ -150,12 +150,13 @@ class BaseActionHandler:
 
     def generate_final_response(
         self,
-        messages: List[Dict]
+        last_message: Dict[str, Any],
     ) -> str:
         """Generate the final response after tool usage"""
         final_response = None
-        if messages and messages[-1]["role"] == "assistant" and messages[-1]["content"]:
-            for content in messages[-1]["content"]:
+        
+        if last_message.content:
+            for content in last_message.content:
                 if hasattr(content, "text"):
                     if (
                         SOLUTION_TAG_OPEN in content.text
@@ -166,4 +167,6 @@ class BaseActionHandler:
                             .split(SOLUTION_TAG_CLOSE)[0]
                             .strip()
                         )
-                        return final_response
+                    break
+
+        return final_response

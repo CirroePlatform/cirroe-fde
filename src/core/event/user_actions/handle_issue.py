@@ -126,7 +126,7 @@ class HandleIssue(BaseActionHandler):
         """
         # Construct initial message stream
         messages = self.construct_initial_messages(issue_req.issue)
-        response, kb_responses = self.handle_action(messages, max_tool_calls)
+        response = self.handle_action(messages, max_tool_calls)
 
         if response["response"]:
             return response
