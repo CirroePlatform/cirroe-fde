@@ -186,7 +186,15 @@ class GithubIntegration(BaseKnowledgeBase):
                 should_add = True
                 if labels is not None:
                     should_add = False
-                    issue_labels = set(self.get_labels(issue_number, url))
+                    
+                    for _ in range(3):
+                        try:
+                            issue_labels = set(self.get_labels(issue_number, url))
+                            break
+                        except Exception as e:
+                            logging.error(f"Failed to get labels for issue {issue_number}: {str(e)}. Sleeping for 10 seconds.")
+                            logging.error(traceback.format_exc())
+                            time.sleep(10)
 
                     if set(labels).intersection(issue_labels):
                         should_add = True

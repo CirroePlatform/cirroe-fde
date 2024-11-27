@@ -5,7 +5,7 @@ from src.integrations.kbs.github_kb import GithubIntegration
 from uuid import UUID
 import asyncio
 
-from include.constants import MEM0AI_ORG_ID
+from include.constants import TRIGGER_ORG_ID, REPO_NAME
 
 
 def evaluate(
@@ -31,14 +31,14 @@ def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
 
 if __name__ == "__main__":
     orgs = [
-        MEM0AI_ORG_ID
+        TRIGGER_ORG_ID
     ]
     for org in orgs:
         # 1. get repo info
         supa = SupaClient(org)
         repo_info = supa.get_user_data(
-            "org_name", "repo_name", "repo_url", "docu_url", debug=True
+            "org_name", REPO_NAME, "repo_url", "docu_url", debug=True
         )
 
         # 2. evaluate and save results
-        evaluate(org, repo_info["org_name"], repo_info["repo_name"], test_train_ratio=0.2, enable_labels=True)
+        evaluate(org, repo_info["org_name"], repo_info[REPO_NAME], test_train_ratio=0.2, enable_labels=True)

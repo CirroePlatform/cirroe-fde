@@ -9,7 +9,7 @@ import csv
 import os
 
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
-from src.core.event.handle_issue import debug_issue
+from src.core.event.user_actions.handle_issue import HandleIssue
 from src.storage.vector import VectorDB
 
 from include.constants import (
@@ -194,6 +194,7 @@ class Evaluator:
         self.test_train_ratio = test_train_ratio
         self.github_repos = github_repos
         self.judge_client = anthropic.Anthropic()
+        self.handle_issue = HandleIssue(self.org_id)
 
     def preprocess_issue(self, issue: Issue) -> str:
         """
@@ -263,14 +264,13 @@ class Evaluator:
             issue.comments = []
 
             issue.description = cleaned_issue_description
-            response = debug_issue(
-                OpenIssueRequest(requestor_id=self.org_id, issue=issue),
-                github_repos=self.github_repos,
+            response = self.handle_issue.debug_issue(
+                OpenIssueRequest(requestor_id=self.org_id, issue=issue)
             )
             # Add the comments back to the issue object for evaluation
             issue.comments = comments
 
-            success = self.evaluate_agent_response(issue, response)
+            success = self.evaluate_agent_response(issue, response["response"])
             total_success += success
             eval_results.append(
                 {
@@ -278,7 +278,7 @@ class Evaluator:
                     "issue_id": str(issue.primary_key),
                     "test_train_ratio": self.test_train_ratio,
                     "success": success,
-                    "agent_response": response,
+                    "agent_response": response["response"],
                     "actual_issue_description": issue.description,
                     "cleaned_issue_description": cleaned_issue_description,
                     "issue_comments": json.dumps(
@@ -295,7 +295,7 @@ class Evaluator:
         )
 
         # Create output filename based on org name
-        output_file = f"eval_results_{self.org_name}.csv"
+        output_file = f"eval_results_{self.org_id}.csv"
         file_exists = os.path.exists(output_file)
         # delete the file if it exists
         if file_exists:

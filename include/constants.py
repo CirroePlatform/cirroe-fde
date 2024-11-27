@@ -2,6 +2,7 @@ from uuid import UUID
 
 # Supabase constants
 ORG_NAME = "org_name"
+REPO_NAME = "repo_name"
 CACHE_DIR = "include/cache"
 CACHED_USER_DATA_FILE = f"{CACHE_DIR}/cached_user_data.json"
 

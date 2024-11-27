@@ -12,12 +12,12 @@ from include.constants import (
     ABHIGYA_USERNAME,
 )
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.core.event.user_actions.handle_issue import HandleIssue
 from src.model.issue import Issue, OpenIssueRequest
 from include.finetune import DatasetCollector
 from datetime import datetime, timedelta
 from src.storage.supa import SupaClient
 from cerebras.cloud.sdk import Cerebras
-from .handle_issue import debug_issue
 from typing import List, Optional
 from uuid import UUID
 import humanlayer
@@ -161,6 +161,7 @@ def poll_for_issues(
     )
     on_init = True
     repo_obj = github_kb.repos
+    handle_issue = HandleIssue(org_id)
 
     while True:
         processing_start_time = time.time()
@@ -183,10 +184,10 @@ def poll_for_issues(
                 continue
 
             # Get the labels for the issue to help classify whether we should handle it or not.
-            issue_labels = github_kb.get_labels(
-                issue.ticket_number,
-                f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
-            )
+            # issue_labels = github_kb.get_labels(
+            #     issue.ticket_number,
+            #     f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
+            # )
 
             last_commenter = (
                 issue.comments[-1].requestor_name if issue.comments else None
@@ -208,7 +209,7 @@ def poll_for_issues(
                 requestor_id=org_id,
             )
 
-            response = debug_issue(issue_req, repo_obj)
+            response = handle_issue.debug_issue(issue_req)
             text_response = response["response"]
 
             # 3. comment on the issue with the response, guarded by humanlayer. TODO untested, but this shouldn't block the main thread. It should just fire off the coroutine.
