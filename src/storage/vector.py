@@ -312,7 +312,7 @@ class VectorDB:
 
         self.client.upsert(ISSUE, data=entity)
 
-    def get_all_issues(self) -> List[Issue]:
+    def get_all_issues(self, filter_by_org_id: bool = True) -> List[Issue]:
         """
         Get all issues from the vector db
         """
@@ -330,11 +330,13 @@ class VectorDB:
         all_results = []
 
         while True:
+            filter = f"org_id == '{str(self.user_id)}'" if filter_by_org_id else ""
             results = self.client.query(
                 collection_name=ISSUE,
                 output_fields=output_fields,
                 limit=batch_size,
-                offset=offset,  # TODO: add filter by user_id
+                offset=offset,
+                filter=filter,
             )
 
             all_results.extend(results)
@@ -343,7 +345,15 @@ class VectorDB:
             if len(results) < batch_size:
                 break
 
-        return [Issue(**issue) for issue in all_results]
+        retval = []
+        for issue in all_results:
+            issue["comments"] = [
+                Comment.model_validate_json(comment_json)
+                for comment_json in issue["comments"]
+            ]
+            retval.append(Issue(**issue))
+
+        return retval
 
     def get_top_k_issues(self, k: int, query_vector: List[float]) -> Dict[str, Any]:
         """

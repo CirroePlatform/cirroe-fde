@@ -78,7 +78,7 @@ class TracebackCleaner(BaseCleaner):
 
             code_pages = self.__get_code_pages_from_file_paths(file_path)
             for code_page in code_pages:
-                step = TracebackStep(file=code_page.file_path, code=code_page.content)
+                step = TracebackStep(file=code_page.primary_key, code=code_page.content)
                 steps.append(step)
 
         # 3. return the list of traceback steps ordered by the traceback

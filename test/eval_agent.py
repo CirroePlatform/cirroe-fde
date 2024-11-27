@@ -73,25 +73,7 @@ class Orchestrator:
             with open(cache_file, "w", encoding="utf8") as fp:
                 json.dump(issues, fp)
 
-        solved_or_closed_issues = []
-        for issue in issues:
-            comments = []
-            for comment in issue["comments"]:
-                comments.append(
-                    Comment(
-                        requestor_name=comment["user"]["login"], comment=comment["body"]
-                    )
-                )
-
-            solved_or_closed_issues.append(
-                Issue(
-                    primary_key=str(issue["id"]),
-                    description=f"title: {issue['title']}, description: {issue['body']}",
-                    comments=comments,
-                    org_id=self.org_id,
-                    ticket_number=issue["number"],
-                )
-            )
+        solved_or_closed_issues = self.github_kb.json_issues_to_issues(issues)
 
         return solved_or_closed_issues
 
@@ -185,8 +167,7 @@ class Orchestrator:
         Main entry point to evaluate our agent on a specific org's issues.
         """
         # 1. Setup the test and train issues
-        test_issues = self.setup_test_train_issues_splits(0.1)
-        # test_issues = self.setup_test_train_issues_splits()
+        test_issues = self.setup_test_train_issues_splits()
         logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
         # 2. Evaluate the agent on the test issues

@@ -47,12 +47,15 @@ async def setup_all_kbs_with_repo(
         desc="Indexing issues",
         total=len(indexable_issues),
     ):
-        success = await issue_kb.index(issue)
-        if not success:
-            logging.error(
-                f"Failed to index issue {issue.ticket_number}. Sleeping for 5 seconds..."
-            )
-            sleep(5)
+        try:
+            success = await issue_kb.index(issue)
+            if not success:
+                logging.error(
+                    f"Failed to index issue {issue.ticket_number}. Sleeping for 2 seconds..."
+                )
+                sleep(2)
+        except Exception as e:
+            logging.error(f"Error indexing issue {issue.ticket_number}: {e}, skipping...")
 
 
 def solve_issue(repo: str, issue_id: int):
