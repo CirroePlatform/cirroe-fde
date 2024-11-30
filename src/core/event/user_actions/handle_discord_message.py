@@ -7,6 +7,7 @@ import os
 from src.core.event.user_actions.handle_base_action import BaseActionHandler
 from src.storage.supa import SupaClient
 from src.core.tools import SearchTools
+from src.model.issue import DiscordMessage
 from src.integrations.kbs.github_kb import Repository
 from include.constants import (
     DEBUG_DISCORD_FILE,
@@ -19,15 +20,6 @@ from include.constants import (
 load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-
-@dataclass
-class DiscordMessage:
-    content: str
-    author: str
-    channel_id: str
-    message_id: str
-    guild_id: Optional[str] = None
-
 
 class HandleDiscordMessage(BaseActionHandler):
     def __init__(self, org_id: str):

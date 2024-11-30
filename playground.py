@@ -1,11 +1,12 @@
 from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
 from src.storage.supa import SupaClient
 from test.eval_agent import Orchestrator
-from src.integrations.kbs.github_kb import GithubIntegration
+from src.core.event.poll import poll_for_issues
 from uuid import UUID
 import asyncio
-
-from include.constants import TRIGGER_ORG_ID, REPO_NAME
+from src.core.event.user_actions.handle_discord_message import HandleDiscordMessage
+from src.model.issue import DiscordMessage
+from include.constants import MEM0AI_ORG_ID, REPO_NAME, GRAVITL_ORG_ID, MITO_DS_ORG_ID, FLOWISE_ORG_ID, ARROYO_ORG_ID
 
 
 def evaluate(
@@ -28,12 +29,29 @@ def evaluate(
 def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
     asyncio.run(setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url))
 
+def handle_discord_message(inbound_message: str, org_id: UUID):
+    disc_handler = HandleDiscordMessage(org_id)
+
+    message = DiscordMessage(
+        author="aswanth",
+        content=inbound_message,
+        channel_id="123",
+    )
+    
+    response = disc_handler.handle_discord_message(message)
+    print(response)
+
+    return response
 
 if __name__ == "__main__":
-    orgs = [
-        TRIGGER_ORG_ID
-    ]
-    for org in orgs:
+    orgs_to_tickets = {
+        GRAVITL_ORG_ID: [3020, 3019],
+        MITO_DS_ORG_ID: [1332],
+        FLOWISE_ORG_ID: [3577, 2592],
+        ARROYO_ORG_ID: [756, 728],
+    }
+
+    for org in orgs_to_tickets:
         # 1. get repo info
         supa = SupaClient(org)
         repo_info = supa.get_user_data(
@@ -41,4 +59,6 @@ if __name__ == "__main__":
         )
 
         # 2. evaluate and save results
-        evaluate(org, repo_info["org_name"], repo_info[REPO_NAME], test_train_ratio=0.2, enable_labels=True)
+        # evaluate(org, repo_info["org_name"], repo_info[REPO_NAME], test_train_ratio=0.2, enable_labels=True)
+
+        poll_for_issues(org, repo_info[REPO_NAME], True, ticket_numbers=[str(ticket) for ticket in orgs_to_tickets[org]])
