@@ -503,25 +503,21 @@ class GithubIntegration(BaseKnowledgeBase):
         try:
             query_vector = self.vector_db.vanilla_embed(query)
             results = self.vector_db.get_top_k_code(limit, query_vector)
-            response = f"<code_pages>{json.dumps(results)}"
+
+            response = "<code_pages>"
+            for result in results.values():
+                code_page = CodePage(**json.loads(result["metadata"]))
+                similarity = result["similarity"]
+
+                response += f"<code_page_{code_page.primary_key}_similarity>{similarity}</code_page_{code_page.primary_key}_similarity>"
+                response += f"<code_page_{code_page.primary_key}_content>{code_page.content}</code_page_{code_page.primary_key}_content>"
 
             if tb is not None:
                 cleaned_results = self.traceback_cleaner.clean(tb)
                 response += f"{json.dumps([step.model_dump() for step in cleaned_results])}"  # TODO not sure if we should surround this with tags? also untested rn.
 
             response += "</code_pages>"
-            kb_responses = []
-            # for result in results.values(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
-            #     metadata = json.loads(result["metadata"])
-            #     kb_response = KnowledgeBaseResponse(
-            #         source="github",
-            #         content=metadata["content"],
-            #         relevance_score=result["similarity"],
-            #         metadata=metadata,
-            #     )
-            #     kb_responses.append(kb_response)
-
-            return kb_responses, response
+            return [], response
 
         except Exception as e:
             logging.error(f"Failed to query documentation: {str(e)}")

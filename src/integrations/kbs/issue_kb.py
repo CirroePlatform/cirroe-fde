@@ -64,21 +64,19 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
         try:
             query_vector = self.vector_db.vanilla_embed(query)
             issues = self.vector_db.get_top_k_issues(limit, query_vector)
+            response = "<issues>"
+            for result in issues.values():
+                issue = Issue(**json.loads(result["metadata"]))
+                similarity = result["similarity"]
 
-            results = []
-            # for _, issue_data in issues.items(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
-            #     metadata = json.loads(issue_data["metadata"])
+                response += f"<issue_{issue.ticket_number}_similarity>{similarity}</issue_{issue.ticket_number}_similarity>"
+                response += f"<issue_{issue.ticket_number}_content>{issue.description}</issue_{issue.ticket_number}_content>"
 
-            #     results.append(
-            #         KnowledgeBaseResponse(
-            #             content=issue_data["metadata"],
-            #             metadata=metadata,
-            #             source=f"Issue #{metadata['ticket_number']}" if metadata["ticket_number"] else "",
-            #             relevance_score=issue_data["similarity"],
-            #         )
-            #     )
+                comments = [comment.model_dump_json() for comment in issue.comments]
+                response += f"<issue_{issue.ticket_number}_comments>{comments}</issue_{issue.ticket_number}_comments>"
 
-            return results, f"<issues>{json.dumps(issues)}</issues>"
+            response += "</issues>"
+            return [], response
 
         except Exception as e:
             logger.error(f"Failed to query issues: {str(e)}")

@@ -155,21 +155,17 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             query_vector = self.vector_db.vanilla_embed(query)
             results = self.vector_db.get_top_k_documentation(limit, query_vector)
 
-            kb_responses = []
-            # for result in results.values(): # TODO uncomment this when we'r handling knowledge base responses in debug_issue
-            #     metadata = json.loads(result["metadata"])
-            #     kb_response = KnowledgeBaseResponse(
-            #         source="documentation",
-            #         content=metadata["content"],
-            #         relevance_score=result["similarity"],
-            #         metadata=metadata,
-            #     )
-            #     kb_responses.append(kb_response)
+            response = "<documentation_pages>"
+            for result in results.values():
+                doc = DocumentationPage(**json.loads(result["metadata"]))
+                similarity = result["similarity"]
 
-            return (
-                kb_responses,
-                f"<documentation_pages>{json.dumps(results)}</documentation_pages>",
-            )
+                response += f"<documentation_page_{doc.url}_similarity>{similarity}</documentation_page_{doc.url}_similarity>"
+                response += f"<documentation_page_{doc.url}_content>{doc.content}</documentation_page_{doc.url}_content>"
+
+            response += "</documentation_pages>"
+            return [], response
+
         except Exception as e:
             logging.error(f"Failed to query documentation: {str(e)}")
             logging.error(traceback.format_exc())
