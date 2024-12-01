@@ -232,7 +232,7 @@ class VectorDB:
 
     def __issue_to_embeddable_string(self, issue: Issue) -> str:
         """
-        Convert an issue to a string that can be embedded
+        Convert an issue to a string that can be embedded.
         """
         return (
             issue.description
@@ -277,40 +277,45 @@ class VectorDB:
 
     def add_issue(self, issue: Issue):
         """
-        Add a new issue to the vector db.
+        Add a new issue to the vector db by splitting it into chunks.
         """
+        chunks = self.__chunk_data(self.__issue_to_embeddable_string(issue))
 
-        # Check if issue already exists
-        prev_data = self.client.get(ISSUE, issue.primary_key)
-        if len(prev_data) > 0:
-            # Need to load comments in to comply with Issue model
-            comments = [
-                Comment.model_validate_json(comment_json)
-                for comment_json in prev_data[0]["comments"]
+        for i, chunk in enumerate(chunks):
+            chunk_key = f"{issue.primary_key}-{i}"
+            prev_data = self.client.get(ISSUE, chunk_key)
+            if len(prev_data) > 0:
+                # Need to load comments in to comply with Issue model
+                comments = [
+                    Comment.model_validate_json(comment_json)
+                    for comment_json in prev_data[0]["comments"]
+                ]
+                prev_data[0]["comments"] = comments
+                prev_data_issue = Issue(**prev_data[0])
+
+                # compare content, if there's even a slight difference, we should update the issue vector.
+                if self.__issue_to_embeddable_string(prev_data_issue) == chunk:
+                    continue
+
+            try:
+                vector = self.vanilla_embed(chunk)
+            except Exception as e:
+                logging.error(f"Failed to embed chunk {i}: {str(e)}")
+                logging.error(traceback.format_exc())
+
+            entity = [
+                {
+                    PRIMARY_KEY_FIELD: f"{issue.primary_key}-{i}",
+                    "vector": vector,
+                    "description": issue.description,
+                    "comments": [comment.model_dump_json() for comment in issue.comments],
+                    "org_id": str(issue.org_id),
+                    "ticket_number": issue.ticket_number,
+                    "metadata": {},  # Nothing for now, but we can add new fields here in the future.
+                }
             ]
-            prev_data[0]["comments"] = comments
-            prev_data_issue = Issue(**prev_data[0])
 
-            # compare content, if there's even a slight difference, we should update the issue vector.
-            if self.__issue_to_embeddable_string(
-                prev_data_issue
-            ) == self.__issue_to_embeddable_string(issue):
-                return  # Issue content is the same as existing issue, just continue.
-
-        vector = self.embed(issue)
-        entity = [
-            {
-                PRIMARY_KEY_FIELD: str(issue.primary_key),
-                "vector": vector,
-                "description": issue.description,
-                "comments": [comment.model_dump_json() for comment in issue.comments],
-                "org_id": str(issue.org_id),
-                "ticket_number": issue.ticket_number,
-                "metadata": {},  # Nothing for now, but we can add new fields here in the future.
-            }
-        ]
-
-        self.client.upsert(ISSUE, data=entity)
+            self.client.upsert(ISSUE, data=entity)
 
     def get_all_issues(self, filter_by_org_id: bool = True) -> List[Issue]:
         """

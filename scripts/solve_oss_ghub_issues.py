@@ -56,12 +56,3 @@ async def setup_all_kbs_with_repo(
                 sleep(2)
         except Exception as e:
             logging.error(f"Error indexing issue {issue.ticket_number}: {e}, skipping...")
-
-
-def solve_issue(repo: str, issue_id: int):
-    """
-    Solves a given issue from a given repository.
-    """
-
-    github = GithubIntegration(UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1"), "mem0ai")
-    logging.info(github.list_repositories())
