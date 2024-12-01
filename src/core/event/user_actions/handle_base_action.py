@@ -27,7 +27,7 @@ class BaseActionHandler:
         self.tools_map = tools_map
         self.model = model
 
-    def handle_action(self, messages: List[Dict], max_tool_calls: int = 3) -> Dict[str, Any]:
+    def handle_action(self, messages: List[Dict], max_tool_calls: int = 5) -> Dict[str, Any]:
         """
         Handle a user action through chain-of-thought reasoning and tool usage
 
@@ -49,7 +49,7 @@ class BaseActionHandler:
         response = self.client.messages.create(
             model=self.model,
             system=sysprompt,
-            max_tokens=2048,
+            max_tokens=4096,
             tools=self.tools,
             tool_choice={"type": "auto"},
             messages=messages,
@@ -104,7 +104,7 @@ class BaseActionHandler:
                 response = self.client.messages.create(
                     model=self.model,
                     system=sysprompt, 
-                    max_tokens=2048,
+                    max_tokens=4096,
                     tools=self.tools,
                     tool_choice={"type": "auto"},
                     messages=messages,

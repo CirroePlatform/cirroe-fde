@@ -160,7 +160,6 @@ def poll_for_issues(
         repos=[Repository(remote="github.com", repository=repo_name, branch="main")],
     )
     on_init = True
-    repo_obj = github_kb.repos
     handle_issue = HandleIssue(org_id)
 
     while True:

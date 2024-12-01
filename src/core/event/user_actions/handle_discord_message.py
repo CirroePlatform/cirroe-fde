@@ -66,22 +66,25 @@ class HandleDiscordMessage(BaseActionHandler):
     def handle_discord_message(
         self,
         message: DiscordMessage,
-        max_tool_calls: int = 3
+        max_tool_calls: int = 5
     ) -> Dict[str, Any]:
         """
         Process a Discord message and generate a response using the AI agent.
 
         Args:
             message: The Discord message to process
-            max_tool_calls: Maximum number of tool calls allowed (default: 3)
+            max_tool_calls: Maximum number of tool calls allowed (default: 5)
 
         Returns:
             Dict containing the final response and collected KB responses
         """
         # Construct initial message stream
         messages = self.construct_initial_messages(message)
-        
+
         # Use the base class's handle_action method to process the message
-        response = self.handle_action(messages, max_tool_calls)
+        response = self.handle_action(messages, max_tool_calls=max_tool_calls)
+
+        if response["response"]:
+            return response
 
         return response
