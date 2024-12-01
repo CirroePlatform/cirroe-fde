@@ -2,6 +2,7 @@ from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
 from src.storage.supa import SupaClient
 from test.eval_agent import Orchestrator
 from src.core.event.poll import poll_for_issues
+
 from uuid import UUID
 import asyncio
 from src.core.event.user_actions.handle_discord_message import HandleDiscordMessage
@@ -43,7 +44,7 @@ def handle_discord_message(inbound_message: str, org_id: UUID):
 
     return response
 
-if __name__ == "__main__":
+def poll_wrapper():
     orgs_to_tickets = {
         GRAVITL_ORG_ID: [3020, 3019],
         MITO_DS_ORG_ID: [1332],
@@ -62,3 +63,27 @@ if __name__ == "__main__":
         # evaluate(org, repo_info["org_name"], repo_info[REPO_NAME], test_train_ratio=0.2, enable_labels=True)
 
         poll_for_issues(org, repo_info[REPO_NAME], True, ticket_numbers=[str(ticket) for ticket in orgs_to_tickets[org]])
+    
+
+if __name__ == "__main__":
+    disc_msg = """
+Hi everyone,
+
+I’m working with a Sequential Autogen agent flow for a text-to-SQL LLM chatbot use case, and I need to store chat history for the duration of a single user-chat session. (store memory to maintain the context throughout one chat session).
+
+How to use Mem0 for the same , kindly please give suggestions.
+
+Here’s the detailed Autogen Agent workflow I’m using:
+1.User Proxy Agent: Takes the user question from the frontend.
+2.Assistant: Understands the use case and prepares a task plan to solve the query.
+3.Assistant: Retrieves the DDL from the vector database based on the user query (text question from the User Proxy Agent).
+4.Assistant: Uses the retrieved DDL to generate the SQL query.
+
+Also ,If anyone has implemented this or , could you share any code repositories or sample code to refer to?
+Looking forward to your suggestions !
+    """
+
+    disc_msg = DiscordMessage(content=disc_msg, author="Priya Issar", channel_id="123", message_id="123")
+    response = HandleDiscordMessage(MEM0AI_ORG_ID).handle_discord_message(disc_msg)
+
+    print(f"```markdown\n{response}\n```")
