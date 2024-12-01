@@ -308,7 +308,9 @@ class VectorDB:
                     PRIMARY_KEY_FIELD: f"{issue.primary_key}-{i}",
                     "vector": vector,
                     "description": issue.description,
-                    "comments": [comment.model_dump_json() for comment in issue.comments],
+                    "comments": [
+                        comment.model_dump_json() for comment in issue.comments
+                    ],
                     "org_id": str(issue.org_id),
                     "ticket_number": issue.ticket_number,
                     "metadata": {},  # Nothing for now, but we can add new fields here in the future.

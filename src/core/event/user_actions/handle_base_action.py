@@ -8,10 +8,18 @@ SOLUTION_TAG_CLOSE = "</solution>"
 
 logger = logging.getLogger(__name__)
 
+
 class BaseActionHandler:
     """Base class for handling user actions with tools and responses"""
 
-    def __init__(self, client: anthropic.Anthropic, system_prompt_file: str, tools: List[Dict], tools_map: Dict, model: str):
+    def __init__(
+        self,
+        client: anthropic.Anthropic,
+        system_prompt_file: str,
+        tools: List[Dict],
+        tools_map: Dict,
+        model: str,
+    ):
         """
         Initialize the action handler
 
@@ -27,7 +35,9 @@ class BaseActionHandler:
         self.tools_map = tools_map
         self.model = model
 
-    def handle_action(self, messages: List[Dict], max_tool_calls: int = 5) -> Dict[str, Any]:
+    def handle_action(
+        self, messages: List[Dict], max_tool_calls: int = 5
+    ) -> Dict[str, Any]:
         """
         Handle a user action through chain-of-thought reasoning and tool usage
 
@@ -77,24 +87,30 @@ class BaseActionHandler:
                         if not tool_name or tool_name not in self.tools_map:
                             self.append_message(
                                 messages,
-                                "assistant", 
-                                "Invalid tool requested. Let me reconsider my approach."
+                                "assistant",
+                                "Invalid tool requested. Let me reconsider my approach.",
                             )
                             continue
 
                         try:
-                            kb_response, function_response = self.tools_map[tool_name](**tool_input)
-                            self.handle_tool_response(tool_name, function_response, messages)
+                            kb_response, function_response = self.tools_map[tool_name](
+                                **tool_input
+                            )
+                            self.handle_tool_response(
+                                tool_name, function_response, messages
+                            )
                             kb_responses.extend(kb_response)
                         except Exception as e:
                             logger.error("Tool execution error: %s", str(e))
                             self.append_message(
                                 messages,
                                 "assistant",
-                                f"Encountered an error with {tool_name}. Let me try a different approach."
+                                f"Encountered an error with {tool_name}. Let me try a different approach.",
                             )
                             function_response = str(e)
-                            self.handle_tool_response(tool_name, function_response, messages)
+                            self.handle_tool_response(
+                                tool_name, function_response, messages
+                            )
 
                         tool_calls_made += 1
 
@@ -103,7 +119,7 @@ class BaseActionHandler:
 
                 response = self.client.messages.create(
                     model=self.model,
-                    system=sysprompt, 
+                    system=sysprompt,
                     max_tokens=4096,
                     tools=self.tools,
                     tool_choice={"type": "auto"},
@@ -116,13 +132,18 @@ class BaseActionHandler:
                 self._append_message(
                     messages,
                     "assistant",
-                    "Encountered an unexpected error. Let me try to formulate a response with the information I have."
+                    "Encountered an unexpected error. Let me try to formulate a response with the information I have.",
                 )
                 break
 
-        return {"response": self.generate_final_response(response), "kb_responses": kb_responses}
+        return {
+            "response": self.generate_final_response(response),
+            "kb_responses": kb_responses,
+        }
 
-    def append_message(self, messages: List[Dict[str, str]], role: str, content: str) -> None:
+    def append_message(
+        self, messages: List[Dict[str, str]], role: str, content: str
+    ) -> None:
         """
         Appends a message to the message stream.
 
@@ -137,7 +158,9 @@ class BaseActionHandler:
         """
         messages.append({"role": role, "content": content})
 
-    def handle_tool_response(self, tool_name: str, function_response: str, messages: List[Dict[str, str]]) -> None:
+    def handle_tool_response(
+        self, tool_name: str, function_response: str, messages: List[Dict[str, str]]
+    ) -> None:
         """
         Handles the tool response and updates messages and KB responses accordingly.
 
@@ -146,7 +169,9 @@ class BaseActionHandler:
                 function_response: Response from the tool
             messages: List of message dictionaries to update
         """
-        self.append_message(messages, "user", f"Results from {tool_name}: {function_response}")
+        self.append_message(
+            messages, "user", f"Results from {tool_name}: {function_response}"
+        )
 
     def generate_final_response(
         self,
@@ -154,7 +179,7 @@ class BaseActionHandler:
     ) -> str:
         """Generate the final response after tool usage"""
         final_response = None
-        
+
         if last_message.content:
             for content in last_message.content:
                 if hasattr(content, "text"):

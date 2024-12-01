@@ -21,13 +21,18 @@ load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+
 class HandleDiscordMessage(BaseActionHandler):
     def __init__(self, org_id: str):
         self.org_id = org_id
 
         # Set up the same tools as HandleIssue
-        userdata = SupaClient(user_id=self.org_id).get_user_data(ORG_NAME, REPO_NAME, debug=True)
-        repo = Repository(remote="github.com", repository=userdata[REPO_NAME], branch="main")
+        userdata = SupaClient(user_id=self.org_id).get_user_data(
+            ORG_NAME, REPO_NAME, debug=True
+        )
+        repo = Repository(
+            remote="github.com", repository=userdata[REPO_NAME], branch="main"
+        )
         search_tools = SearchTools(self.org_id, [repo])
         self.tools_map = {
             "execute_codebase_search": search_tools.execute_codebase_search,
@@ -40,10 +45,12 @@ class HandleDiscordMessage(BaseActionHandler):
             DEBUG_DISCORD_FILE,
             DEBUG_TOOLS,
             self.tools_map,
-            MODEL_HEAVY
+            MODEL_HEAVY,
         )
 
-    def construct_initial_messages(self, message: DiscordMessage) -> List[Dict[str, Any]]:
+    def construct_initial_messages(
+        self, message: DiscordMessage
+    ) -> List[Dict[str, Any]]:
         """
         Construct the initial message stream for the Discord message.
 
@@ -59,14 +66,12 @@ class HandleDiscordMessage(BaseActionHandler):
                 "content": (
                     f"Discord message from {message.author} "
                     f"in channel {message.channel_id}:\n\n{message.content}"
-                )
+                ),
             }
         ]
 
     def handle_discord_message(
-        self,
-        message: DiscordMessage,
-        max_tool_calls: int = 5
+        self, message: DiscordMessage, max_tool_calls: int = 5
     ) -> Dict[str, Any]:
         """
         Process a Discord message and generate a response using the AI agent.

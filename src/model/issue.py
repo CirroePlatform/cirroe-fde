@@ -8,6 +8,7 @@ class Comment(BaseModel):
     requestor_name: str
     comment: str
 
+
 class DiscordMessage(BaseModel):
     content: str
     author: str
@@ -15,9 +16,11 @@ class DiscordMessage(BaseModel):
     message_id: str
     guild_id: Optional[str] = None
 
+
 class DiscordThread(BaseModel):
     thread_id: str
     messages: List[DiscordMessage]
+
 
 class Issue(BaseModel):
     """

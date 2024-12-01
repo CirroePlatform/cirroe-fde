@@ -143,7 +143,10 @@ class GithubIntegration(BaseKnowledgeBase):
                 response = requests.get(url, headers=self.github_headers, params=params)
                 response.raise_for_status()
                 content = response.json()
-            except (requests.exceptions.HTTPError, requests.exceptions.RequestException) as e:
+            except (
+                requests.exceptions.HTTPError,
+                requests.exceptions.RequestException,
+            ) as e:
                 if response.status_code == 403:
                     logging.warning(f"Received 403 Forbidden response for {url}")
                 else:
@@ -186,13 +189,15 @@ class GithubIntegration(BaseKnowledgeBase):
                 should_add = True
                 if labels is not None:
                     should_add = False
-                    
+
                     for _ in range(3):
                         try:
                             issue_labels = set(self.get_labels(issue_number, url))
                             break
                         except Exception as e:
-                            logging.error(f"Failed to get labels for issue {issue_number}: {str(e)}. Sleeping for 10 seconds.")
+                            logging.error(
+                                f"Failed to get labels for issue {issue_number}: {str(e)}. Sleeping for 10 seconds."
+                            )
                             logging.error(traceback.format_exc())
                             time.sleep(10)
 
@@ -325,6 +330,7 @@ class GithubIntegration(BaseKnowledgeBase):
                 ]
             return code_pages
         logging.info(f"Fetching and indexing contents for {repository}")
+
         def fetch_contents(path: str = ""):
             url = (
                 f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
