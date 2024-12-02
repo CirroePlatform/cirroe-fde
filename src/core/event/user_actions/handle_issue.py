@@ -31,12 +31,17 @@ load_dotenv()
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+
 class HandleIssue(BaseActionHandler):
     def __init__(self, org_id: UUID):
         self.org_id = org_id
 
-        userdata = SupaClient(user_id=self.org_id).get_user_data(ORG_NAME, REPO_NAME, debug=True)
-        repo = Repository(remote="github.com", repository=userdata[REPO_NAME], branch="main")
+        userdata = SupaClient(user_id=self.org_id).get_user_data(
+            ORG_NAME, REPO_NAME, debug=True
+        )
+        repo = Repository(
+            remote="github.com", repository=userdata[REPO_NAME], branch="main"
+        )
         search_tools = SearchTools(self.org_id, [repo])
         self.tools_map = {
             "execute_codebase_search": search_tools.execute_codebase_search,
@@ -44,7 +49,13 @@ class HandleIssue(BaseActionHandler):
             "execute_issue_search": search_tools.execute_issue_search,
         }
 
-        super().__init__(anthropic.Anthropic(api_key=ANTHROPIC_API_KEY), DEBUG_ISSUE_FILE, DEBUG_TOOLS, self.tools_map, MODEL_HEAVY)
+        super().__init__(
+            anthropic.Anthropic(api_key=ANTHROPIC_API_KEY),
+            DEBUG_ISSUE_FILE,
+            DEBUG_TOOLS,
+            self.tools_map,
+            MODEL_HEAVY,
+        )
 
     def construct_initial_messages(self, issue: Issue) -> List[Dict[str, Any]]:
         """
@@ -107,11 +118,8 @@ class HandleIssue(BaseActionHandler):
 
         return messages
 
-
     def debug_issue(
-        self,
-        issue_req: OpenIssueRequest,
-        max_tool_calls: int = 3
+        self, issue_req: OpenIssueRequest, max_tool_calls: int = 5
     ) -> Dict[str, Any]:
         """
         Given some issue, the agent will try to solve it using chain-of-thought reasoning
@@ -119,7 +127,7 @@ class HandleIssue(BaseActionHandler):
 
         Args:
             issue_req: The issue request containing description and metadata
-            max_tool_calls: Maximum number of tool calls allowed (default: 3)
+            max_tool_calls: Maximum number of tool calls allowed (default: 5)
 
         Returns:
             Dict containing the final response and collected KB responses
@@ -165,7 +173,10 @@ class HandleIssue(BaseActionHandler):
 
             logger.info("Final response generated: %s", final_response)
 
-            return {"response": final_response, "kb_responses": kb_responses}
+            return {
+                "response": final_response,
+                "kb_responses": response["kb_responses"],
+            }
 
         except Exception as e:
             logger.error("Error generating final response: %s", str(e))

@@ -129,3 +129,6 @@ CIRROE_USERNAME = "Cirr0e"
 
 # Finetune constants
 DEFAULT_NEEDS_DEV_TEAM_OUTPUT_PATH = "include/needs_dev_team_output.jsonl"
+
+# Discord constants
+CHANNEL = "cirroe-support"

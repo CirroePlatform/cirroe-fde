@@ -19,20 +19,53 @@ from datetime import datetime, timedelta
 from src.storage.supa import SupaClient
 from cerebras.cloud.sdk import Cerebras
 from typing import List, Optional
+from discord.ext import commands
 from uuid import UUID
 import humanlayer
 import requests
 import logging
+import discord
 import asyncio
 import json
 import time
 import os
 
+from include.constants import CHANNEL
+
 hl = humanlayer.HumanLayer()
 
 cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
+disc_token = os.getenv("DISCORD_TOKEN")
 dataset_collector = DatasetCollector()
 
+intents = discord.Intents.default()
+intents.messages = True
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user}')
+    print('Bot is ready to answer questions!')
+
+@bot.event
+async def on_message(message):
+    # Ignore messages from the bot itself.
+    if message.author == bot.user:
+        return
+
+    # Check if the message is from the desired channel.
+    if message.channel.name == CHANNEL:
+        user_question = message.content
+
+        # Example response logic
+        if "hello" in user_question.lower():
+            await message.channel.send(f"Hello, {message.author.mention}!")
+        else:
+            await message.channel.send(
+                f"I'm not sure how to respond to that yet, {message.author.mention}."
+            )
 
 def get_issues_created_or_updated_recently(
     repo_name: str, github_kb: GithubIntegration

@@ -19,3 +19,4 @@ typeguard
 einops
 datasets
 cerebras_cloud_sdk
+discord

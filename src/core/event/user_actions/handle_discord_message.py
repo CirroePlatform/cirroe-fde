@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 import anthropic
 from dotenv import load_dotenv
 import os
