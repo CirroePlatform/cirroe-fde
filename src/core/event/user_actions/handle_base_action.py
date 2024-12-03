@@ -1,10 +1,13 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
 import anthropic
 import logging
 import time
 
 SOLUTION_TAG_OPEN = "<solution>"
 SOLUTION_TAG_CLOSE = "</solution>"
+
+CONFIDENCE_TAG_OPEN = "<confidence_score>"
+CONFIDENCE_TAG_CLOSE = "</confidence_score>"
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +139,13 @@ class BaseActionHandler:
                 )
                 break
 
+
+        final_response, confidence_score = self.generate_final_response(response)
+
         return {
-            "response": self.generate_final_response(response),
+            "response": final_response,
             "kb_responses": kb_responses,
+            "confidence_score": confidence_score,
         }
 
     def append_message(
@@ -160,7 +167,7 @@ class BaseActionHandler:
 
     def handle_tool_response(
         self, tool_name: str, function_response: str, messages: List[Dict[str, str]]
-    ) -> None:
+    ) -> Tuple[str, int]:
         """
         Handles the tool response and updates messages and KB responses accordingly.
 
@@ -176,9 +183,17 @@ class BaseActionHandler:
     def generate_final_response(
         self,
         last_message: Dict[str, Any],
-    ) -> str:
-        """Generate the final response after tool usage"""
+    ) -> Tuple[str, int]:
+        """Generate the final response after tool usage
+
+        Args:
+            last_message (Dict[str, Any]): The last message from the agent
+
+        Returns:
+            Tuple[str, int]: The final response and confidence score
+        """
         final_response = None
+        confidence_score = 0
 
         if last_message.content:
             for content in last_message.content:
@@ -192,6 +207,13 @@ class BaseActionHandler:
                             .split(SOLUTION_TAG_CLOSE)[0]
                             .strip()
                         )
+                        if CONFIDENCE_TAG_OPEN in content.text:
+                            confidence_score = int(
+                                content.text.split(CONFIDENCE_TAG_OPEN)[1]
+                                .split(CONFIDENCE_TAG_CLOSE)[0]
+                                .strip()
+                            )
+
                     break
 
-        return final_response
+        return final_response, confidence_score

@@ -136,7 +136,7 @@ class HandleIssue(BaseActionHandler):
         messages = self.construct_initial_messages(issue_req.issue)
         response = self.handle_action(messages, max_tool_calls)
 
-        if response["response"]:
+        if response["response"] and response["confidence_score"] > 50:
             return response
 
         # Generate final response with summarized data.

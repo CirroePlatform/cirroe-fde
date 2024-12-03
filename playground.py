@@ -14,6 +14,7 @@ from include.constants import (
     MITO_DS_ORG_ID,
     FLOWISE_ORG_ID,
     ARROYO_ORG_ID,
+    PREDIBASE_ORG_ID
 )
 
 
@@ -57,8 +58,9 @@ def poll_wrapper():
     orgs_to_tickets = {
         # GRAVITL_ORG_ID: [3020, 3019],
         # MITO_DS_ORG_ID: [1332],
-        # FLOWISE_ORG_ID: [3615],
+        # FLOWISE_ORG_ID: [3577],
         # ARROYO_ORG_ID: [756, 728],
+        PREDIBASE_ORG_ID: [699, 694],
     }
 
     for org in orgs_to_tickets:
@@ -71,8 +73,8 @@ def poll_wrapper():
         # 2. evaluate and save results
         # evaluate(org, repo_info["org_name"], repo_info[REPO_NAME], test_train_ratio=0.2, enable_labels=True)
 
-        # poll_for_issues(org, repo_info[REPO_NAME], True, ticket_numbers=[str(ticket) for ticket in orgs_to_tickets[org]])
-        index(org, repo_info["org_name"], repo_info[REPO_NAME], repo_info["docu_url"])
+        # index(org, repo_info["org_name"], repo_info[REPO_NAME], repo_info["docu_url"])
+        poll_for_issues(org, repo_info[REPO_NAME], True, ticket_numbers=[str(ticket) for ticket in orgs_to_tickets[org]])
 
 
 def discord_wrapper():
@@ -104,4 +106,4 @@ def discord_bot():
     bot.run(disc_token)
 
 if __name__ == "__main__":
-    discord_bot()
+    poll_wrapper()
