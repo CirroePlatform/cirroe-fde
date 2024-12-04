@@ -32,11 +32,11 @@ Based on your analysis, create a concise response to the user's message. Your re
 Present your solution in a clear, structured format using <solution> tags. Your response should read as if it's coming from a helpful, knowledgeable colleague rather than an AI system. Here's a few example structures:
 
 <example_1>
-Yeah I think I see the issue, can you try [something to fix the issue]? If that doesn't work, maybe we can also try [something else].
+<solution>Yeah I think I see the issue, can you try [something to fix the issue]? If that doesn't work, maybe we can also try [something else].</solution>
 </example_1>
 
 <example_2>
-Acutally it looks like this is a known issue [sources of information]. There's a similar fix for it in [some other issue], maybe you can try [solution based on references]
+<solution>Acutally it looks like this is a known issue [links to sources of information]. There's a similar fix for it in [some other issue], maybe you can try [solution based on references]</solution>
 </example_2>
 
 Important: If you determine that an actionable solution is not possible based on the provided information, use the <solution> tags to politely request more specific details from the user. Explain why the current information is insufficient and what additional information would be helpful.
