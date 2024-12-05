@@ -44,10 +44,12 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
-    print('Bot is ready to answer questions!')
+    print(f"Logged in as {bot.user}")
+    print("Bot is ready to answer questions!")
+
 
 @bot.event
 async def on_message(message):
@@ -66,6 +68,7 @@ async def on_message(message):
             await message.channel.send(
                 f"I'm not sure how to respond to that yet, {message.author.mention}."
             )
+
 
 def get_issues_created_or_updated_recently(
     repo_name: str, github_kb: GithubIntegration

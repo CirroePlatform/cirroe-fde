@@ -71,12 +71,12 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         """
         Fetch the content of a page.
         """
-        logging.info(f"Fetching content from URL: {url}")
+        logging.debug(f"Fetching content from URL: {url}")
         try:
             response = requests.get(url)
             response.raise_for_status()
             retval = self.html_cleaner.clean(response.text)
-            logging.info(f"Successfully fetched content from {url}")
+            logging.debug(f"Successfully fetched content from {url}")
 
             return retval
         except requests.RequestException as e:

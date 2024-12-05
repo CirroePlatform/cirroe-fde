@@ -139,7 +139,6 @@ class BaseActionHandler:
                 )
                 break
 
-
         final_response, confidence_score = self.generate_final_response(response)
 
         return {

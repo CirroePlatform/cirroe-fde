@@ -20,6 +20,7 @@ def poll_for_issues(org_id: str, repo_name: str, background_tasks: BackgroundTas
     """
     background_tasks.add_task(poll_for_issues, org_id, repo_name)
 
+
 @app.get("/discord_bot")
 def discord_bot(background_tasks: BackgroundTasks):
     """

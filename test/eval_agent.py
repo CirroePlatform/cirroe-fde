@@ -1,5 +1,5 @@
-from src.model.issue import Issue, OpenIssueRequest, Comment
-from typing import List, Tuple, Optional
+from src.model.issue import Issue, OpenIssueRequest
+from typing import List, Optional
 from uuid import UUID
 import anthropic
 import logging
@@ -167,7 +167,7 @@ class Orchestrator:
         Main entry point to evaluate our agent on a specific org's issues.
         """
         # 1. Setup the test and train issues
-        test_issues = self.setup_test_train_issues_splits()
+        test_issues = self.setup_test_train_issues_splits(0.1)
         logging.info(f"Evaluating agent on {len(test_issues)} issues.")
 
         # 2. Evaluate the agent on the test issues
@@ -251,7 +251,7 @@ class Evaluator:
         total_success = 0
         eval_results = []
 
-        for issue in self.test_issues:
+        for i, issue in enumerate(self.test_issues):
             # Take the comments out of the issue object
             cleaned_issue_description = self.preprocess_issue(issue)
             logging.info(
@@ -287,7 +287,9 @@ class Evaluator:
                 }
             )
 
-            logging.info(f"Evaluated issue {issue.primary_key}. Success: {success}")
+            logging.info(
+                f"Evaluated issue {issue.primary_key}. Success: {success}, running success rate: {total_success / (i + 1)}"
+            )
 
         success_rate = total_success / total_issues
         logging.info(
