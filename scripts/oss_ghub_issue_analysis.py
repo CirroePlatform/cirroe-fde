@@ -1,4 +1,8 @@
 from uuid import UUID
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import re
 import logging
 from datetime import datetime
 import json
@@ -11,7 +15,7 @@ load_dotenv()
 
 from src.integrations.kbs.github_kb import GithubIntegration
 from src.storage.supa import SupaClient
-from include.constants import TRIGGER_ORG_ID, LIGHT_DASH_ORG_ID
+from include.constants import MINDEE_ORG_ID, UNSLOTH_ORG_ID, UEBERDOSIS_ORG_ID
 
 def analyze_github_issues(org_id: UUID) -> Dict:
     """
@@ -34,23 +38,32 @@ def analyze_github_issues(org_id: UUID) -> Dict:
 
     time_deltas = []
     completion_times = {}
+    # Get current time and calculate cutoff date (3 months ago)
+    now = datetime.now()
+    three_months_ago = datetime(now.year, now.month - 3 if now.month > 3 else now.month + 9, now.day)
+
     for issue in issues:
         if issue["closed_at"] and issue["created_at"]:
             # Parse datetime strings to datetime objects
             closed_at = datetime.strptime(issue["closed_at"], "%Y-%m-%dT%H:%M:%SZ")
             created_at = datetime.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ")
 
-            # Calculate time delta between creation and closing
-            completion_time = closed_at - created_at
-            completion_times[issue["number"]] = completion_time
-            time_deltas.append(completion_time.total_seconds())
+            # Only consider issues from last 3 months
+            if created_at >= three_months_ago:
+                # Calculate time delta between creation and closing
+                completion_time = (closed_at - created_at).total_seconds()
+                completion_times[issue["number"]] = completion_time
+                time_deltas.append(completion_time)
 
     # Calculate average completion time
     avg_completion_time = mean(time_deltas) if time_deltas else 0
+    # Calculate median completion time
+    median_completion_time = sorted(time_deltas)[len(time_deltas)//2] if time_deltas else 0
 
     return {
         "issue_completion_times_in_seconds": completion_times,
         "average_completion_time_in_seconds": avg_completion_time,
+        "median_completion_time_in_seconds": median_completion_time,
     }
 
 def analyze_repos():
@@ -58,8 +71,9 @@ def analyze_repos():
     org_ids = []
     with open("include/cache/cached_user_data.json", "r") as f:
         data = json.load(f)
-        for org_id, _ in data.items():
-            org_ids.append(UUID(org_id))
+        for org_id, org_data in data.items():
+            name = org_data["org_name"]
+            org_ids.append((UUID(org_id), name))
 
     # Read existing entries if file exists
     existing_entries = set()
@@ -73,24 +87,90 @@ def analyze_repos():
         # Create new file with header if it doesn't exist
         with open("scripts/data/oss_ticket_stats.csv", "w") as f:
             writer = csv.writer(f)
-            writer.writerow(["repo", "average_completion_time", "total_completion_time"])
+            writer.writerow(["repo", "average_completion_time", "total_completion_time", "median_completion_time"])
 
     # Append new entries
     with open("scripts/data/oss_ticket_stats.csv", "a") as f:
         writer = csv.writer(f)
-        for org_id in org_ids:
-            if org_id not in existing_entries:
+        for org_id, org_name in org_ids:
+            if org_name not in existing_entries:
+                logging.info(f"Analyzing {org_name}")
                 results = analyze_github_issues(org_id)
-                
-                logging.info(results)
-                
-                values_in_seconds = [
-                    x.total_seconds() for x in results["issue_completion_times"].values()
-                ]
                 writer.writerow(
                     [
-                        org_id,
-                        results["average_completion_time"] / 3600,
-                        sum(values_in_seconds) / 3600,
+                        org_name,
+                        results["average_completion_time_in_seconds"] / 3600,
+                        sum(results["issue_completion_times_in_seconds"].values()) / 3600,
+                        results["median_completion_time_in_seconds"] / 3600,
                     ]
                 )
+
+def extract_github_links(url):
+    """
+    Scrape a website and extract GitHub links from the page.
+    
+    Args:
+        url (str): The landing page URL to scrape
+    
+    Returns:
+        dict: A dictionary with the original website as key and GitHub link as value
+    """
+    try:
+        # Fetch the webpage content
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # Parse the HTML content
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Patterns to identify GitHub links
+        github_patterns = [
+            r'https?://(?:www\.)?github\.com/[a-zA-Z0-9-]+(?:/[a-zA-Z0-9-]+)?',
+            r'github\.com/[a-zA-Z0-9-]+(?:/[a-zA-Z0-9-]+)?'
+        ]
+        
+        # Searches for GitHub links in different parts of the page
+        github_links = set()
+        
+        # Search in all anchor tags
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            
+            # Normalize the URL
+            full_url = urljoin(url, href)
+            
+            # Check if the link matches GitHub patterns
+            for pattern in github_patterns:
+                match = re.search(pattern, full_url, re.IGNORECASE)
+                if match:
+                    # Ensure it's a clean GitHub URL
+                    github_link = match.group(0)
+                    if not github_link.startswith(('http://', 'https://')):
+                        github_link = f'https://{github_link}'
+                    github_links.add(github_link)
+        
+        # Return results
+        return {url: list(github_links)[0]} if github_links else {}
+    
+    except requests.RequestException as e:
+        print(f"Error fetching {url}: {e}")
+        return {}
+
+def bulk_extract_github_links(websites):
+    """
+    Extract GitHub links for multiple websites.
+    
+    Args:
+        websites (list): List of website URLs to scrape
+    
+    Returns:
+        dict: Dictionary of website to GitHub link mappings
+    """
+    results = {}
+    for site in websites:
+        github_link = extract_github_links(site)
+        results.update(github_link)
+    return results
