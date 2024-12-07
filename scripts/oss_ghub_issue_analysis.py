@@ -1,6 +1,7 @@
 from uuid import UUID
+import logging
 from datetime import datetime
-import os
+import json
 from statistics import mean
 from typing import Dict
 from dotenv import load_dotenv
@@ -9,9 +10,10 @@ import csv
 load_dotenv()
 
 from src.integrations.kbs.github_kb import GithubIntegration
+from src.storage.supa import SupaClient
+from include.constants import TRIGGER_ORG_ID, LIGHT_DASH_ORG_ID
 
-
-def analyze_github_issues(repo_url: str) -> Dict:
+def analyze_github_issues(org_id: UUID) -> Dict:
     """
     Analyzes closed issues from a GitHub repository to calculate completion times.
 
@@ -23,10 +25,12 @@ def analyze_github_issues(repo_url: str) -> Dict:
     """
 
     # Extract org/repo from URL if full URL provided
-    github = GithubIntegration(
-        UUID("90a11a74-cfcf-4988-b97a-c4ab21edd0a1"), repo_url
-    )  # TODO this is wrong, arguments have changed.
-    issues = github.get_all_issues_json(repo_url)
+    data = SupaClient(org_id).get_user_data("org_name", "repo_name", debug=True)
+    org_name = data["org_name"]
+    repo_name = data["repo_name"]
+
+    github = GithubIntegration(org_id, org_name)
+    issues = github.get_all_issues_json(repo_name, state="closed", fetch_comments=False)
 
     time_deltas = []
     completion_times = {}
@@ -45,36 +49,48 @@ def analyze_github_issues(repo_url: str) -> Dict:
     avg_completion_time = mean(time_deltas) if time_deltas else 0
 
     return {
-        "issue_completion_times": completion_times,
-        "average_completion_time": avg_completion_time,
+        "issue_completion_times_in_seconds": completion_times,
+        "average_completion_time_in_seconds": avg_completion_time,
     }
 
-
-if __name__ == "__main__":
+def analyze_repos():
     # Example usage
-    repos = [
-        "mem0ai/mem0",
-        "cpacker/MemGPT",
-        "trypear/pearai-master",
-        "milvus-io/milvus",
-        "qdrant/qdrant",
-        "langchain-ai/langchain",
-        "run-llama/llama_index",
-    ]
+    org_ids = []
+    with open("include/cache/cached_user_data.json", "r") as f:
+        data = json.load(f)
+        for org_id, _ in data.items():
+            org_ids.append(UUID(org_id))
 
-    with open("data/oss_ticket_stats.csv", "w") as f:
+    # Read existing entries if file exists
+    existing_entries = set()
+    try:
+        with open("scripts/data/oss_ticket_stats.csv", "r") as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header
+            for row in reader:
+                existing_entries.add(row[0])  # Store repo names
+    except FileNotFoundError:
+        # Create new file with header if it doesn't exist
+        with open("scripts/data/oss_ticket_stats.csv", "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(["repo", "average_completion_time", "total_completion_time"])
+
+    # Append new entries
+    with open("scripts/data/oss_ticket_stats.csv", "a") as f:
         writer = csv.writer(f)
-        writer.writerow(["repo", "average_completion_time", "total_completion_time"])
-
-        for repo in repos:
-            results = analyze_github_issues(repo)
-            values_in_seconds = [
-                x.total_seconds() for x in results["issue_completion_times"].values()
-            ]
-            writer.writerow(
-                [
-                    repo,
-                    results["average_completion_time"] / 3600,
-                    sum(values_in_seconds) / 3600,
+        for org_id in org_ids:
+            if org_id not in existing_entries:
+                results = analyze_github_issues(org_id)
+                
+                logging.info(results)
+                
+                values_in_seconds = [
+                    x.total_seconds() for x in results["issue_completion_times"].values()
                 ]
-            )
+                writer.writerow(
+                    [
+                        org_id,
+                        results["average_completion_time"] / 3600,
+                        sum(values_in_seconds) / 3600,
+                    ]
+                )

@@ -1,4 +1,5 @@
 from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
+from scripts.oss_ghub_issue_analysis import analyze_repos
 from src.storage.supa import SupaClient
 from test.eval_agent import Orchestrator
 from src.core.event.poll import poll_for_issues, bot, disc_token
@@ -10,11 +11,12 @@ from src.model.issue import DiscordMessage
 from include.constants import (
     MEM0AI_ORG_ID,
     REPO_NAME,
+    TRIGGER_ORG_ID,
     GRAVITL_ORG_ID,
     MITO_DS_ORG_ID,
     FLOWISE_ORG_ID,
     ARROYO_ORG_ID,
-    PREDIBASE_ORG_ID
+    PREDIBASE_ORG_ID,
 )
 
 
@@ -57,10 +59,11 @@ def handle_discord_message(inbound_message: str, org_id: UUID):
 def poll_wrapper():
     orgs_to_tickets = {
         # GRAVITL_ORG_ID: [3020, 3019],
-        # MITO_DS_ORG_ID: [1332],
+        MITO_DS_ORG_ID: [1332],
         # FLOWISE_ORG_ID: [3577],
         # ARROYO_ORG_ID: [756, 728],
-        PREDIBASE_ORG_ID: [699, 694],
+        # MEM0AI_ORG_ID: [2069],
+        # TRIGGER_ORG_ID: [1490],
     }
 
     for org in orgs_to_tickets:
@@ -74,27 +77,43 @@ def poll_wrapper():
         # evaluate(org, repo_info["org_name"], repo_info[REPO_NAME], test_train_ratio=0.2, enable_labels=True)
 
         # index(org, repo_info["org_name"], repo_info[REPO_NAME], repo_info["docu_url"])
-        poll_for_issues(org, repo_info[REPO_NAME], True, ticket_numbers=[str(ticket) for ticket in orgs_to_tickets[org]])
+        poll_for_issues(
+            org,
+            repo_info[REPO_NAME],
+            True,
+            ticket_numbers=[str(ticket) for ticket in orgs_to_tickets[org]],
+        )
 
 
 def discord_wrapper():
     disc_msg = """
-octocat: Hi i got this issues when checkout the repos and build from master and v0.12. previously i install arroyo via scripts. then uninstall those . is there something that cause this? @Micah Wylde 
+Good evening,
 
-2024-11-29T14:23:47.699412Z  INFO arroyo_controller::states::scheduling: starting execution on worker job_id="job_SzD0oomo4y" worker_id=101
-2024-11-29T14:23:54.007828Z ERROR arroyo_controller::states::scheduling: failed to start execution on worker job_id="job_SzD0oomo4y" worker_id=101 attempt=0 error="Status { code: Unknown, message: \"transport error\", source: Some(tonic::transport::Error(Transport, hyper::Error(Io, Custom { kind: BrokenPipe, error: \"stream closed because of a broken pipe\" }))) }"
-2024-11-29T14:24:05.904961Z ERROR arroyo_controller::states::scheduling: failed to start execution on worker job_id="job_SzD0oomo4y" worker_id=101 attempt=1 error="Status { code: Unknown, message: \"transport error\", source: Some(tonic::transport::Error(Transport, hyper::Error(Io, Custom { kind: BrokenPipe, error: \"stream closed because of a broken pipe\" }))) }"
-2024-11-29T14:24:19.277173Z ERROR arroyo_controller::states::scheduling: failed to start execution on worker job_id="job_SzD0oomo4y" worker_id=101 attempt=2 error="Status { code: Unknown, message: \"transport error\", source: Some(tonic::transport::Error(Transport, hyper::Error(Io, Custom { kind: BrokenPipe, error: \"stream closed because of a broken pipe\" }))) }"
-    
-ecararra: I encountered the same error on macOS. To resolve it, I had to add the Arroyo binary path to the firewall allow list.
+I've been trying to get your service to work for several days now, but it only works in dev.
+
+From what I understand, the GitHub action builds a Docker image, which is hosted on ghcr.io for my part. The rest goes well since the "deployments" page on the Trigger.dev interface in self host shows me that the deployment is complete (in green), but the queues/jobs are not processed, even if I restart the task.
+
+I tried to host the service on Coolify, even on another VPS completely empty of service (reinstallation from scratch), and even locally, result: there are websocket errors everywhere in the logs.
+
+Please review your documentation which seems a bit empty for novices like me in the Docker environment.
+
+Docker Provider log for exemple:
+2024-12-06T22:41:17.368219680Z {"timestamp":"2024-12-06T22:41:17.368Z","message":"disconnect","$name":"socket-shared-queue","$level":"info","namespace":"shared-queue","host":"webapp","port":3000,"secure":false,"reason":"transport close","description":{"description":"websocket connection closed","context":{}}}
+
+
+Thanks to help me.
+
+Maxence.
     """
     from rich.console import Console
     from rich.markdown import Markdown
 
     disc_msg = DiscordMessage(
-        content=disc_msg, author="neotherack", channel_id="123", message_id="123"
+        content=disc_msg, author="Priya", channel_id="123", message_id="123"
     )
-    response = HandleDiscordMessage(ARROYO_ORG_ID).handle_discord_message(disc_msg)
+    response = HandleDiscordMessage(TRIGGER_ORG_ID).handle_discord_message(
+        disc_msg, max_tool_calls=5
+    )
 
     console = Console()
     md = Markdown(response["response"])
@@ -106,4 +125,5 @@ def discord_bot():
     bot.run(disc_token)
 
 if __name__ == "__main__":
-    poll_wrapper()
+    # poll_wrapper()
+    analyze_repos()

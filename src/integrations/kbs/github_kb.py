@@ -116,6 +116,7 @@ class GithubIntegration(BaseKnowledgeBase):
         repo_name: str,
         state: Optional[str] = None,
         labels: Optional[List[str]] = None,
+        fetch_comments: bool = True,
     ) -> Dict[str, Any]:
         """
         Get all issues (excluding pull requests) for some provided repository.
@@ -124,6 +125,7 @@ class GithubIntegration(BaseKnowledgeBase):
             repo_name: Name of repository to fetch issues from
             state: Optional filter for issue state (open, closed)
             labels: Optional list of label names to filter issues by
+            fetch_comments: Whether to fetch comments for each issue
         """
         if "github.com" in repo_name:
             repo_name = "/".join(repo_name.split("/")[-2:])
@@ -160,31 +162,32 @@ class GithubIntegration(BaseKnowledgeBase):
             # Fetch comments for each issue
             for i in tqdm.tqdm(
                 range(len(issues)),
-                desc=f"Fetching comments for {len(issues)} issues",
+                desc=f"Fetching comments and/or labels for {len(issues)} issues",
             ):
 
                 # Get labels if they exist, and remove this from the set if it doesn't satisfy label constraints
                 issue_number = issues[i]["number"]
                 comments_url = issues[i]["comments_url"]
-                try:
-                    comments_response = requests.get(
+                if fetch_comments:
+                    try:
+                        comments_response = requests.get(
                         comments_url, headers=self.github_headers
-                    )
-                    comments_response.raise_for_status()
+                        )
+                        comments_response.raise_for_status()
 
-                    # Add comments to the issue object
-                    issues[i]["comments"] = comments_response.json()
-                except (
-                    requests.exceptions.Timeout,
-                    requests.exceptions.ReadTimeout,
-                    requests.exceptions.ConnectTimeout,
-                ) as e:  # TODO this handler and catch is untested.
-                    logging.error(
-                        f"request timed out or was rate limited. Sleeping for a few secs then retrying. {e}"
-                    )
-                    logging.error(traceback.format_exc())
-                    time.sleep(10)
-                    i -= 1
+                        # Add comments to the issue object
+                        issues[i]["comments"] = comments_response.json()
+                    except (
+                        requests.exceptions.Timeout,
+                        requests.exceptions.ReadTimeout,
+                        requests.exceptions.ConnectTimeout,
+                    ) as e:  # TODO this handler and catch is untested.
+                        logging.error(
+                            f"request timed out or was rate limited. Sleeping for a few secs then retrying. {e}"
+                        )
+                        logging.error(traceback.format_exc())
+                        time.sleep(10)
+                        i -= 1
 
                 should_add = True
                 if labels is not None:
@@ -380,6 +383,7 @@ class GithubIntegration(BaseKnowledgeBase):
                             sha=item["sha"],
                         )
                     )
+                    logging.info(f"Fetched code file: {item['path']}")
 
                 elif item["type"] == "dir":
                     # TODO switch to postorder traversal, add AI summaries, can do merkle tree of the files.
