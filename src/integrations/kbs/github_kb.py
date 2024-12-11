@@ -535,7 +535,7 @@ class GithubIntegration(BaseKnowledgeBase):
             return [], str(e)
 
     def query(
-        self, query: str, limit: int = 5, tb: Optional[str] = None
+        self, query: str, limit: int = 5, tb: Optional[str] = None, **kwargs
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search code repositories with natural language queries

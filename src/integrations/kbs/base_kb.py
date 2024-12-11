@@ -45,7 +45,7 @@ class BaseKnowledgeBase(ABC):
 
     @abstractmethod
     def query(
-        self, query: str, limit: int = 5
+        self, query: str, limit: int = 5, tb: Optional[str] = None, **kwargs
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the knowledge base for relevant information

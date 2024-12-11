@@ -1,8 +1,8 @@
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
+from typing import List, Tuple, Optional
 from src.storage.vector import VectorDB
 from src.model.issue import Issue
 from anthropic import Anthropic
-from typing import List, Tuple
 from logger import logger
 from uuid import UUID
 import traceback
@@ -48,7 +48,7 @@ class IssueKnowledgeBase(BaseKnowledgeBase):
             return False
 
     def query(
-        self, query: str, limit: int = 5
+        self, query: str, limit: int = 5, tb: Optional[str] = None, **kwargs
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search indexed tickets for relevant matches

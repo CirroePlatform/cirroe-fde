@@ -6,9 +6,10 @@ from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 
+from enum import StrEnum
 from src.storage.supa import SupaClient
 
-from include.constants import ORG_NAME
+from include.constants import ORG_NAME, KnowledgeBaseType
 
 
 @typechecked
@@ -29,58 +30,38 @@ class SearchTools:
         userdata = self.supa.get_user_data(ORG_NAME, debug=True)
         return userdata[ORG_NAME]
 
-    def execute_codebase_search(
-        self, query: str, limit: int, traceback: Optional[str] = None
+    def execute_search(
+        self,
+        query: str,
+        limit: int,
+        knowledge_base: str | KnowledgeBaseType,
+        traceback: Optional[str] = None,
+        user_provided_code: Optional[str] = None,
+        user_setup_details: Optional[str] = None,
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
-            Execute a command over git repos using the Greptile API integration.
+        Execute a search over the codebase, issues, and documentation.
 
         Args:
             query (str): The search query in natural language format.
-            limit (int): The number of chunks to retrieve from the codebase
+            limit (int): The number of results to retrieve
+            knowledge_base (KnowledgeBaseType): The knowledge base to use for the search
             traceback (Optional[str]): The traceback to use for cleaning the results
-
-        Returns:
-            List[KnowledgeBaseResponse]: List of codebase responses that match the search query
+            user_provided_code (Optional[str]): The user provided code to use for cleaning the results
+            user_setup_details (Optional[str]): The user setup details to use for cleaning the results
         """
-        try:
-            response = self.github.query(query, limit=limit, tb=traceback)
-            return response
-        except Exception as e:
-            return [], str(e)
+        if isinstance(knowledge_base, str):
+            knowledge_base = KnowledgeBaseType(knowledge_base)
 
-    def execute_issue_search(
-        self, query: str, limit: int
-    ) -> Tuple[List[KnowledgeBaseResponse], str]:
-        """
-        Execute a search over the teams historical issues.
-
-        Args:
-            query (str): The search query in natural language format.
-            limit (int): The number of issues to retrieve
-
-        Returns:
-            List[KnowledgeBaseResponse]: List of issues that match the search query
-        """
-        try:
-            return self.issue_kb.query(query, limit)
-        except Exception as e:
-            return [], str(e)
-
-    def execute_documentation_search(
-        self, query: str, limit: int
-    ) -> Tuple[List[KnowledgeBaseResponse], str]:
-        """
-        Execute a search over the teams documentation.
-
-        Args:
-            query (str): The search query in natural language format.
-            limit (int): The number of documents to retrieve
-
-        Returns:
-            List[KnowledgeBaseResponse]: List of documentation responses that match the search query
-        """
-        try:
-            return self.documentation_kb.query(query, limit)
-        except Exception as e:
-            return [], str(e)
+        if knowledge_base == KnowledgeBaseType.CODEBASE:
+            return self.github.query(
+                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+            )
+        elif knowledge_base == KnowledgeBaseType.ISSUES:
+            return self.issue_kb.query(
+                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+            )
+        elif knowledge_base == KnowledgeBaseType.DOCUMENTATION:
+            return self.documentation_kb.query(
+                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+            )

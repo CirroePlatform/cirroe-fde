@@ -5,9 +5,9 @@ from include.constants import (
     NVIDIA_EMBED,
     DIMENSION_NVIDIA,
 )
+from typing import List, Tuple, Optional
 from src.storage.vector import VectorDB
 from anthropic import Anthropic
-from typing import List, Tuple
 from lxml import etree
 from uuid import UUID
 import traceback
@@ -138,7 +138,7 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
             return False
 
     def query(
-        self, query: str, limit: int = 5
+        self, query: str, limit: int = 5, tb: Optional[str] = None, **kwargs
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Retrieve a list of documentation pages that match the query.
