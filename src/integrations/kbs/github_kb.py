@@ -117,6 +117,7 @@ class GithubIntegration(BaseKnowledgeBase):
         state: Optional[str] = None,
         labels: Optional[List[str]] = None,
         fetch_comments: bool = True,
+        include_prs: bool = False,
     ) -> Dict[str, Any]:
         """
         Get all issues (excluding pull requests) for some provided repository.
@@ -126,6 +127,7 @@ class GithubIntegration(BaseKnowledgeBase):
             state: Optional filter for issue state (open, closed)
             labels: Optional list of label names to filter issues by
             fetch_comments: Whether to fetch comments for each issue
+            include_prs: Whether to include pull requests in the response
         """
         if "github.com" in repo_name:
             repo_name = "/".join(repo_name.split("/")[-2:])
@@ -156,7 +158,11 @@ class GithubIntegration(BaseKnowledgeBase):
                 content = []
 
             # Filter out pull requests from the response
-            issues = [issue for issue in content if "pull_request" not in issue]
+            issues = [
+                issue
+                for issue in content
+                if include_prs or "pull_request" not in issue
+            ]
             final_issues = []
 
             # Fetch comments for each issue

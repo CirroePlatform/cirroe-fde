@@ -1,4 +1,10 @@
 from uuid import UUID
+from enum import StrEnum
+
+class KnowledgeBaseType(StrEnum):
+    CODEBASE = "codebase"
+    ISSUES = "issues"
+    DOCUMENTATION = "documentation"
 
 # Supabase constants
 ORG_NAME = "org_name"
@@ -21,6 +27,8 @@ FLOWISE_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174006")
 ARROYO_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174007")
 PREDIBASE_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174008")
 LIGHT_DASH_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174009")
+MINDEE_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174014")
+VIDEO_DB_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174023")
 
 GITFILES_CACHE_DIR = f"{CACHE_DIR}/gitfiles"
 
@@ -49,63 +57,40 @@ MODEL_HEAVY = "claude-3-5-sonnet-latest"
 # Tool constants
 DEBUG_TOOLS = [
     {
-        "name": "execute_codebase_search",
-        "description": "A function to search the teams codebase for relevant code snippets. This will return the top k chunks of code from the teams' code base that's relevant to the provided search query.",
+        "name": "execute_search",
+        "description": "A function to search the various knowledge bases for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets",
+                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets, This should be created from the issue description, and can be several sentences long",
                 },
                 "limit": {
                     "type": "integer",
                     "description": "The number of chunks to retrieve from the codebase",
                 },
+                "knowledge_base": {
+                    "type": "string",
+                    "enum": [KnowledgeBaseType.CODEBASE, KnowledgeBaseType.ISSUES, KnowledgeBaseType.DOCUMENTATION],
+                    "description": "The knowledge base to use for the search",
+                },
                 "traceback": {
                     "type": "string",
                     "description": "A traceback from the user containing error details that can be used to augment the search for relevant code snippets",
                 },
-            },
-            "required": ["query", "limit"],
-        },
-    },
-    {
-        "name": "execute_issue_search",
-        "description": "This is a knowledge base of previous issues from users, the response here would contain a list of issues with comments and descriptions from users and engineers, and the whether the issue has been resolved.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
+                "user_provided_code": {
                     "type": "string",
-                    "description": "A natural language query about previous issues",
+                    "description": "A code snippet from the user that is relevant to the issue",
                 },
-                "limit": {
-                    "type": "integer",
-                    "description": "The number of issues to retrieve",
-                },
-            },
-            "required": ["query", "limit"],
-        },
-    },
-    {
-        "name": "execute_documentation_search",
-        "description": "A function to search the teams documentation for relevant information.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
+                "user_setup_details": {
                     "type": "string",
-                    "description": "A natural language query about the documentation",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "The number of documents to retrieve",
+                    "description": "A description of the user's setup details, including environment variables, OS, pacakge versions, etc.",
                 },
             },
-            "required": ["query", "limit"],
+            "required": ["query", "limit", "knowledge_base"],
         },
-    },
+    }
 ]
 
 # Embedding models

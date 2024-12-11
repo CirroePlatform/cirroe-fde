@@ -34,9 +34,7 @@ class HandleDiscordMessage(BaseActionHandler):
         )
         search_tools = SearchTools(self.org_id, [repo])
         self.tools_map = {
-            "execute_codebase_search": search_tools.execute_codebase_search,
-            "execute_documentation_search": search_tools.execute_documentation_search,
-            "execute_issue_search": search_tools.execute_issue_search,
+            "execute_search": search_tools.execute_search,
         }
 
         super().__init__(
