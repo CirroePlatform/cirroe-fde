@@ -1,4 +1,6 @@
 from uuid import UUID
+import uuid
+import tqdm
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -116,6 +118,9 @@ def extract_github_links(url):
         dict: A dictionary with the original website as key and GitHub link as value
     """
     try:
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = f"https://{url}"
+
         # Fetch the webpage content
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -161,7 +166,7 @@ def extract_github_links(url):
 
 def bulk_extract_github_links(websites):
     """
-    Extract GitHub links for multiple websites.
+    Extract GitHub links for multiple websites, and return a dictionary of website to GitHub link mappings.
     
     Args:
         websites (list): List of website URLs to scrape
@@ -170,7 +175,21 @@ def bulk_extract_github_links(websites):
         dict: Dictionary of website to GitHub link mappings
     """
     results = {}
-    for site in websites:
+    for site in tqdm.tqdm(websites, desc="Extracting GitHub links"):
         github_link = extract_github_links(site)
         results.update(github_link)
-    return results
+
+    cache_data_new_entries = {}
+    for site, link in tqdm.tqdm(results.items(), desc="Creating new cache entries"):
+        org_id = str(uuid.uuid4())
+        org_name = site.split("/")[-2]
+        repo_name = link.split("/")[-1]
+
+        cache_data_new_entries[org_id] = {"repo_url": link, "org_name": org_name, "repo_name": repo_name}
+
+    with open("include/cache/cached_user_data.json", "r") as f:
+        data = json.load(f)
+        data.update(cache_data_new_entries)
+
+    with open("include/cache/cached_user_data.json", "w") as f:
+        json.dump(data, f)
