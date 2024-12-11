@@ -7,7 +7,9 @@ from include.constants import (
 )
 from typing import List, Tuple, Optional
 from src.storage.vector import VectorDB
+from urllib.parse import urljoin
 from anthropic import Anthropic
+from bs4 import BeautifulSoup
 from lxml import etree
 from uuid import UUID
 import traceback
@@ -113,6 +115,36 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
 
         logging.info("Finished indexing list of links")
 
+    def _get_links_with_generic_dfs(self, base_url: str) -> List[str]:
+        """
+        Index the links with a generic DFS approach.
+        """
+        visited = set()
+        to_visit = [base_url]
+
+        while to_visit:
+            url = to_visit.pop()
+            if url in visited:
+                continue
+
+            visited.add(url)
+            print(f"Visiting: {url}")  # Process the URL (e.g., scrape content here)
+
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, "html.parser")
+
+                for a_tag in soup.find_all("a", href=True):
+                    link = urljoin(base_url, a_tag["href"])
+                    if link.startswith(base_url) and link not in visited:
+                        to_visit.append(link)
+
+            except requests.RequestException as e:
+                print(f"Failed to fetch {url}: {e}")
+
+        return list(visited)
+
     async def index(self, url: str) -> bool:
         """
         Index a documentation repository into the knowledge base.
@@ -126,7 +158,13 @@ class DocumentationKnowledgeBase(BaseKnowledgeBase):
         logging.info(f"Starting documentation indexing for {url}")
 
         try:
-            links = self._parse_links_from_sitemap(url)
+            try:
+                links = self._parse_links_from_sitemap(url)
+            except Exception as e:
+                logging.error(f"Failed to parse sitemap: {str(e)}")
+                logging.error(traceback.format_exc())
+                links = self._get_links_with_generic_dfs(url)
+
             self._index_links(links)
 
             return True
