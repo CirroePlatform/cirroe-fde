@@ -5,8 +5,8 @@ from typeguard import typechecked
 from src.integrations.kbs.github_kb import GithubIntegration, Repository
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
+from src.integrations.kbs.web_kb import WebKnowledgeBase
 
-from enum import StrEnum
 from src.storage.supa import SupaClient
 
 from include.constants import ORG_NAME, KnowledgeBaseType
@@ -25,6 +25,7 @@ class SearchTools:
         )
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
+        self.web_kb = WebKnowledgeBase(self.requestor_id)
 
     def get_org_name(self):
         userdata = self.supa.get_user_data(ORG_NAME, debug=True)
@@ -63,5 +64,9 @@ class SearchTools:
             )
         elif knowledge_base == KnowledgeBaseType.DOCUMENTATION:
             return self.documentation_kb.query(
+                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+            )
+        elif knowledge_base == KnowledgeBaseType.WEB:
+            return self.web_kb.query(
                 query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
             )

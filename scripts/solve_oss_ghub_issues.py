@@ -38,7 +38,7 @@ async def setup_all_kbs_with_repo(
 
     # 2.a Index the issues, need to pull all issues from the repo then index only enough to allow for evaluationi
     logging.info(f"Getting all issues for {org_name}/{repo_name}")
-    issues = github.get_all_issues_json(repo_name, CLOSED)
+    issues = github.get_all_issues_json(repo_name, CLOSED, include_prs=True)
     random.shuffle(issues)
     indexable_issues = issues[: int(len(issues) * index_fraction)]
 

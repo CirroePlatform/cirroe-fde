@@ -5,6 +5,7 @@ class KnowledgeBaseType(StrEnum):
     CODEBASE = "codebase"
     ISSUES = "issues"
     DOCUMENTATION = "documentation"
+    WEB = "web"
 
 # Supabase constants
 ORG_NAME = "org_name"
@@ -72,8 +73,8 @@ DEBUG_TOOLS = [
                 },
                 "knowledge_base": {
                     "type": "string",
-                    "enum": [KnowledgeBaseType.CODEBASE, KnowledgeBaseType.ISSUES, KnowledgeBaseType.DOCUMENTATION],
-                    "description": "The knowledge base to use for the search",
+                    "enum": [KnowledgeBaseType.CODEBASE, KnowledgeBaseType.ISSUES, KnowledgeBaseType.DOCUMENTATION, KnowledgeBaseType.WEB],
+                    "description": "The knowledge base to use for the search. If the knowledgebase is the web, the results will be from the web, if the search is for code, the results will be from code snippets in the codebase, if the search is for issues, the results will be from the previously solved issues, and if the search is for documentation, the results will be from the org's documentation.",
                 },
                 "traceback": {
                     "type": "string",
