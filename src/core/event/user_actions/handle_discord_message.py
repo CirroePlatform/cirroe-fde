@@ -86,7 +86,6 @@ class HandleDiscordMessage(BaseActionHandler):
         # Use the base class's handle_action method to process the message
         response = self.handle_action(messages, max_tool_calls=max_tool_calls)
 
-        # TODO handle confidence score. and response["confidence_score"] > 50
         if response["response"]:
             return response
 
