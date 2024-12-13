@@ -159,9 +159,7 @@ class GithubIntegration(BaseKnowledgeBase):
 
             # Filter out pull requests from the response
             issues = [
-                issue
-                for issue in content
-                if include_prs or "pull_request" not in issue
+                issue for issue in content if include_prs or "pull_request" not in issue
             ]
             final_issues = []
 
@@ -177,7 +175,7 @@ class GithubIntegration(BaseKnowledgeBase):
                 if fetch_comments:
                     try:
                         comments_response = requests.get(
-                        comments_url, headers=self.github_headers
+                            comments_url, headers=self.github_headers
                         )
                         comments_response.raise_for_status()
 

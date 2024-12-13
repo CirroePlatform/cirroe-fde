@@ -43,9 +43,7 @@ class HandleIssue(BaseActionHandler):
             remote="github.com", repository=userdata[REPO_NAME], branch="main"
         )
         search_tools = SearchTools(self.org_id, [repo])
-        self.tools_map = {
-            "execute_search": search_tools.execute_search
-        }
+        self.tools_map = {"execute_search": search_tools.execute_search}
 
         super().__init__(
             anthropic.Anthropic(api_key=ANTHROPIC_API_KEY),

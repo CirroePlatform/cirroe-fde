@@ -9,6 +9,7 @@ from .base_kb import BaseKnowledgeBase
 
 EXA_SEARCH_URL = "https://api.exa.ai/search"
 
+
 class WebKnowledgeBase(BaseKnowledgeBase):
     """
     WebKB is a knowledge base for the web. It is a collection of all the knowledge
@@ -18,10 +19,7 @@ class WebKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
         super().__init__(org_id)
         self.exa_key = os.getenv("EXA_KEY")
-        self.headers = {
-            "x-api-key": self.exa_key,
-            "Content-Type": "application/json"
-        }
+        self.headers = {"x-api-key": self.exa_key, "Content-Type": "application/json"}
 
     def exa_request_wrapper(self, query: str):
         """
@@ -30,7 +28,7 @@ class WebKnowledgeBase(BaseKnowledgeBase):
         Args:
             query (str): The query to search for.
         """
-        
+
         payload = {
             "query": query,
             "useAutoprompt": True,
@@ -56,13 +54,15 @@ class WebKnowledgeBase(BaseKnowledgeBase):
                     "query": "<string>"
                 },
                 # "summary": {"query": "<string>"}
-            }
+            },
         }
-        
+
         response = requests.post(EXA_SEARCH_URL, headers=self.headers, json=payload)
         return response.json()
 
-    def query(self, query: str, limit: int = 5, tb: str | None = None, **kwargs) -> Tuple[List[KnowledgeBaseResponse], str]:
+    def query(
+        self, query: str, limit: int = 5, tb: str | None = None, **kwargs
+    ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the knowledge base.
 

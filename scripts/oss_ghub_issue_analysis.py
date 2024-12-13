@@ -19,6 +19,7 @@ from src.integrations.kbs.github_kb import GithubIntegration
 from src.storage.supa import SupaClient
 from include.constants import MINDEE_ORG_ID, UNSLOTH_ORG_ID, UEBERDOSIS_ORG_ID
 
+
 def analyze_github_issues(org_id: UUID) -> Dict:
     """
     Analyzes closed issues from a GitHub repository to calculate completion times.
@@ -42,7 +43,9 @@ def analyze_github_issues(org_id: UUID) -> Dict:
     completion_times = {}
     # Get current time and calculate cutoff date (3 months ago)
     now = datetime.now()
-    three_months_ago = datetime(now.year, now.month - 3 if now.month > 3 else now.month + 9, now.day)
+    three_months_ago = datetime(
+        now.year, now.month - 3 if now.month > 3 else now.month + 9, now.day
+    )
 
     for issue in issues:
         if issue["closed_at"] and issue["created_at"]:
@@ -60,13 +63,16 @@ def analyze_github_issues(org_id: UUID) -> Dict:
     # Calculate average completion time
     avg_completion_time = mean(time_deltas) if time_deltas else 0
     # Calculate median completion time
-    median_completion_time = sorted(time_deltas)[len(time_deltas)//2] if time_deltas else 0
+    median_completion_time = (
+        sorted(time_deltas)[len(time_deltas) // 2] if time_deltas else 0
+    )
 
     return {
         "issue_completion_times_in_seconds": completion_times,
         "average_completion_time_in_seconds": avg_completion_time,
         "median_completion_time_in_seconds": median_completion_time,
     }
+
 
 def analyze_repos():
     # Example usage
@@ -89,7 +95,14 @@ def analyze_repos():
         # Create new file with header if it doesn't exist
         with open("scripts/data/oss_ticket_stats.csv", "w") as f:
             writer = csv.writer(f)
-            writer.writerow(["repo", "average_completion_time", "total_completion_time", "median_completion_time"])
+            writer.writerow(
+                [
+                    "repo",
+                    "average_completion_time",
+                    "total_completion_time",
+                    "median_completion_time",
+                ]
+            )
 
     # Append new entries
     with open("scripts/data/oss_ticket_stats.csv", "a") as f:
@@ -102,18 +115,20 @@ def analyze_repos():
                     [
                         org_name,
                         results["average_completion_time_in_seconds"] / 3600,
-                        sum(results["issue_completion_times_in_seconds"].values()) / 3600,
+                        sum(results["issue_completion_times_in_seconds"].values())
+                        / 3600,
                         results["median_completion_time_in_seconds"] / 3600,
                     ]
                 )
 
+
 def extract_github_links(url):
     """
     Scrape a website and extract GitHub links from the page.
-    
+
     Args:
         url (str): The landing page URL to scrape
-    
+
     Returns:
         dict: A dictionary with the original website as key and GitHub link as value
     """
@@ -123,54 +138,55 @@ def extract_github_links(url):
 
         # Fetch the webpage content
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-        
+
         # Parse the HTML content
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
+        soup = BeautifulSoup(response.text, "html.parser")
+
         # Patterns to identify GitHub links
         github_patterns = [
-            r'https?://(?:www\.)?github\.com/[a-zA-Z0-9-]+(?:/[a-zA-Z0-9-]+)?',
-            r'github\.com/[a-zA-Z0-9-]+(?:/[a-zA-Z0-9-]+)?'
+            r"https?://(?:www\.)?github\.com/[a-zA-Z0-9-]+(?:/[a-zA-Z0-9-]+)?",
+            r"github\.com/[a-zA-Z0-9-]+(?:/[a-zA-Z0-9-]+)?",
         ]
-        
+
         # Searches for GitHub links in different parts of the page
         github_links = set()
-        
+
         # Search in all anchor tags
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            
+        for link in soup.find_all("a", href=True):
+            href = link["href"]
+
             # Normalize the URL
             full_url = urljoin(url, href)
-            
+
             # Check if the link matches GitHub patterns
             for pattern in github_patterns:
                 match = re.search(pattern, full_url, re.IGNORECASE)
                 if match:
                     # Ensure it's a clean GitHub URL
                     github_link = match.group(0)
-                    if not github_link.startswith(('http://', 'https://')):
-                        github_link = f'https://{github_link}'
+                    if not github_link.startswith(("http://", "https://")):
+                        github_link = f"https://{github_link}"
                     github_links.add(github_link)
-        
+
         # Return results
         return {url: list(github_links)[0]} if github_links else {}
-    
+
     except requests.RequestException as e:
         print(f"Error fetching {url}: {e}")
         return {}
 
+
 def bulk_extract_github_links(websites):
     """
     Extract GitHub links for multiple websites, and return a dictionary of website to GitHub link mappings.
-    
+
     Args:
         websites (list): List of website URLs to scrape
-    
+
     Returns:
         dict: Dictionary of website to GitHub link mappings
     """
@@ -185,7 +201,11 @@ def bulk_extract_github_links(websites):
         org_name = site.split("/")[-2]
         repo_name = link.split("/")[-1]
 
-        cache_data_new_entries[org_id] = {"repo_url": link, "org_name": org_name, "repo_name": repo_name}
+        cache_data_new_entries[org_id] = {
+            "repo_url": link,
+            "org_name": org_name,
+            "repo_name": repo_name,
+        }
 
     with open("include/cache/cached_user_data.json", "r") as f:
         data = json.load(f)

@@ -56,17 +56,33 @@ class SearchTools:
 
         if knowledge_base == KnowledgeBaseType.CODEBASE:
             return self.github.query(
-                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+                query,
+                limit,
+                traceback,
+                user_provided_code=user_provided_code,
+                user_setup_details=user_setup_details,
             )
         elif knowledge_base == KnowledgeBaseType.ISSUES:
             return self.issue_kb.query(
-                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+                query,
+                limit,
+                traceback,
+                user_provided_code=user_provided_code,
+                user_setup_details=user_setup_details,
             )
         elif knowledge_base == KnowledgeBaseType.DOCUMENTATION:
             return self.documentation_kb.query(
-                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+                query,
+                limit,
+                traceback,
+                user_provided_code=user_provided_code,
+                user_setup_details=user_setup_details,
             )
         elif knowledge_base == KnowledgeBaseType.WEB:
             return self.web_kb.query(
-                query, limit, traceback, user_provided_code=user_provided_code, user_setup_details=user_setup_details
+                query,
+                limit,
+                traceback,
+                user_provided_code=user_provided_code,
+                user_setup_details=user_setup_details,
             )

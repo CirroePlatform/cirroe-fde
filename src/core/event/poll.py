@@ -279,4 +279,4 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     # Post the comment
     # response = requests.post(url, json=data, headers=headers)
     # response.raise_for_status()
-    print(data)    
+    print(data)
