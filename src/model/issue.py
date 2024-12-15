@@ -12,15 +12,6 @@ class Comment(BaseModel):
 class DiscordMessage(BaseModel):
     content: str
     author: str
-    channel_id: str
-    message_id: str
-    guild_id: Optional[str] = None
-
-
-class DiscordThread(BaseModel):
-    thread_id: str
-    messages: List[DiscordMessage]
-
 
 class Issue(BaseModel):
     """

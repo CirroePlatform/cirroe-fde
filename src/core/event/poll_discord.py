@@ -1,11 +1,14 @@
 import os
 from include.constants import MEM0AI_ORG_ID
 import discord
+from src.model.issue import DiscordMessage
 from discord.ext import commands
 from src.core.event.user_actions.handle_discord_message import DiscordMessageHandler
 import asyncio
 import aiohttp
 import logging
+
+BOT_NAME = "cirroe-bot-token"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,18 +24,14 @@ class CirroeDiscordBot(commands.Bot):
         """Set up any background tasks or initial configurations"""
         logging.info("Bot is setting up...")
 
-    async def generate_ai_response(self, content: str, image_url: str = None):
+    async def generate_ai_response(self, content: str, author: str):
         """
         Generate AI response using an AI service API
         Replace with your preferred AI service (OpenAI, Anthropic, etc.)
         """
-        # Placeholder implementation - replace with actual AI API call
-        if image_url:
-            # Logic to process image
-            content += f" (Image URL: {image_url})"
-        
-        # Simulated AI response generation
-        return f"AI Response: {content}"
+        response = self.discord_msg_handler.handle_discord_message(DiscordMessage(content=content, author=author))
+
+        return response["response"]
 
     async def handle_thread_response(self, thread, message):
         """Handle responses in a thread"""
@@ -40,9 +39,9 @@ class CirroeDiscordBot(commands.Bot):
             # Generate AI response
             response = await self.generate_ai_response(
                 message.content, 
-                message.attachments[0].url if message.attachments else None
+                message.author.display_name
             )
-            
+
             # Send response in the thread
             await thread.send(response)
         except Exception as e:
@@ -74,15 +73,13 @@ class CirroeDiscordBot(commands.Bot):
     async def on_message(self, message: discord.Message):
         """Handle different message scenarios"""
         # Ignore messages from the bot itself
-        print(message)
-
-        if message.author == self.user:
+        if message.author.display_name == BOT_NAME:
             return
 
         # Handle bot mentions
         if self.user.mentioned_in(message):
             # Create or use existing thread
-            thread = message.thread or await message.create_thread(name=f"Question: {message.content[:50]}")
+            thread = message.thread or await message.create_thread(name=f"Question from {message.author.display_name}")
             await self.handle_thread_response(thread, message)
             return
 
@@ -96,7 +93,7 @@ def dsc_poll_main():
     intents.message_content = True
     intents.messages = True
     intents.guilds = True
-    intents.members = True  # Ensure this is set
+    intents.members = True
 
     # Initialize bot
     bot = CirroeDiscordBot(intents=intents, org_id=MEM0AI_ORG_ID)

@@ -8,7 +8,7 @@ import json
 import csv
 import os
 
-from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.integrations.kbs.github_kb import GithubKnowledgeBase, Repository
 from src.core.event.user_actions.handle_issue import HandleIssue
 from src.storage.vector import VectorDB
 
@@ -48,7 +48,7 @@ class Orchestrator:
         ]
 
         self.vector_db = VectorDB(org_id)
-        self.github_kb = GithubIntegration(org_id, org_name, self.repos)
+        self.github_kb = GithubKnowledgeBase(org_id, org_name, self.repos)
         self.enable_labels = enable_labels
 
     def __get_closed_or_solved_issues(self) -> List[Issue]:
