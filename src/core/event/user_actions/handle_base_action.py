@@ -125,7 +125,7 @@ class BaseActionHandler:
                     tools=self.tools,
                     tool_choice={"type": "auto"},
                     messages=messages,
-                )   
+                )
 
             except Exception as e:
                 logger.error("Error in main loop: %s", str(e))

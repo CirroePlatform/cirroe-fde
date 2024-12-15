@@ -70,7 +70,11 @@ def get_base64_from_url(link: str) -> Tuple[str, str]:
     if response.status_code == 302:
         response = httpx.get(response.headers["Location"])
     elif response.status_code != 200:
-        logger.error("Failed to get image from link: %s, response code: %s", link, response.status_code)
+        logger.error(
+            "Failed to get image from link: %s, response code: %s",
+            link,
+            response.status_code,
+        )
         return None
 
     media_type = response.headers["Content-Type"]

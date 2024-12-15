@@ -47,7 +47,9 @@ class DiscordMessageHandler(BaseActionHandler):
             MODEL_HEAVY,
         )
 
-    def __get_img_links_from_message(self, message: DiscordMessage) -> List[Tuple[str, str]]:
+    def __get_img_links_from_message(
+        self, message: DiscordMessage
+    ) -> List[Tuple[str, str]]:
         """
         Get the image links from a Discord message
 
@@ -78,7 +80,7 @@ class DiscordMessageHandler(BaseActionHandler):
             img_data, _ = get_base64_from_url(link)
             if img_data:
                 image_base64s.append((img_data, media_type))
-        
+
         # Initialize message stream with issue description and any comments
         messages = [
             {"role": "user", "content": message.content},

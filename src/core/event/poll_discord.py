@@ -26,25 +26,35 @@ class CirroeDiscordBot(commands.Bot):
         """Set up any background tasks or initial configurations"""
         logging.info("Bot is setting up...")
 
-    async def generate_ai_response(self, content: str, author: str, attachments: List[Attachment]):
+    async def generate_ai_response(
+        self, content: str, author: str, attachments: List[Attachment]
+    ):
         """
         Generate AI response using an AI service API
         Replace with your preferred AI service (OpenAI, Anthropic, etc.)
         """
         response = self.discord_msg_handler.handle_discord_message(
-            DiscordMessage(content=content, author=author, attachments=[(attachment.url, attachment.content_type) for attachment in attachments])
+            DiscordMessage(
+                content=content,
+                author=author,
+                attachments=[
+                    (attachment.url, attachment.content_type)
+                    for attachment in attachments
+                ],
+            )
         )
 
         return response["response"]
 
     async def __construct_thread_messages(self, thread) -> str:
         messages = []
-        
+
         # Use async for to properly iterate over the async iterator
         async for message in thread.history(limit=100, oldest_first=True):
             messages.append(f"{message.author.display_name}: {message.content}")
 
         return "\n".join(messages)  # Join messages with newlines for better readability
+
     async def handle_thread_response(self, thread, message):
         """Handle responses in a thread"""
 
@@ -53,7 +63,9 @@ class CirroeDiscordBot(commands.Bot):
             messages += f"\n{message.author.display_name}: {message.content}"
 
             # Generate AI response
-            response = await self.generate_ai_response(messages, message.author.display_name, message.attachments)
+            response = await self.generate_ai_response(
+                messages, message.author.display_name, message.attachments
+            )
 
             # Send response in the thread
             await thread.send(response)
@@ -66,9 +78,7 @@ class CirroeDiscordBot(commands.Bot):
         try:
             # Generate AI response
             response = await self.generate_ai_response(
-                message.content,
-                message.author.display_name,
-                message.attachments
+                message.content, message.author.display_name, message.attachments
             )
 
             # Create a thread for the response
@@ -97,7 +107,6 @@ class CirroeDiscordBot(commands.Bot):
         if message.channel.id == self.post_channel_id:
             await self.handle_post_channel_response(message)
 
-
         # Handle bot mentions
         if self.user.mentioned_in(message):
             # Create thread for initial message
@@ -106,9 +115,12 @@ class CirroeDiscordBot(commands.Bot):
             )
             logging.info("creating thread for initial message")
             await self.handle_thread_response(thread, message)
-        elif (message.thread and message.thread.owner == self.user) or (message.channel and message.channel.owner == self.user):
+        elif (message.thread and message.thread.owner == self.user) or (
+            message.channel and message.channel.owner == self.user
+        ):
             logging.info("handling followup")
             await self.handle_thread_response(message.channel, message)
+
 
 def dsc_poll_main():
     # Set up intents
