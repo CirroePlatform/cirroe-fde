@@ -1,7 +1,7 @@
 from typing import Dict, List, Any, Tuple
 import anthropic
 import logging
-import time
+import traceback
 
 SOLUTION_TAG_OPEN = "<solution>"
 SOLUTION_TAG_CLOSE = "</solution>"
@@ -125,12 +125,12 @@ class BaseActionHandler:
                     tools=self.tools,
                     tool_choice={"type": "auto"},
                     messages=messages,
-                )
-                # time.sleep(100)
+                )   
 
             except Exception as e:
                 logger.error("Error in main loop: %s", str(e))
-                self._append_message(
+                traceback.print_exc()
+                self.append_message(
                     messages,
                     "assistant",
                     "Encountered an unexpected error. Let me try to formulate a response with the information I have.",

@@ -1,11 +1,10 @@
 import os
+import traceback
 from include.constants import MEM0AI_ORG_ID
 import discord
 from src.model.issue import DiscordMessage
 from discord.ext import commands
 from src.core.event.user_actions.handle_discord_message import DiscordMessageHandler
-import asyncio
-import aiohttp
 import logging
 
 BOT_NAME = "cirroe-bot-token"
@@ -36,17 +35,28 @@ class CirroeDiscordBot(commands.Bot):
 
         return response["response"]
 
+    async def __construct_thread_messages(self, thread) -> str:
+        messages = []
+        
+        # Use async for to properly iterate over the async iterator
+        async for message in thread.history(limit=100, oldest_first=True):
+            messages.append(f"{message.author.display_name}: {message.content}")
+
+        return "\n".join(messages)  # Join messages with newlines for better readability
     async def handle_thread_response(self, thread, message):
         """Handle responses in a thread"""
+
         try:
+            messages = await self.__construct_thread_messages(thread)
+            messages += f"\n{message.author.display_name}: {message.content}"
+
             # Generate AI response
-            response = await self.generate_ai_response(
-                message.content, message.author.display_name
-            )
+            response = await self.generate_ai_response(messages, message.author.display_name)
 
             # Send response in the thread
             await thread.send(response)
         except Exception as e:
+            traceback.print_exc()
             logging.error(f"Error in thread response: {e}")
 
     async def handle_post_channel_response(self, message):
@@ -55,7 +65,7 @@ class CirroeDiscordBot(commands.Bot):
             # Generate AI response
             response = await self.generate_ai_response(
                 message.content,
-                message.attachments[0].url if message.attachments else None,
+                message.author.display_name
             )
 
             # Create a thread for the response
@@ -80,19 +90,21 @@ class CirroeDiscordBot(commands.Bot):
         if message.author.display_name == BOT_NAME:
             return
 
-        # Handle bot mentions
-        if self.user.mentioned_in(message):
-            # Create or use existing thread
-            thread = message.thread or await message.create_thread(
-                name=f"Question from {message.author.display_name}"
-            )
-            await self.handle_thread_response(thread, message)
-            return
-
         # Handle messages in designated post channel
         if message.channel.id == self.post_channel_id:
             await self.handle_post_channel_response(message)
 
+        # Handle bot mentions
+        if self.user.mentioned_in(message):
+            # Create or use existing thread
+            thread = await message.create_thread(
+                name=f"Question from {message.author.display_name}"
+            )
+            logging.info("creating thread for initial message")
+            await self.handle_thread_response(thread, message)
+        elif (message.thread and message.thread.owner == self.user) or (message.channel and message.channel.owner == self.user):
+            logging.info("handling followup")
+            await self.handle_thread_response(message.channel, message)
 
 def dsc_poll_main():
     # Set up intents
