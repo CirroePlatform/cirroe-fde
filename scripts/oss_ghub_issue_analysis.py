@@ -15,7 +15,7 @@ import csv
 
 load_dotenv()
 
-from src.integrations.kbs.github_kb import GithubIntegration
+from src.integrations.kbs.github_kb import GithubKnowledgeBase
 from src.storage.supa import SupaClient
 from include.constants import MINDEE_ORG_ID, UNSLOTH_ORG_ID, UEBERDOSIS_ORG_ID
 
@@ -36,7 +36,7 @@ def analyze_github_issues(org_id: UUID) -> Dict:
     org_name = data["org_name"]
     repo_name = data["repo_name"]
 
-    github = GithubIntegration(org_id, org_name)
+    github = GithubKnowledgeBase(org_id, org_name)
     issues = github.get_all_issues_json(repo_name, state="closed", fetch_comments=False)
 
     time_deltas = []

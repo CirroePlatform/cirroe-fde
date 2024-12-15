@@ -13,6 +13,7 @@ class DiscordMessage(BaseModel):
     content: str
     author: str
 
+
 class Issue(BaseModel):
     """
     Model for a customer issue, could be issue, slack thread, etc.

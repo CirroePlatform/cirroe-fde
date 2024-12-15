@@ -21,5 +21,6 @@ def poll_for_issues(org_id: str, repo_name: str, background_tasks: BackgroundTas
     """
     background_tasks.add_task(poll_for_issues, org_id, repo_name)
 
+
 if __name__ == "__main__":
     dsc_poll_main()

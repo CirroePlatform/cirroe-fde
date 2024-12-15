@@ -32,6 +32,7 @@ cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 disc_token = os.getenv("DISCORD_TOKEN")
 dataset_collector = DatasetCollector()
 
+
 def get_issues_created_or_updated_recently(
     repo_name: str, github_kb: GithubKnowledgeBase
 ) -> List[Issue]:

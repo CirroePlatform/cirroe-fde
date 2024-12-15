@@ -61,9 +61,7 @@ class DiscordMessageHandler(BaseActionHandler):
         return [
             {
                 "role": "user",
-                "content": (
-                    f"{message.author}: {message.content}"
-                ),
+                "content": (f"{message.author}: {message.content}"),
             }
         ]
 

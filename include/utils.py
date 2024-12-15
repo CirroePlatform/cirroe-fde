@@ -55,6 +55,7 @@ def get_git_image_links(content: str) -> List[str]:
 
     return valid_links
 
+
 def get_base64_from_url(link: str) -> Tuple[str, str]:
     """
     Get the base64 encoded image from a URL.

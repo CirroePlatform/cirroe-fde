@@ -8,7 +8,7 @@ from time import sleep
 
 from uuid import UUID
 
-from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.integrations.kbs.github_kb import GithubKnowledgeBase, Repository
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from src.model.issue import Issue
@@ -26,7 +26,7 @@ async def setup_all_kbs_with_repo(
     index_fraction: float = (1 - DEFAULT_TEST_TRAIN_RATIO),
 ):
     # 1. Setup all knowledge bases
-    github = GithubIntegration(org_id, org_name)
+    github = GithubKnowledgeBase(org_id, org_name)
     issue_kb = IssueKnowledgeBase(org_id)
     doc_kb = DocumentationKnowledgeBase(org_id)
 
