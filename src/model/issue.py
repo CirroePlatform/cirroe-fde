@@ -2,7 +2,7 @@ from pydantic import BaseModel, HttpUrl, EmailStr, UUID4
 from typing import Optional, List, Tuple
 from uuid import UUID
 from datetime import datetime
-
+from discord.message import Attachment
 
 class Comment(BaseModel):
     requestor_name: str
@@ -12,6 +12,7 @@ class Comment(BaseModel):
 class DiscordMessage(BaseModel):
     content: str
     author: str
+    attachments: List[Tuple[str, str]] = [] # [(url, media_type)]
 
 
 class Issue(BaseModel):

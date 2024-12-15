@@ -1,4 +1,5 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
+from include.utils import get_base64_from_url
 import logging
 import anthropic
 from dotenv import load_dotenv
@@ -46,6 +47,18 @@ class DiscordMessageHandler(BaseActionHandler):
             MODEL_HEAVY,
         )
 
+    def __get_img_links_from_message(self, message: DiscordMessage) -> List[Tuple[str, str]]:
+        """
+        Get the image links from a Discord message
+
+        Args:
+            message (DiscordMessage): The Discord message to get the image links from
+
+        Returns:
+            List[Tuple[str, str]]: The image links and media types from the message
+        """
+        return [(attachment[0], attachment[1]) for attachment in message.attachments]
+
     def construct_initial_messages(
         self, message: DiscordMessage
     ) -> List[Dict[str, Any]]:
@@ -58,12 +71,36 @@ class DiscordMessageHandler(BaseActionHandler):
         Returns:
             List[Dict[str, Any]]: The initial message stream
         """
-        return [
-            {
-                "role": "user",
-                "content": message.content,
-            }
+        image_links_and_types = self.__get_img_links_from_message(message)
+
+        image_base64s = []
+        for link, media_type in image_links_and_types:
+            img_data, _ = get_base64_from_url(link)
+            if img_data:
+                image_base64s.append((img_data, media_type))
+        
+        # Initialize message stream with issue description and any comments
+        messages = [
+            {"role": "user", "content": message.content},
         ]
+
+        if image_base64s:
+            messages[0]["content"] = [
+                {"type": "text", "text": messages[0]["content"]},
+                *[
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": data,
+                        },
+                    }
+                    for data, media_type in image_base64s
+                ],
+            ]
+
+        return messages
 
     def handle_discord_message(
         self, message: DiscordMessage, max_tool_calls: int = 5
