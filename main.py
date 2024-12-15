@@ -1,5 +1,6 @@
 from fastapi.middleware.cors import CORSMiddleware
-from src.core.event.poll import poll_for_issues, bot, disc_token
+from src.core.event.poll import poll_for_issues
+from src.core.event.poll_discord import dsc_poll_main
 from fastapi import FastAPI, BackgroundTasks
 
 app = FastAPI()
@@ -20,14 +21,5 @@ def poll_for_issues(org_id: str, repo_name: str, background_tasks: BackgroundTas
     """
     background_tasks.add_task(poll_for_issues, org_id, repo_name)
 
-
-@app.get("/discord_bot")
-def discord_bot(background_tasks: BackgroundTasks):
-    """
-    Spawns a listener for new messages in the discord channel and responses appropriately.
-    """
-    background_tasks.add_task(run_discord_bot)
-
-    def run_discord_bot():
-        # Run the bot
-        bot.run(disc_token)
+if __name__ == "__main__":
+    dsc_poll_main()

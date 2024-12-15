@@ -22,7 +22,7 @@ load_dotenv()
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 
-class HandleDiscordMessage(BaseActionHandler):
+class DiscordMessageHandler(BaseActionHandler):
     def __init__(self, org_id: str):
         self.org_id = org_id
 

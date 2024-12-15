@@ -1,9 +1,13 @@
 from dotenv import load_dotenv
 from itertools import chain
-from typing import List
+from typing import List, Tuple
+
 import tiktoken
+import logger
 import uuid
 import re
+import httpx
+import base64
 
 load_dotenv()
 
@@ -50,3 +54,24 @@ def get_git_image_links(content: str) -> List[str]:
             continue
 
     return valid_links
+
+def get_base64_from_url(link: str) -> Tuple[str, str]:
+    """
+    Get the base64 encoded image from a URL.
+
+    Args:
+        link (str): URL to get the image from
+
+    Returns:
+        Tuple[str, str]: Base64 encoded image and media type
+    """
+    response = httpx.get(link)
+    if response.status_code == 302:
+        response = httpx.get(response.headers["Location"])
+    else:
+        logger.error("Failed to get image from link: %s", link)
+        return None
+
+    media_type = response.headers["Content-Type"]
+    img_data = base64.standard_b64encode(response.content).decode("utf-8")
+    return (img_data, media_type)

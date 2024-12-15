@@ -1,4 +1,4 @@
-from include.utils import get_git_image_links
+from include.utils import get_git_image_links, get_base64_from_url
 from typing import List, Dict, Any
 from src.core.event.user_actions.handle_base_action import BaseActionHandler
 from src.model.issue import Issue
@@ -72,17 +72,9 @@ class HandleIssue(BaseActionHandler):
 
         image_base64s = []
         for link in image_links:
-            # Might get a redirect to an s3 bucket, so just need to follow it.
-            response = httpx.get(link)
-            if response.status_code == 302:
-                response = httpx.get(response.headers["Location"])
-            else:
-                logger.error("Failed to get image from link: %s", link)
-                continue
-
-            media_type = response.headers["Content-Type"]
-            img_data = base64.standard_b64encode(response.content).decode("utf-8")
-            image_base64s.append((img_data, media_type))
+            img_data, media_type = get_base64_from_url(link)
+            if img_data:
+                image_base64s.append((img_data, media_type))
 
         # Initialize message stream with issue description and any comments
         messages = [
