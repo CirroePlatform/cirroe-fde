@@ -126,7 +126,7 @@ class BaseActionHandler:
                     tool_choice={"type": "auto"},
                     messages=messages,
                 )
-                time.sleep(100)
+                # time.sleep(100)
 
             except Exception as e:
                 logger.error("Error in main loop: %s", str(e))

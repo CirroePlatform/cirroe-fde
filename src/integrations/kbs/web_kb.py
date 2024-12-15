@@ -18,7 +18,7 @@ class WebKnowledgeBase(BaseKnowledgeBase):
 
     def __init__(self, org_id: UUID):
         super().__init__(org_id)
-        self.exa_key = os.getenv("EXA_KEY")
+        self.exa_key = os.getenv("EXA_API_KEY")
         self.headers = {"x-api-key": self.exa_key, "Content-Type": "application/json"}
 
     def exa_request_wrapper(self, query: str):

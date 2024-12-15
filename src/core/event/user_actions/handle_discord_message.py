@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import logging
 import anthropic
 from dotenv import load_dotenv
 import os
@@ -88,5 +89,7 @@ class HandleDiscordMessage(BaseActionHandler):
 
         if response["response"]:
             return response
+
+        logging.info(f"Discord responses didn't work, raw response: {response}")
 
         return response

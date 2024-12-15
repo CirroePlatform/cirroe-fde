@@ -29,7 +29,7 @@ class LinkGithubRequest(BaseModel):
     org_name: str
 
 
-class GithubIntegration(BaseKnowledgeBase):
+class GithubKnowledgeBase(BaseKnowledgeBase):
     """
     Integration with Github repositories via Greptile API for code search and analysis.
     """

@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import List, Tuple, Optional
 from typeguard import typechecked
 
-from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.integrations.kbs.github_kb import GithubKnowledgeBase, Repository
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase, KnowledgeBaseResponse
 from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from src.integrations.kbs.web_kb import WebKnowledgeBase
@@ -20,7 +20,7 @@ class SearchTools:
         self.supa = SupaClient(user_id=self.requestor_id)
         self.org_name = self.get_org_name()
 
-        self.github = GithubIntegration(
+        self.github = GithubKnowledgeBase(
             org_id=self.requestor_id, org_name=self.org_name, repos=github_repos
         )
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)

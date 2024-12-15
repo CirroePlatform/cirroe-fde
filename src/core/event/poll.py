@@ -11,7 +11,7 @@ from include.constants import (
     CIRROE_USERNAME,
     ABHIGYA_USERNAME,
 )
-from src.integrations.kbs.github_kb import GithubIntegration, Repository
+from src.integrations.kbs.github_kb import GithubKnowledgeBase, Repository
 from src.core.event.user_actions.handle_issue import HandleIssue
 from src.model.issue import Issue, OpenIssueRequest
 from include.finetune import DatasetCollector
@@ -71,7 +71,7 @@ async def on_message(message):
 
 
 def get_issues_created_or_updated_recently(
-    repo_name: str, github_kb: GithubIntegration
+    repo_name: str, github_kb: GithubKnowledgeBase
 ) -> List[Issue]:
     """
     Get all issues created in the last POLL_INTERVAL seconds in the provided repo.
@@ -190,7 +190,7 @@ def poll_for_issues(
     """
 
     org_name = SupaClient(org_id).get_user_data("org_name", debug=debug)["org_name"]
-    github_kb = GithubIntegration(
+    github_kb = GithubKnowledgeBase(
         org_id,
         org_name,
         repos=[Repository(remote="github.com", repository=repo_name, branch="main")],
