@@ -89,25 +89,29 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         issue_list = []
 
         for issue in issues:
-            comments = []
-            if "comments" in issue:
-                for comment in issue["comments"]:
-                    comments.append(
-                        Comment(
-                            requestor_name=comment["user"]["login"],
-                            comment=comment["body"],
+            try:
+                comments = []
+                if "comments" in issue:
+                    for comment in issue["comments"]:
+                        comments.append(
+                            Comment(
+                                requestor_name=comment["user"]["login"],
+                                comment=comment["body"],
+                            )
                         )
-                    )
 
-            issue_list.append(
-                Issue(
-                    primary_key=str(issue["id"]),
-                    description=f"title: {issue['title']}, description: {issue['body']}",
-                    comments=comments,
-                    org_id=self.org_id,
-                    ticket_number=str(issue["number"]),
+                issue_list.append(
+                    Issue(
+                        primary_key=str(issue["id"]),
+                        description=f"title: {issue['title']}, description: {issue['body']}",
+                        comments=comments,
+                        org_id=self.org_id,
+                        ticket_number=str(issue["number"]),
+                    )
                 )
-            )
+            except Exception as e:
+                logging.error(f"Failed to process issue: {e}")
+                continue
 
         return issue_list
 

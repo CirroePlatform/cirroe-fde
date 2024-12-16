@@ -95,8 +95,8 @@ class VectorDB:
     def __init__(
         self,
         user_id: UUID,
-        embedding_model_name: str = OPENAI_EMBED,
-        dimension: int = DIMENSION_OPENAI,
+        embedding_model_name: str = VOYAGE_CODE_EMBED,
+        dimension: int = DIMENSION_VOYAGE,
     ):
         self.client = MilvusClient(
             uri=os.environ.get("MILVUS_URL"),
