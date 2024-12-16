@@ -8,6 +8,8 @@ from include.constants import (
     DIMENSION_OPENAI,
     DIMENSION_NVIDIA,
     SUPPORTED_MODELS,
+    VOYAGE_CODE_EMBED,
+    DIMENSION_VOYAGE,
 )
 from pymilvus import DataType, CollectionSchema, FieldSchema
 from src.model.documentation import DocumentationPage
@@ -22,6 +24,7 @@ from typeguard import typechecked
 import traceback
 import logging
 import json
+import voyageai
 from src.model.issue import Issue
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -51,14 +54,20 @@ class EmbeddingModel:
             return OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         elif name.lower() == NVIDIA_EMBED.lower():
             return SentenceTransformer(name, trust_remote_code=True)
+        elif name.lower() == VOYAGE_CODE_EMBED.lower():
+            return voyageai.Client(api_key=os.environ.get("VOYAGE_API_KEY"))
         else:
             raise ValueError(
                 f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
             )
 
-    def encode(self, text: str) -> List[List[float]]:
+    def encode(self, text: str, input_type: Optional[str] = None) -> List[List[float]]:
         """
-        Encode the provided string
+        Encode the provided string.
+
+        Args:
+            text: The string to encode
+            input_type: The type of input to encode, one of "document" or "query". Defaults to None. Only for voyage.
         """
         if self.model_name.lower() == OPENAI_EMBED.lower():
             response = self.client.embeddings.create(
@@ -69,6 +78,8 @@ class EmbeddingModel:
             return response.data[0].embedding
         elif self.model_name.lower() == NVIDIA_EMBED.lower():
             return self.client.encode([text])[0]
+        elif self.model_name.lower() == VOYAGE_CODE_EMBED.lower():
+            return self.client.embed([text], model=self.model_name, input_type=input_type, output_dimension=DIMENSION_VOYAGE).embeddings[0]
         else:
             raise ValueError(
                 f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
