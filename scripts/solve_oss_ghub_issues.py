@@ -8,10 +8,9 @@ from time import sleep
 
 from uuid import UUID
 
+from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
 from src.integrations.kbs.github_kb import GithubKnowledgeBase, Repository
 from src.integrations.kbs.issue_kb import IssueKnowledgeBase
-from src.integrations.kbs.documentation_kb import DocumentationKnowledgeBase
-from src.model.issue import Issue
 import tqdm
 
 from include.constants import DEFAULT_TEST_TRAIN_RATIO, CLOSED

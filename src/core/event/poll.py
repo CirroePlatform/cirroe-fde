@@ -20,6 +20,7 @@ from cerebras.cloud.sdk import Cerebras
 from typing import List, Optional
 from uuid import UUID
 import humanlayer
+import requests
 import logging
 import asyncio
 import json
@@ -185,7 +186,7 @@ def poll_for_issues(
             # issue_labels = github_kb.get_labels(
             #     issue.ticket_number,
             #     f"{GITHUB_API_BASE}/repos/{org_name}/{repo_name}/issues",
-            # )
+            # ) I wonder
 
             last_commenter = (
                 issue.comments[-1].requestor_name if issue.comments else None
@@ -240,6 +241,5 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     data = {"body": response}
 
     # Post the comment
-    # response = requests.post(url, json=data, headers=headers)
-    # response.raise_for_status()
-    print(data)
+    response = requests.post(url, json=data, headers=headers)
+    response.raise_for_status()
