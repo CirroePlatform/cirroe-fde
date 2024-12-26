@@ -101,6 +101,20 @@ DEBUG_TOOLS = [
         },
     }
 ]
+EXAMPLE_CREATOR_TOOLS = [
+    {
+        "name": "crawl",
+        "description": "get the top n problems users of the product are facing",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "n": {"type": "integer", "description": "The number of problems to get"},
+            },
+            "required": ["n"],
+        },
+    }
+]
+
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
