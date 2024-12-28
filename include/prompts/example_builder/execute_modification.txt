@@ -1,0 +1,142 @@
+{preamble}
+
+Your job is to modify an existing example for {product_name} to be more up to date with the {new_technology} provided in the <{new_technology}> tags. You will be provided with the following data:
+1. The existing example code files, in <existing_example> tags
+2. The {new_technology} name and description in <{new_technology}> tags.
+
+Given the above provided data, output the modified files in the <updated_example> tags. Only files that you modify should be included in the output, and they should be wrapped in <file_name> tags. Here are some tenants to follow when performing your modification:
+
+Tenets:
+1. Ensure best practices for the programming language you are using on the example are followed.
+2. Ensure the example is up to date with the {new_technology} provided in the <{new_technology}> tags.
+3. Ensure the example is up to date with the latest supported features of {product_name}
+4. Modifications are concise, and only include nessecary changes, unless otherwise specified.
+
+Here are the questions you need to answer before altering the example:
+1. What files to modify, and what changes to make to them.
+2. What the content of each file should be after the modification.
+
+Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will modify in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, with the inputs wrapped in <inputs> tags, and the outputs wrapped in <outputs> tags. Use them to model your output.
+
+<examples>
+<example_1>
+
+<inputs>
+<existing_example>
+<main.py>import numpy as np
+from {product_name} import interact_with
+
+# Create array
+array = np.array([1, 2, 3])
+
+# Ask for user approval before proceeding
+approval = input("Would you like to proceed with the array transformation? (yes/no): ")
+
+if approval.lower() == 'yes':
+    # Perform the transformation
+    result = interact_with(array)
+    print(f"Transformation complete: {result}")
+else:
+    print("Operation cancelled by user")</main.py>
+
+<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
+numpy==2.2.1
+langchain==0.41.4</requirements.txt>
+
+<README.md># Array Transformation with User Approval
+
+This example demonstrates how to use {product_name} to transform NumPy arrays with a simple user approval flow.
+
+## Features
+- Creates a basic NumPy array
+- Implements a user approval checkpoint before transformation
+- Demonstrates basic array transformation using {product_name}
+
+## Installation
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+```bash
+python main.py
+```
+
+The python version at the time of this example being created is 3.12.1</README.md>
+</existing_example>
+
+<{new_technology}>
+[some data]
+Meet interrupt from LangChain
+Inspired by Python's input, interrupt pauses a graph, marks it as interrupted, and saves input into the persistence layer:
+
+response = interrupt("Your question here")
+You can resume execution when ready:
+
+graph.invoke(Command(resume="Your response here"), thread)  
+Unlike input, interrupt works in production, freeing up resources and enabling workflows to pick up where they left off.
+
+Use Cases
+Approve/Reject: Review critical steps before execution.
+
+Edit State: Correct or enhance the graph state.
+
+Review Tool Calls: Verify LLM outputs.
+
+Multi-Turn Conversations: Enable dynamic, interactive dialogues.
+</{new_technology}>
+</inputs>
+
+<outputs>
+<updated_example>
+<main.py>import numpy as np
+from langchain.callbacks import HumanApprovalCallbackHandler
+from {product_name} import interact_with, interrupt
+
+# Create array and callback handler
+array = np.array([1, 2, 3])
+approval_callback = HumanApprovalCallbackHandler()
+
+# Initialize interaction with human approval
+result = interact_with(
+    array,
+    callbacks=[approval_callback]
+)
+
+# Add human-in-the-loop checkpoint
+response = interrupt("Would you like to proceed with the array transformation?")
+
+if response.lower() == 'yes':
+    # Continue with transformation
+    final_result = result.resume()
+    print(f"Transformation complete: {final_result}")
+else:
+    print("Operation cancelled by user")</main.py>
+
+<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
+numpy==2.2.1
+langchain==0.42.1</requirements.txt>
+
+<README.md># Numpy Guide with Human-in-the-Loop
+
+This example shows how to use numpy to create an array and properly link it to {product_name}, with added human approval steps.
+
+## Installation
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+```bash
+python main.py
+```
+
+The example will now pause for human approval before completing the array transformation.
+
+The python version at the time of this example being created is 3.12.1</README.md>
+</updated_example>
+</outputs>
+
+</example_1>
+
+</examples>

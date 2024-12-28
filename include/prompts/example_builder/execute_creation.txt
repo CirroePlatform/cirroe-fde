@@ -1,12 +1,14 @@
+{preamble}
+
 Your job is to create an example application for the product {product_name} which is relevant to the {new_technology} provided in the <{new_technology}> tags. By searching the web, the {product_name} codebase and documentation, and the newly provided {new_technology}, your end goal is to create a single file or set of files that will live in the {product_name}/examples directory, and be extremely simple for users to understand and use.
 
-Here are the questions you need to answer:
+Here are the questions you need to answer before creating the example:
 1. Whether to use python or typescript for the example.
 2. What files to create for the example, including code, readme, requirements.txt, package.json, etc. Remember, this should be something the user can clone and run themselves with minmal steps, and if there are any specific steps, you should provide those.
 3. What the content of each file should be.
 4. How the environment should be configured, given we want to use the most recent version of {product_name}.
 
-Once you have answered all of these questions, output the files you will create in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, use them to model your output.
+Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will create in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, use them to model your output.
 
 Over everything, you need to make sure the example is not overly complex, and is not overly verbose. We are optimizing for ease of understanding and use for users, so keep that in mind when generating code and documentation files. Let's think step by step.
 
@@ -175,5 +177,116 @@ The python version at the time of this example being created is 3.12.1</README.m
 rich==13.7.0</requirements.txt>
 </files>
 </example_4>
+
+<example_5>
+<files>
+<app.ts>import { Assistant } from '{product_name}';
+import chalk from 'chalk';
+import * as readline from 'readline';
+
+// Create readline interface for CLI input/output
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+async function chatWithColors() {
+    // Initialize AI with colorful output
+    const assistant = new Assistant({
+        style: 'creative',
+        outputFormat: 'markdown'
+    });
+
+    console.log(chalk.green.bold('Ask me anything!'));
+
+    // Create recursive prompt function
+    const askQuestion = async () => {
+        rl.question('> ', async (userInput: string) => {
+            if (userInput.toLowerCase() === 'exit') {
+                rl.close();
+                return;
+            }
+
+            try {
+                const response = await assistant.generate({
+                    prompt: userInput,
+                    maxTokens: 100
+                });
+                
+                console.log(chalk.blue(response));
+                askQuestion(); // Continue the conversation
+            } catch (error) {
+                console.error(chalk.red('Error:', error));
+                askQuestion();
+            }
+        });
+    };
+
+    await askQuestion();
+}
+
+chatWithColors().catch(console.error);</app.ts>
+
+<package.json>{
+    "name": "colorful-cli-chat",
+    "version": "1.0.0",
+    "description": "A simple CLI chat application using {product_name} with colorful output",
+    "main": "dist/app.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/app.js",
+        "dev": "ts-node app.ts"
+    },
+    "dependencies": {
+        "{product_name}": "^0.0.1",
+        "chalk": "^4.1.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    }
+}</package.json>
+
+<tsconfig.json>{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "commonjs",
+        "outDir": "./dist",
+        "rootDir": "./",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true
+    },
+    "include": ["*.ts"],
+    "exclude": ["node_modules", "dist"]
+}</tsconfig.json>
+
+<README.md># Colorful CLI Chat Example (TypeScript)
+
+A simple CLI chat application using {product_name} with colorful output, written in TypeScript.
+
+## Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+
+## Installation
+
+```bash
+npm install
+```
+
+## Usage
+
+```bash
+npm run dev
+```
+
+Type 'exit' to quit the application.
+
+The python version at the time of this example being created is 3.12.1</README.md> 
+</files>
+</example_5>
 
 </examples>
