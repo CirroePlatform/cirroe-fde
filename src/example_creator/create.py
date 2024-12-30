@@ -2,9 +2,13 @@
 Create examples from user sentiment
 """
 
-from .crawl import Crawl
-from include.constants import EXAMPLE_CREATOR_TOOLS
+from core.event.tool_actions.handle_newstream_action import NewStreamActionHandler
+from include.constants import EXAMPLE_CREATOR_TOOLS, ACTION_CLASSIFIER, EXECUTE_CREATION, EXECUTE_MODIFICATION, MODEL_HEAVY
 from datetime import datetime, timedelta
+from .crawl import Crawl
+import anthropic
+import logger
+import time
 
 NEWSCHECK_INTERVAL = 3 # In hours
 
@@ -18,29 +22,35 @@ class ExampleCreator:
 
         # 1. construct tools map for example creation.
         self.tools_map = {
-            "crawl": self.crawler.crawl,
+            "":""
         }
 
     def main(self):
         """
         Main loop to create a new example or edit an existing ones.
         """
+        client = anthropic.Anthropic()
+        
+        action_handler = NewStreamActionHandler(
+            client=client,
+            tools=EXAMPLE_CREATOR_TOOLS,
+            tools_map=self.tools_map,
+            model=MODEL_HEAVY,
+            action_classifier_prompt=ACTION_CLASSIFIER,
+            execute_creation_prompt=EXECUTE_CREATION,
+            execute_modification_prompt=EXECUTE_MODIFICATION
+        )
 
         while True:
             # 1. Call the news crawler over the current time - x seconds
             news_sources = self.crawler.crawl_news(datetime.now() - timedelta(hours=NEWSCHECK_INTERVAL))
 
-            # Optional: Cluster/congregate new sources
-
-            for news_source in news_sources:
-                # 2. Feed in the news sources to the action classifier, along with the search tools
-
-                # 3. Extract the action from the action classifier
-
-                # 4. Use the correct prompt + tools to either create an example, modify an existing example, or do nothing.
-                pass
+            # 2. Feed in the news sources to the action classifier, along with the search tools
+            response = action_handler.handle_action(news_sources, 10)
+            logger.info(response)
 
             # thread sleep for x seconds
+            time.sleep(NEWSCHECK_INTERVAL * 60 * 60)
 
 # Requirements:
 # Research & Discovery: Continuously monitor top platforms (e.g., X/Twitter, GitHub Trending, various tech news aggregators)

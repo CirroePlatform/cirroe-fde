@@ -54,6 +54,10 @@ EVAL_ISSUE_PREPROCESS_PROMPT = "include/prompts/eval_issue_preprocess.txt"
 REQUIRES_DEV_TEAM_PROMPT = "include/prompts/requires_dev_team_prompt.txt"
 DEBUG_DISCORD_FILE = "include/prompts/debug_discord.txt"
 
+ACTION_CLASSIFIER = "include/prompts/example_builder/action_classifier.txt"
+EXECUTE_CREATION = "include/prompts/example_builder/execute_creation.txt"
+EXECUTE_MODIFICATION = "include/prompts/example_builder/execute_modification.txt"
+
 # Model constants
 MODEL_LIGHT = "claude-3-5-haiku-latest"
 MODEL_HEAVY = "claude-3-5-sonnet-latest"
