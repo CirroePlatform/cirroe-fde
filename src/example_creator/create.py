@@ -4,6 +4,9 @@ Create examples from user sentiment
 
 from .crawl import Crawl
 from include.constants import EXAMPLE_CREATOR_TOOLS
+from datetime import datetime, timedelta
+
+NEWSCHECK_INTERVAL = 3 # In hours
 
 class ExampleCreator:
     """
@@ -23,15 +26,21 @@ class ExampleCreator:
         Main loop to create a new example or edit an existing ones.
         """
 
-        # 2. tools map should have a the crawler to get the user sentiment about the top n problems they're facing.
-        
-        # 3. trigger main tools calling loop
-        
-        # 4. given the main output, craft an example string in markdown.
-        
-        # 5. open a PR with the example string.
-        
-        pass
+        while True:
+            # 1. Call the news crawler over the current time - x seconds
+            news_sources = self.crawler.crawl_news(datetime.now() - timedelta(hours=NEWSCHECK_INTERVAL))
+
+            # Optional: Cluster/congregate new sources
+
+            for news_source in news_sources:
+                # 2. Feed in the news sources to the action classifier, along with the search tools
+
+                # 3. Extract the action from the action classifier
+
+                # 4. Use the correct prompt + tools to either create an example, modify an existing example, or do nothing.
+                pass
+
+            # thread sleep for x seconds
 
 # Requirements:
 # Research & Discovery: Continuously monitor top platforms (e.g., X/Twitter, GitHub Trending, various tech news aggregators)

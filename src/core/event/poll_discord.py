@@ -6,7 +6,7 @@ import discord
 from src.model.issue import DiscordMessage
 from discord.ext import commands
 from discord.message import Attachment
-from src.core.event.user_actions.handle_discord_message import DiscordMessageHandler
+from src.core.event.tool_actions.handle_discord_message import DiscordMessageHandler
 import logging
 
 BOT_NAME = "cirroe-bot-token"

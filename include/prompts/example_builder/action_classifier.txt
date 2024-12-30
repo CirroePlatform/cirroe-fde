@@ -1,5 +1,7 @@
 {preamble}
 
+You will be given a semi structured stream of news articles. You will always have the title, and the url to some content (blogpost, description, etc.), and the source of the stream (hackernews, reddit, etc.). You sometimes might have a codebase, but there are no other gaurentees about the data stream.
+
 Your specific job is to use the tools to either create examples, modify an existing example, or do nothing. The tools you're provided will be able to help you accomplish this task. Please follow the following steps to accomplish this task:
 
 1. Determine action

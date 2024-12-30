@@ -5,7 +5,7 @@ import anthropic
 from dotenv import load_dotenv
 import os
 
-from src.core.event.user_actions.handle_base_action import BaseActionHandler
+from src.core.event.tool_actions.handle_base_action import BaseActionHandler
 from src.storage.supa import SupaClient
 from src.core.tools import SearchTools
 from src.model.issue import DiscordMessage

@@ -1,6 +1,6 @@
 from include.utils import get_git_image_links, get_base64_from_url
 from typing import List, Dict, Any
-from src.core.event.user_actions.handle_base_action import BaseActionHandler
+from src.core.event.tool_actions.handle_base_action import BaseActionHandler
 from src.model.issue import Issue
 from dotenv import load_dotenv
 from logger import logger
