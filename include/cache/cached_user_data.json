@@ -1,0 +1,369 @@
+{
+    "b3848a28-a535-4d5d-b773-34b23e195687": {
+        "org_name": "unslothai",
+        "repo_name": "unsloth",
+        "repo_url": "https://github.com/unslothai/unsloth",
+        "docu_url": "https://docs.unsloth.ai/sitemap.xml"
+    },
+    "90a11a74-cfcf-4988-b97a-c4ab21edd0a1": {
+        "org_name": "mem0ai",
+        "repo_name": "mem0",
+        "repo_url": "https://github.com/mem0ai/mem0",
+        "docu_url": "https://docs.mem0.ai/sitemap.xml"
+    },
+    "802f083b-5d7e-4418-bebc-6052f5634f8e": {
+        "org_name": "basetenlabs",
+        "repo_name": "truss",
+        "repo_url": "https://github.com/basetenlabs/truss",
+        "docu_url": "https://docs.baseten.co/sitemap.xml"
+    },
+    "a54c3511-0424-4663-8309-1d7ba3953aa6": {
+        "org_name": "qdrant",
+        "repo_name": "qdrant",
+        "repo_url": "https://github.com/qdrant/qdrant",
+        "docu_url": "https://qdrant.tech/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174000": {
+        "org_name": "ueberdosis",
+        "repo_name": "tiptap",
+        "repo_url": "https://github.com/ueberdosis/tiptap",
+        "docu_url": "https://tiptap.dev/docs/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174001": {
+        "org_name": "milvus-io",
+        "repo_name": "milvus",
+        "repo_url": "https://github.com/milvus-io/milvus",
+        "docu_url": "https://milvus.io/sitemap-0.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174002": {
+        "org_name": "triggerdotdev",
+        "repo_name": "trigger.dev",
+        "repo_url": "https://github.com/triggerdotdev/trigger.dev",
+        "docu_url": "https://trigger.dev/docs/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174003": {
+        "org_name": "reflex-dev",
+        "repo_name": "reflex",
+        "repo_url": "https://github.com/reflex-dev/reflex",
+        "docu_url": "https://pcweb-aqua-star.staging.reflexcorp.run/sitemap-0.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174004": {
+        "org_name": "gravitl",
+        "repo_name": "netmaker",
+        "repo_url": "https://github.com/gravitl/netmaker",
+        "docu_url": "https://docs.netmaker.io/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174005": {
+        "org_name": "mito-ds",
+        "repo_name": "mito",
+        "repo_url": "https://github.com/mito-ds/mito",
+        "docu_url": "https://docs.trymito.io/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174006": {
+        "org_name": "FlowiseAI",
+        "repo_name": "Flowise",
+        "repo_url": "https://github.com/FlowiseAI/Flowise",
+        "docu_url": "https://docs.flowiseai.com/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174007": {
+        "org_name": "ArroyoSystems",
+        "repo_name": "Arroyo",
+        "repo_url": "https://github.com/ArroyoSystems/Arroyo",
+        "docu_url": "https://doc.arroyo.dev/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174008": {
+        "org_name": "predibase",
+        "repo_name": "lorax",
+        "repo_url": "https://github.com/predibase/lorax",
+        "docu_url": "https://docs.predibase.com/sitemap.xml"
+    },
+    "123e4567-e89b-12d3-a456-426614174009": {
+        "org_name": "lightdash",
+        "repo_name": "lightdash",
+        "repo_url": "https://github.com/lightdash/lightdash",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174010": {
+        "org_name": "gitpod-io",
+        "repo_name": "gitpod",
+        "repo_url": "https://github.com/gitpod-io/gitpod",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174011": {
+        "org_name": "adap",
+        "repo_name": "flower",
+        "repo_url": "https://github.com/adap/flower",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174012": {
+        "org_name": "langfuse",
+        "repo_name": "langfuse",
+        "repo_url": "https://github.com/langfuse/langfuse",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174013": {
+        "org_name": "Unleash",
+        "repo_name": "unleash",
+        "repo_url": "https://github.com/Unleash/unleash",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174014": {
+        "org_name": "mindee",
+        "repo_name": "doctr",
+        "repo_url": "https://github.com/mindee/doctr",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174015": {
+        "org_name": "open-telemetry",
+        "repo_name": "opentelemetry-python",
+        "repo_url": "https://github.com/open-telemetry/opentelemetry-python",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174016": {
+        "org_name": "anyproto",
+        "repo_name": "anytype-ts",
+        "repo_url": "https://github.com/anyproto/anytype-ts",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174017": {
+        "org_name": "speklesystems",
+        "repo_name": "speckle-server",
+        "repo_url": "https://github.com/speklesystems/speckle-server",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174018": {
+        "org_name": "rigdev",
+        "repo_name": "rig",
+        "repo_url": "https://github.com/rigdev/rig",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174019": {
+        "org_name": "rerun-io",
+        "repo_name": "rerun",
+        "repo_url": "https://github.com/rerun-io/rerun",
+        "docu_url": ""
+    },
+    "123e4567-e89b-12d3-a456-426614174020": {
+        "org_name": "graylog2",
+        "repo_name": "graylog2-server",
+        "repo_url": "https://github.com/Graylog2/graylog2-server",
+        "docu_url": ""
+    },
+    "85f2c45a-4f58-4322-9563-64e2a1b067a0": {
+        "repo_url": "https://github.com/erxes/erxes",
+        "org_name": "erxes",
+        "repo_name": "erxes"
+    },
+    "8b71f406-ddd2-4d8c-8099-d52d524a3b02": {
+        "repo_url": "https://github.com/Infisical/infisical-cli",
+        "org_name": "infisical",
+        "repo_name": "infisical-cli"
+    },
+    "ec709137-3692-40e2-928c-85fbc63bf8e9": {
+        "repo_url": "https://github.com/phylum-dev/cli",
+        "org_name": "phylum-dev",
+        "repo_name": "cli"
+    },
+    "1a2be291-f4a8-4453-a76a-2bd52ae044cf": {
+        "repo_url": "https://github.com/linkerd/linkerd2",
+        "org_name": "linkerd",
+        "repo_name": "linkerd2"
+    },
+    "fabb88d0-94c7-41e1-95a1-58fd171cba86": {
+        "repo_url": "https://github.com/unctl-sh/unctl",
+        "org_name": "unctl-sh",
+        "repo_name": "unctl"
+    },
+    "650085cf-3884-4ff8-a66c-35772a27bc6f": {
+        "repo_url": "https://github.com/ceramicnetwork/rust-ceramic",
+        "org_name": "ceramicnetwork",
+        "repo_name": "rust-ceramic"
+    },
+    "831e824d-b2d2-499f-90b9-1830dd5ba57d": {
+        "repo_url": "https://github.com/jaeksoft/opensearchserver",
+        "org_name": "jaeksoft",
+        "repo_name": "opensearchserver"
+    },
+    "64647606-65c1-48d2-ab35-752a73ed3c73": {
+        "repo_url": "https://github.com/ethyca/fides",
+        "org_name": "ethyca",
+        "repo_name": "fides"
+    },
+    "e7cb06ba-f4db-40e0-8827-3381ab069f8e": {
+        "repo_url": "https://github.com/formbricks/formbricks",
+        "org_name": "formbricks",
+        "repo_name": "formbricks"
+    },
+    "e3a9f0d0-0c11-459e-84e8-372bd7076d6b": {
+        "repo_url": "https://github.com/TobikoData/sqlmesh",
+        "org_name": "TobikoData",
+        "repo_name": "sqlmesh"
+    },
+    "71014798-85c5-4564-8559-0d087b67dce4": {
+        "repo_url": "https://github.com/sandworm-hq/sandworm-audit",
+        "org_name": "sandworm-hq",
+        "repo_name": "sandworm-audit"
+    },
+    "658c89c1-6392-44b1-aef0-1bdf8f279bba": {
+        "repo_url": "https://github.com/beekeeper-studio/beekeeper-studio",
+        "org_name": "beekeeper-studio",
+        "repo_name": "beekeeper-studio"
+    },
+    "c66a1a56-900e-4164-952d-dac40383b34b": {
+        "repo_url": "https://github.com/grai-io/grai-core",
+        "org_name": "grai-io",
+        "repo_name": "grai-core"
+    },
+    "56268f30-23e2-4198-9df7-8e199beae6fb": {
+        "repo_url": "https://github.com/lf-edge/eve",
+        "org_name": "lf-edge",
+        "repo_name": "eve"
+    },
+    "f9dc5ce4-41b8-44c5-8df1-1f7178ad20af": {
+        "repo_url": "https://github.com/PrefectHQ/prefect",
+        "org_name": "PrefectHQ",
+        "repo_name": "prefect"
+    },
+    "7e3fdcda-f5d8-4aa0-ba5b-88f883cce9a4": {
+        "repo_url": "https://github.com/PaladinCloud/CE",
+        "org_name": "PaladinCloud",
+        "repo_name": "CE"
+    },
+    "384e3e0b-96f0-43ef-ac46-a0b93976d7a1": {
+        "repo_url": "https://github.com/HumanSignal/label-studio",
+        "org_name": "HumanSignal",
+        "repo_name": "label-studio"
+    },
+    "430b5862-fe33-48ea-80ca-aa73cac96a30": {
+        "repo_url": "https://github.com/crate/crate",
+        "org_name": "crate",
+        "repo_name": "crate"
+    },
+    "6e1d620f-a1fa-4114-8bf4-3a38dd37bbf5": {
+        "repo_url": "https://github.com/akash-network/node",
+        "org_name": "akash-network",
+        "repo_name": "node"
+    },
+    "d6cb1e9c-f90b-4b41-9746-0144335e98e2": {
+        "repo_url": "https://github.com/harness/drone",
+        "org_name": "harness",
+        "repo_name": "drone"
+    },
+    "a412fd63-0e83-49cc-900b-78d7442f6f4c": {
+        "repo_url": "https://github.com/dbt-labs/dbt-core",
+        "org_name": "dbt-labs",
+        "repo_name": "dbt-core"
+    },
+    "25b0e705-a57f-4e1d-abd2-ea90bd1d74cc": {
+        "repo_url": "https://github.com/grafana/grafana",
+        "org_name": "grafana",
+        "repo_name": "grafana"
+    },
+    "4546a325-8804-4634-9aed-12e7a1f383e2": {
+        "repo_url": "http://github.com/posthog/posthog",
+        "org_name": "posthog",
+        "repo_name": "posthog"
+    },
+    "90177bfb-4308-4a02-8d06-cc9b2f222ed3": {
+        "repo_url": "https://github.com/appwrite/appwrite",
+        "org_name": "appwrite",
+        "repo_name": "appwrite"
+    },
+    "419cac8d-fe6a-4b85-8fdb-e8c2cbb557c8": {
+        "repo_url": "https://github.com/getsentry/sentry-javascript",
+        "org_name": "getsentry",
+        "repo_name": "sentry-javascript"
+    },
+    "123e4567-e89b-12d3-a456-426614174021": {
+        "repo_url": "https://github.com/ContinuumIO/anaconda-issues",
+        "org_name": "ContinuumIO",
+        "repo_name": "anaconda-issues"
+    },
+    "123e4567-e89b-12d3-a456-426614174022": {
+        "repo_url": "https://github.com/frappe/erpnext",
+        "org_name": "frappe",
+        "repo_name": "erpnext"
+    },
+    "7a1b3cd4-5e6f-4a8b-9c0d-e1f2a3b4c5d6": {
+        "repo_url": "https://github.com/deepset-ai/haystack",
+        "org_name": "deepset-ai",
+        "repo_name": "haystack"
+    },
+    "2b3c4d5e-6f7a-4b8c-9d0e-f1a2b3c4d5e6": {
+        "repo_url": "https://github.com/marqo-ai/marqo",
+        "org_name": "marqo-ai",
+        "repo_name": "marqo"
+    },
+    "123e4567-e89b-12d3-a456-426614174027": {
+        "repo_url": "https://github.com/chroma-core/chroma",
+        "org_name": "chroma-core",
+        "repo_name": "chroma",
+        "docu_url": "https://docs.trychroma.com/"
+    },
+    "4d5e6f7a-8b9c-4d0e-1f2a-b3c4d5e6f7a8": {
+        "repo_url": "https://github.com/saleor/saleor",
+        "org_name": "saleor",
+        "repo_name": "saleor"
+    },
+    "5e6f7a8b-9c0d-4e1f-2a3b-c4d5e6f7a8b9": {
+        "repo_url": "https://github.com/questdb/questdb",
+        "org_name": "questdb",
+        "repo_name": "questdb"
+    },
+    "6f7a8b9c-0d1e-4f2a-3b4c-d5e6f7a8b9c0": {
+        "repo_url": "https://github.com/serverpod/serverpod",
+        "org_name": "serverpod",
+        "repo_name": "serverpod"
+    },
+    "7a8b9c0d-1e2f-4a3b-4c5d-e6f7a8b9c0d1": {
+        "repo_url": "https://github.com/terminusdb/terminusdb",
+        "org_name": "terminusdb",
+        "repo_name": "terminusdb"
+    },
+    "8b9c0d1e-2f3a-4b4c-5d6e-f7a8b9c0d1e2": {
+        "repo_url": "https://github.com/weaviate/weaviate",
+        "org_name": "weaviate",
+        "repo_name": "weaviate"
+    },
+    "9c0d1e2f-3a4b-4c5d-6e7f-a8b9c0d1e2f3": {
+        "repo_url": "https://github.com/jina-ai/reader",
+        "org_name": "jina-ai",
+        "repo_name": "reader"
+    },
+    "1e2f3a4b-5c6d-4e7f-8a9b-c0d1e2f3a4b5": {
+        "repo_url": "https://github.com/dagster-io/dagster",
+        "org_name": "dagster-io", 
+        "repo_name": "dagster"
+    },
+    "2f3a4b5c-6d7e-4f8a-9b0c-d1e2f3a4b5c6": {
+        "repo_url": "https://github.com/buildbuddy-io/buildbuddy",
+        "org_name": "buildbuddy-io",
+        "repo_name": "buildbuddy"
+    },
+    "3a4b5c6d-7e8f-4a9b-0c1d-e2f3a4b5c6d7": {
+        "repo_url": "https://github.com/Lightning-AI/litgpt",
+        "org_name": "Lightning-AI",
+        "repo_name": "litgpt"
+    },
+    "123e4567-e89b-12d3-a456-426614174023": {
+        "repo_url": "https://github.com/video-db/Director",
+        "org_name": "video-db",
+        "repo_name": "Director",
+        "docu_url": "https://docs.videodb.io/"
+    },
+    "123e4567-e89b-12d3-a456-426614174024": {
+        "repo_url": "https://github.com/fluent/fluent-bit",
+        "org_name": "fluent",
+        "repo_name": "fluent-bit"
+    },
+    "123e4567-e89b-12d3-a456-426614174025": {
+        "repo_url": "https://github.com/evidentlyai/evidently",
+        "org_name": "evidentlyai",
+        "repo_name": "evidently"
+    },
+    "123e4567-e89b-12d3-a456-426614174026": {
+        "repo_url": "https://github.com/Lightning-AI/litgpt",
+        "org_name": "Lightning-AI",
+        "repo_name": "litgpt"
+    }
+}
