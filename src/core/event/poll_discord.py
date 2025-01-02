@@ -1,7 +1,7 @@
 import os
 import traceback
 from typing import List
-from include.constants import MEM0AI_ORG_ID
+from include.constants import VIDEO_DB_ORG_ID
 import discord
 from src.model.issue import DiscordMessage
 from discord.ext import commands
@@ -131,7 +131,7 @@ def dsc_poll_main():
     intents.members = True
 
     # Initialize bot
-    bot = CirroeDiscordBot(intents=intents, org_id=MEM0AI_ORG_ID)
+    bot = CirroeDiscordBot(intents=intents, org_id=VIDEO_DB_ORG_ID)
 
     # Run the bot
     bot.run(os.getenv("DISCORD_BOT_TOKEN"))
