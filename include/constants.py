@@ -105,16 +105,24 @@ DEBUG_TOOLS = [
         },
     }
 ]
+
 EXAMPLE_CREATOR_TOOLS = [
     {
-        "name": "crawl",
-        "description": "get the top n problems users of the product are facing",
+        "name": "execute_codebase_search",
+        "description": "A function to search any given codebase for relevant code snippets",
         "input_schema": {
             "type": "object",
             "properties": {
-                "n": {"type": "integer", "description": "The number of problems to get"},
+                "query": {
+                    "type": "string",
+                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets",
+                },
+                "codebase": {
+                    "type": "string",
+                    "description": "The codebase to search for relevant code snippets",
+                },
             },
-            "required": ["n"],
+            "required": ["query", "codebase"],
         },
     }
 ]

@@ -7,7 +7,6 @@ from scripts.oss_ghub_issue_analysis import (
 from src.storage.supa import SupaClient
 from test.eval_agent import Orchestrator
 from src.core.event.poll import poll_for_issues
-
 from uuid import UUID
 import asyncio
 from src.core.event.tool_actions.handle_discord_message import DiscordMessageHandler
@@ -15,13 +14,15 @@ from src.model.issue import DiscordMessage
 from include.constants import (
     MEM0AI_ORG_ID,
     REPO_NAME,
-    TRIGGER_ORG_ID,
+    VOYAGE_CODE_EMBED,
+    QDRANT_ORG_ID,
     GRAVITL_ORG_ID,
     MITO_DS_ORG_ID,
     FLOWISE_ORG_ID,
     VIDEO_DB_ORG_ID,
     ARROYO_ORG_ID,
     PREDIBASE_ORG_ID,
+    CHROMA_ORG_ID
 )
 
 
@@ -92,16 +93,14 @@ def poll_wrapper():
 
 
 def discord_wrapper():
-    disc_msg = """
-Hey, I am using crew ai to build agents for customers, Every customer has some sort of preference in having a particular task done, I have a txt file for the same for every customer, how can i put this txt file or extract data from it and put it in memory. Because all the examples of mem0 contains adding memory in the format of messages object. But i have as a preference of user as a blob of text.
-    """
+    disc_msg = """something"""
     from rich.console import Console
     from rich.markdown import Markdown
 
     disc_msg = DiscordMessage(
-        content=disc_msg, author="kanika", channel_id="123", message_id="123"
+        content=disc_msg, author="juan", attachments=[]
     )
-    response = DiscordMessageHandler(MEM0AI_ORG_ID).handle_discord_message(
+    response = DiscordMessageHandler(QDRANT_ORG_ID).handle_discord_message(
         disc_msg, max_tool_calls=5
     )
 
@@ -172,7 +171,6 @@ def collect_data_for_links():
         "sentry.io",
     ]
     bulk_extract_github_links(links)
-
 
 if __name__ == "__main__":
     poll_wrapper()

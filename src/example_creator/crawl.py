@@ -4,6 +4,7 @@ Crawl for user sentiment on exmaples to create
 
 from typing import List, Optional
 from datetime import datetime
+
 class Crawl:
     """
     Crawl various kbs for user sentiment to create exmaples with
