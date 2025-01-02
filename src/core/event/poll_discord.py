@@ -9,7 +9,7 @@ from discord.message import Attachment
 from src.core.event.tool_actions.handle_discord_message import DiscordMessageHandler
 import logging
 
-BOT_NAME = "cirroe-bot-token"
+BOT_NAME = "ask-cirroe"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
