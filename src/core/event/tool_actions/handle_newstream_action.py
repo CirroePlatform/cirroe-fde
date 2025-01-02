@@ -3,7 +3,7 @@ import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import EXAMPLE_CREATOR_TOOLS
 import anthropic
-
+from model.news import News
 logger = logging.getLogger(__name__)
 
 class NewStreamActionHandler(BaseActionHandler):
@@ -42,7 +42,7 @@ class NewStreamActionHandler(BaseActionHandler):
         self.execute_modification_prompt = execute_modification_prompt
 
     def handle_action(
-        self, messages: List[Dict], max_tool_calls: int = 5
+        self, messages: List[News], max_tool_calls: int = 5, is_creation: bool = False
     ) -> Dict[str, Any]:
         """
         Handle processing a news stream to determine and execute appropriate action
@@ -55,25 +55,43 @@ class NewStreamActionHandler(BaseActionHandler):
             Dict containing final response and collected knowledge base responses
         """
 
-        # First classify the action using action classifier prompt
-        action_response = super().handle_action(messages, max_tool_calls)
-
-        # Extract action from response
+        # First classify the action using action classifier prompt. Convert the news to a string.
         action = None
-        for content in action_response.get("content", []):
-            if isinstance(content, str) and "<action>" in content:
-                action = content.split("<action>")[1].split("</action>")[0].strip()
-                break
+        if not is_creation:
+            news_string = "\n".join([news.model_dump_json() for news in messages])
+            messages = [{"role": "user", "content": news_string}]
+        
+            action_response = super().handle_action(messages, max_tool_calls)
+            # Extract action from response
+            for content in action_response.get("content", []):
+                if isinstance(content, str) and "<action>" in content:
+                    action = content.split("<action>")[1].split("</action>")[0].strip()
+                    break
 
-        if not action:
-            logger.warning("No action classified from news stream")
-            return {"content": "No action needed for this news stream"}
+            if not action:
+                logger.warning("No action classified from news stream")
+                return {"content": "No action needed for this news stream"}
+        else:
+            action = "create"
 
         # Update system prompt based on classified action
         if action == "create": # TODO different tools needed
             self.system_prompt_file = self.execute_creation_prompt
+            
+            # product_name
+            # new_technology
+            # Format creation prompt with product name and new technology
+            creation_prompt = self.execute_creation_prompt.format(
+                product_name="firecrawl",
+                new_technology="new_tech",
+                preamble="You are an AI assistant helping to create examples."
+            )
+            self.system_prompt_file = creation_prompt
+            
+            self.tools = EXAMPLE_CREATOR_TOOLS
         elif action == "modify":
             self.system_prompt_file = self.execute_modification_prompt
+            self.tools = EXAMPLE_CREATOR_TOOLS
         else:
             return {"content": "No action needed for this news stream"}
 

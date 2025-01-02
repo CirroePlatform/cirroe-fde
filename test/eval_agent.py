@@ -9,7 +9,7 @@ import csv
 import os
 
 from src.integrations.kbs.github_kb import GithubKnowledgeBase, Repository
-from src.core.event.user_actions.handle_issue import HandleIssue
+from src.core.event.tool_actions.handle_issue import HandleIssue
 from src.storage.vector import VectorDB
 
 from include.constants import (
