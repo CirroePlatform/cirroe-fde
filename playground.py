@@ -6,11 +6,11 @@ from scripts.oss_ghub_issue_analysis import (
 )
 from src.storage.supa import SupaClient
 from test.eval_agent import Orchestrator
-from src.core.event.poll import poll_for_issues, bot, disc_token
+from src.core.event.poll import poll_for_issues
 
 from uuid import UUID
 import asyncio
-from src.core.event.user_actions.handle_discord_message import DiscordMessageHandler
+from src.core.event.tool_actions.handle_discord_message import DiscordMessageHandler
 from src.model.issue import DiscordMessage
 from include.constants import (
     MEM0AI_ORG_ID,
@@ -67,9 +67,9 @@ def poll_wrapper():
         # MITO_DS_ORG_ID: [1332],
         # FLOWISE_ORG_ID: [3577],
         # ARROYO_ORG_ID: [756, 728],
-        MEM0AI_ORG_ID: [2079],
+        # MEM0AI_ORG_ID: [2079],
         # TRIGGER_ORG_ID: [1490],
-        # VIDEO_DB_ORG_ID: [65],
+        VIDEO_DB_ORG_ID: [65],
     }
 
     for org in orgs_to_tickets:
@@ -110,10 +110,6 @@ Hey, I am using crew ai to build agents for customers, Every customer has some s
     console.print(md)
 
     print(f"Raw: {response}")
-
-
-def discord_bot():
-    bot.run(disc_token)
 
 
 def collect_data_for_links():
@@ -180,5 +176,3 @@ def collect_data_for_links():
 
 if __name__ == "__main__":
     poll_wrapper()
-    discord_wrapper()
-    # print(analyze_github_issues(UUID("123e4567-e89b-12d3-a456-426614174026")))
