@@ -21,3 +21,4 @@ datasets
 cerebras_cloud_sdk
 discord
 voyageai
+praw==7.7.1  # Reddit API wrapper

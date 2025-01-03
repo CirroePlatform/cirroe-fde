@@ -157,4 +157,4 @@ CHANNEL = "cirroe-support"
 
 # Crawl constants
 NEWSCHECK_INTERVAL_HOURS = 1
-SUBREDDIT_LIST = ["r/singularity", "r/aiagents", "r/AI", "r/LLMDevs", "r/LLM"]
+SUBREDDIT_LIST = ["singularity", "aiagents", "AI", "LLMDevs", "LLM"]
