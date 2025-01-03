@@ -8,12 +8,15 @@ import requests
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 from pydantic import BaseModel
+from bs4 import BeautifulSoup
+from datetime import datetime
 
 from src.integrations.cleaners.traceback_cleaner import TracebackCleaner
 from src.integrations.kbs.base_kb import BaseKnowledgeBase, KnowledgeBaseResponse
 from src.model.code import CodePage, CodePageType
 from include.constants import INDEX_WITH_GREPTILE, GITHUB_API_BASE, GITFILES_CACHE_DIR
 from src.model.issue import Issue, Comment
+from src.model.news import News, NewsSource
 
 from src.storage.vector import VectorDB
 
@@ -76,6 +79,52 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         # TODO
         return os.getenv("GITHUB_TEST_TOKEN")
 
+    def get_github_trending_news(self) -> Dict[str, News]:
+        """
+        Get the GitHub trending news for an organization from supabase vault.
+        """
+        trending_news = {}
+        GITHUB_URL = "https://github.com"
+
+        try:
+            url = f"{GITHUB_URL}/trending"
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            # Find all repository articles
+            for repo_article in soup.select('.Box article.Box-row')[:15]:
+                # Extract repository info
+                title = repo_article.select_one('.h3').text.strip()
+                username, repo_name = [x.strip() for x in title.split('/')]
+                relative_url = repo_article.select_one('.h3 a')['href']
+                full_url = f"{GITHUB_URL}{relative_url}"
+
+                # Get description
+                description = repo_article.select_one('p.my-1')
+                description = description.text.strip() if description else ''
+
+
+                # Get readme content
+                readme_response = requests.get(
+                    f"https://api.github.com/repos{relative_url}/README.md",
+                    headers={"Accept": "application/vnd.github.raw"}
+                )
+
+                if readme_response.status_code == 200:
+                    repo_key = f"{username}/{repo_name}"
+                    trending_news[repo_key] = News(
+                        title=repo_key,
+                        content=f"Description: {description}\nReadme: {readme_response.text}",
+                        url=full_url,
+                        source=NewsSource.GITHUB_TRENDING,
+                        timestamp=datetime.now()
+                    )
+
+        except Exception as e:
+            logging.error(f"Error crawling GitHub trending: {e}")
+            
+        return trending_news
+    
     def json_issues_to_issues(self, issues: List[Dict]) -> List[Issue]:
         """
         Convert a list of JSON issues to a list of Issue objects
