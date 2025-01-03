@@ -79,7 +79,12 @@ class EmbeddingModel:
         elif self.model_name.lower() == NVIDIA_EMBED.lower():
             return self.client.encode([text])[0]
         elif self.model_name.lower() == VOYAGE_CODE_EMBED.lower():
-            return self.client.embed([text], model=self.model_name, input_type=input_type, output_dimension=DIMENSION_VOYAGE).embeddings[0]
+            return self.client.embed(
+                [text],
+                model=self.model_name,
+                input_type=input_type,
+                output_dimension=DIMENSION_VOYAGE,
+            ).embeddings[0]
         else:
             raise ValueError(
                 f"embedding model not supported. Choose one of {','.join(SUPPORTED_MODELS)}"
