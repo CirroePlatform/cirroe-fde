@@ -3,7 +3,8 @@ import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import EXAMPLE_CREATOR_TOOLS
 import anthropic
-from model.news import News
+from src.model.news import News
+
 logger = logging.getLogger(__name__)
 
 class NewStreamActionHandler(BaseActionHandler):

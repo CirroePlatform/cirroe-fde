@@ -154,3 +154,7 @@ DEFAULT_NEEDS_DEV_TEAM_OUTPUT_PATH = "include/needs_dev_team_output.jsonl"
 
 # Discord constants
 CHANNEL = "cirroe-support"
+
+# Crawl constants
+NEWSCHECK_INTERVAL_HOURS = 1
+SUBREDDIT_LIST = ["r/singularity", "r/aiagents", "r/AI", "r/LLMDevs", "r/LLM"]
