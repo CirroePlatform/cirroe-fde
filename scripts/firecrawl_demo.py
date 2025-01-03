@@ -43,13 +43,13 @@ def get_crawler() -> Crawl:
     return crawler
 
 
-@click.command()
-@click.option(
-    "--action",
-    type=click.Choice(["create", "modify"]),
-    prompt="Select action",
-    help="Create new example or modify existing one",
-)
+# @click.command()
+# @click.option(
+#     "--action",
+#     type=click.Choice(["create", "modify"]),
+#     prompt="Select action",
+#     help="Create new example or modify existing one",
+# )
 def main(action: str):
     """CLI interface for creating or modifying examples"""
     crawler = get_crawler()

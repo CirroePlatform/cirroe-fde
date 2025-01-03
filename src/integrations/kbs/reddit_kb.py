@@ -73,6 +73,29 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
             logging.error(f"Failed to query Reddit knowledge base: {str(e)}")
             return [], ""
 
+    def get_images_from_post(self, post: praw.models.Submission) -> List[str]:
+        """
+        Get images from a post
+        """
+        # Check if the post has a direct image link
+        if post.url.endswith((".jpg", ".png", ".gif", ".jpeg", ".webp")):
+            return [post.url]
+
+        # Check if the post is a gallery post (Reddit-hosted image)
+        images = []
+        if hasattr(post, "gallery_data") and post.is_gallery:
+            for item in post.gallery_data["items"]:
+                media_id = item["media_id"]
+                img_url = f"https://i.redd.it/{media_id}.jpg"
+                images.append(img_url)
+
+        # Check if the post is a media post (Reddit-hosted image)
+        if hasattr(post, "is_reddit_media_domain") and post.is_reddit_media_domain:
+            if hasattr(post, "is_video") and not post.is_video: # ignoring videos for now.
+                images.append(post.url)
+
+        return images
+    
     def get_top_posts(
         self,
         subreddit_name: str,
@@ -101,6 +124,7 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
             posts = []
             for post in subreddit.top(time_filter="day"):
                 post_time = datetime.fromtimestamp(post.created_utc)
+                images = self.get_images_from_post(post)
                 
                 if post_time >= start_time:
                     posts.append({
@@ -112,7 +136,7 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
                         "created_utc": post.created_utc,
                         "num_comments": post.num_comments,
                         "author": str(post.author),
-                        "media": post.media,
+                        "images": images,
                     })
             
             return posts
