@@ -4,8 +4,8 @@ import subprocess
 import os
 from src.core.event.tool_actions.handle_newstream_action import NewStreamActionHandler
 from src.example_creator.crawl import Crawl
-
-from include.constants import EXAMPLE_CREATOR_TOOLS
+from datetime import timedelta
+from include.constants import EXAMPLE_CREATOR_TOOLS, NEWSCHECK_INTERVAL_HOURS
 
 def get_handler() -> NewStreamActionHandler:
     """Initialize and return the NewStreamActionHandler"""
@@ -31,10 +31,11 @@ def get_crawler() -> Crawl:
         Crawl: The crawler
     """
     crawler = Crawl()
-    
+
     # Crawl the news periodically
-    crawler.crawl_news(NEWSCHECK_INTERVAL)
-    
+    td = timedelta(hours=NEWSCHECK_INTERVAL_HOURS)
+    crawler.crawl_news(td) # TODO: This should be fired off in a separate daemon thread.
+
     return crawler
 
 @click.command()
@@ -42,6 +43,7 @@ def get_crawler() -> Crawl:
               help='Create new example or modify existing one')
 def main(action: str):
     """CLI interface for creating or modifying examples"""
+    crawler = get_crawler()
     handler = get_handler()
     
     if action == 'create':
