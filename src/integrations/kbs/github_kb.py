@@ -92,22 +92,21 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Find all repository articles
-            for repo_article in soup.select('.Box article.Box-row')[:15]:
+            for repo_article in soup.select(".Box article.Box-row")[:15]:
                 # Extract repository info
-                title = repo_article.select_one('.h3').text.strip()
-                username, repo_name = [x.strip() for x in title.split('/')]
-                relative_url = repo_article.select_one('.h3 a')['href']
+                title = repo_article.select_one(".h3").text.strip()
+                username, repo_name = [x.strip() for x in title.split("/")]
+                relative_url = repo_article.select_one(".h3 a")["href"]
                 full_url = f"{GITHUB_URL}{relative_url}"
 
                 # Get description
-                description = repo_article.select_one('p.my-1')
-                description = description.text.strip() if description else ''
-
+                description = repo_article.select_one("p.my-1")
+                description = description.text.strip() if description else ""
 
                 # Get readme content
                 readme_response = requests.get(
                     f"https://api.github.com/repos{relative_url}/README.md",
-                    headers={"Accept": "application/vnd.github.raw"}
+                    headers={"Accept": "application/vnd.github.raw"},
                 )
 
                 if readme_response.status_code == 200:
@@ -117,14 +116,14 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
                         content=f"Description: {description}\nReadme: {readme_response.text}",
                         url=full_url,
                         source=NewsSource.GITHUB_TRENDING,
-                        timestamp=datetime.now()
+                        timestamp=datetime.now(),
                     )
 
         except Exception as e:
             logging.error(f"Error crawling GitHub trending: {e}")
-            
+
         return trending_news
-    
+
     def json_issues_to_issues(self, issues: List[Dict]) -> List[Issue]:
         """
         Convert a list of JSON issues to a list of Issue objects

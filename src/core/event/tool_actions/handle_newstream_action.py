@@ -7,6 +7,7 @@ from src.model.news import News
 
 logger = logging.getLogger(__name__)
 
+
 class NewStreamActionHandler(BaseActionHandler):
     """Handler for processing news streams and creating/modifying examples"""
 
@@ -17,8 +18,8 @@ class NewStreamActionHandler(BaseActionHandler):
         tools_map: Dict,
         model: str,
         action_classifier_prompt: str,
-        execute_creation_prompt: str, 
-        execute_modification_prompt: str
+        execute_creation_prompt: str,
+        execute_modification_prompt: str,
     ):
         """
         Initialize the news stream action handler
@@ -37,7 +38,7 @@ class NewStreamActionHandler(BaseActionHandler):
             system_prompt_file=action_classifier_prompt,
             tools=tools,
             tools_map=tools_map,
-            model=model
+            model=model,
         )
         self.execute_creation_prompt = execute_creation_prompt
         self.execute_modification_prompt = execute_modification_prompt
@@ -61,7 +62,7 @@ class NewStreamActionHandler(BaseActionHandler):
         if not is_creation:
             news_string = "\n".join([news.model_dump_json() for news in messages])
             messages = [{"role": "user", "content": news_string}]
-        
+
             action_response = super().handle_action(messages, max_tool_calls)
             # Extract action from response
             for content in action_response.get("content", []):
@@ -76,19 +77,19 @@ class NewStreamActionHandler(BaseActionHandler):
             action = "create"
 
         # Update system prompt based on classified action
-        if action == "create": # TODO different tools needed
+        if action == "create":  # TODO different tools needed
             self.system_prompt_file = self.execute_creation_prompt
-            
+
             # product_name
             # new_technology
             # Format creation prompt with product name and new technology
             creation_prompt = self.execute_creation_prompt.format(
                 product_name="firecrawl",
                 new_technology="new_tech",
-                preamble="You are an AI assistant helping to create examples."
+                preamble="You are an AI assistant helping to create examples.",
             )
             self.system_prompt_file = creation_prompt
-            
+
             self.tools = EXAMPLE_CREATOR_TOOLS
         elif action == "modify":
             self.system_prompt_file = self.execute_modification_prompt

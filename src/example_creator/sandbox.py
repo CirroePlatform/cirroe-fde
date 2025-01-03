@@ -29,7 +29,9 @@ class Sandbox:
             subprocess.run(["node", "--version"], capture_output=True, check=True)
             subprocess.run(["npm", "--version"], capture_output=True, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
-            print("Warning: Node.js/npm not found. TypeScript execution will not be available.")
+            print(
+                "Warning: Node.js/npm not found. TypeScript execution will not be available."
+            )
 
     def run_code(self, code: str, language: Language) -> Tuple[str, str]:
         """
@@ -60,7 +62,7 @@ class Sandbox:
                 [sys.executable, temp_file],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             stdout, stderr = process.communicate()
             return stdout.strip(), stderr.strip()
@@ -82,9 +84,7 @@ class Sandbox:
 
             # Compile TypeScript to JavaScript
             compile_process = subprocess.run(
-                ["npx", "tsc", temp_file],
-                capture_output=True,
-                text=True
+                ["npx", "tsc", temp_file], capture_output=True, text=True
             )
 
             if compile_process.returncode != 0:
@@ -95,7 +95,7 @@ class Sandbox:
                 ["node", temp_file.replace(".ts", ".js")],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             stdout, stderr = process.communicate()
             return stdout.strip(), stderr.strip()
@@ -122,11 +122,11 @@ class Sandbox:
             str: Formatted output string
         """
         output = []
-        
+
         if stdout:
             output.append("Standard Output:")
             output.append(stdout)
-            
+
         if stderr:
             if output:
                 output.append("\n")
@@ -134,6 +134,3 @@ class Sandbox:
             output.append(stderr)
 
         return "\n".join(output)
-
-
-

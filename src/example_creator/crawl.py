@@ -16,13 +16,17 @@ from src.integrations.kbs.github_kb import GithubKnowledgeBase
 
 GH_TRENDING_INTERVAL = timedelta(days=1)
 
+
 class Crawl:
     """
     Crawl various kbs for user sentiment to create exmaples with
     """
+
     def __init__(self):
-        self.news_cache: Dict[str, News] = {} # this should be the cached news within the timeframe. Stores some generic identifier for the news stories, id depends on the source type.
-        
+        self.news_cache: Dict[str, News] = (
+            {}
+        )  # this should be the cached news within the timeframe. Stores some generic identifier for the news stories, id depends on the source type.
+
         # Github crawling stuff
         self.gh_token = os.getenv("GITHUB_TEST_TOKEN")
         self.github_headers = {
@@ -36,14 +40,14 @@ class Crawl:
         Crawl for the top n problems users of the product are facing
         """
         # 1. get the most recent messages from discord in all or specific channels.
-        # 2. Cluster the messages into 
+        # 2. Cluster the messages into
         return []
 
     def crawl_news(self, interval: timedelta):
         """
         Crawl for the top n news articles about the product. Constantly updates the news cache.
 
-        Eviction is time based. If we have news that is older than the interval, we remove it. If we also 
+        Eviction is time based. If we have news that is older than the interval, we remove it. If we also
         exceed the max cache size, we remove the oldest news.
         """
         while True:
@@ -71,7 +75,9 @@ class Crawl:
         """
         return {}
 
-    def crawl_hacker_news(self, start_time: datetime, end_time: datetime) -> Dict[str, News]:
+    def crawl_hacker_news(
+        self, start_time: datetime, end_time: datetime
+    ) -> Dict[str, News]:
         """
         Crawl hacker news for a list of posts and their content.
         """
@@ -81,7 +87,7 @@ class Crawl:
         """
         Crawl github trending for a list of repos and their content.
         Gets the top 15 repos by stars gained today.
-        
+
         Returns:
             Dict[str, News]: Dictionary mapping repo names to News objects containing readme content
         """
@@ -94,30 +100,27 @@ class Crawl:
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Find all repository articles
-            for repo_article in soup.select('.Box article.Box-row')[:15]:
+            for repo_article in soup.select(".Box article.Box-row")[:15]:
                 # Extract repository info
-                title = repo_article.select_one('.h3').text.strip()
-                username, repo_name = [x.strip() for x in title.split('/')]
-                relative_url = repo_article.select_one('.h3 a')['href']
+                title = repo_article.select_one(".h3").text.strip()
+                username, repo_name = [x.strip() for x in title.split("/")]
+                relative_url = repo_article.select_one(".h3 a")["href"]
                 full_url = f"{GITHUB_URL}{relative_url}"
 
                 # Get description
-                description = repo_article.select_one('p.my-1')
-                description = description.text.strip() if description else ''
+                description = repo_article.select_one("p.my-1")
+                description = description.text.strip() if description else ""
 
+                repo_key = f"{username}/{repo_name}"
+                if repo_key in trending_news:  # no need to waste api calls.
+                    continue
 
                 # Get readme content
-                url = (
-                    f"{GITHUB_API_BASE}/repos{relative_url}/contents/README.md"
-                )
-                readme_response = requests.get(
-                    url,
-                    headers=self.github_headers
-                )
+                url = f"{GITHUB_API_BASE}/repos{relative_url}/contents/README.md"
+                readme_response = requests.get(url, headers=self.github_headers)
 
                 if readme_response.status_code == 200:
-                    repo_key = f"{username}/{repo_name}"
-                    
+
                     body = readme_response.json()
                     content_response = requests.get(
                         body["download_url"], headers=self.github_headers
@@ -129,10 +132,10 @@ class Crawl:
                         content=f"Description: {description}\nReadme: {str(content_response.content)}",
                         url=full_url,
                         source=NewsSource.GITHUB_TRENDING,
-                        timestamp=datetime.now()
+                        timestamp=datetime.now(),
                     )
 
         except Exception as e:
             logging.error(f"Error crawling GitHub trending: {e}")
-            
+
         return trending_news
