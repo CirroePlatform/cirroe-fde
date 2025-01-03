@@ -11,11 +11,11 @@ from include.constants import SUBREDDIT_LIST, GITHUB_API_BASE
 import requests
 import os
 import logging
-
-from src.integrations.kbs.github_kb import GithubKnowledgeBase
+import uuid
+from src.integrations.kbs.reddit_kb import RedditKnowledgeBase
 
 GH_TRENDING_INTERVAL = timedelta(days=1)
-
+REDDIT_INTERVAL = timedelta(days=1)
 
 class Crawl:
     """
@@ -34,6 +34,9 @@ class Crawl:
             "Accept": "application/vnd.github.v3+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
+
+        # Reddit crawling stuff
+        self.rkb = RedditKnowledgeBase(uuid.uuid4())
 
     def crawl_issues(self, n: int = 10) -> List[str]:
         """
@@ -73,7 +76,21 @@ class Crawl:
         """
         Crawl reddit for a list of posts and their content.
         """
-        return {}
+
+        reddit_news = {}
+        for subreddit in subreddit_list:
+            top_posts = self.rkb.get_top_posts(subreddit, time_interval=REDDIT_INTERVAL)
+
+            for post in top_posts:
+                reddit_news[post["id"]] = News(
+                    title=post["title"],
+                    content=post["content"],
+                    url=post["url"],
+                    source=NewsSource.REDDIT,
+                    timestamp=datetime.fromtimestamp(post["created_utc"]),
+                )
+
+        return reddit_news
 
     def crawl_hacker_news(
         self, start_time: datetime, end_time: datetime
