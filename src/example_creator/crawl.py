@@ -6,7 +6,7 @@ import time
 from typing import List, Dict
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
-from src.model.news import News, NewsSource
+from src.model.news import News, NewsSource, RedditNews
 from include.constants import SUBREDDIT_LIST, GITHUB_API_BASE
 import requests
 import os
@@ -82,12 +82,16 @@ class Crawl:
             top_posts = self.rkb.get_top_posts(subreddit, time_interval=REDDIT_INTERVAL)
 
             for post in top_posts:
-                reddit_news[post["id"]] = News(
+                reddit_news[post["id"]] = RedditNews(
                     title=post["title"],
                     content=post["content"],
                     url=post["url"],
                     source=NewsSource.REDDIT,
-                    timestamp=datetime.fromtimestamp(post["created_utc"]),
+                    images=post["images"],
+                    score=post["score"],
+                    created_utc=datetime.fromtimestamp(post["created_utc"]),
+                    num_comments=post["num_comments"],
+                    author=post["author"],
                 )
 
         return reddit_news
