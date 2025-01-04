@@ -37,7 +37,7 @@ class BaseActionHandler:
         self.model = model
 
     def handle_action(
-        self, messages: List[Dict], max_tool_calls: int = 5
+        self, messages: List[Dict], max_tool_calls: int = 5, step_by_step: bool = False
     ) -> Dict[str, Any]:
         """
         Handle a user action through chain-of-thought reasoning and tool usage
@@ -117,6 +117,12 @@ class BaseActionHandler:
 
                 if response.stop_reason != "tool_use":
                     break
+
+                if step_by_step:
+                    return {
+                        "messages": messages,
+                        "last_response": response,
+                    }
 
                 response = self.client.messages.create(
                     model=self.model,

@@ -1,7 +1,7 @@
 from typing import Dict, List, Any
 import logging
 from .handle_base_action import BaseActionHandler
-from include.constants import EXAMPLE_CREATOR_TOOLS
+from include.constants import EXAMPLE_CREATOR_CREATION_TOOLS, EXAMPLE_CREATOR_MODIFICATION_TOOLS
 import anthropic
 from src.model.news import News
 
@@ -44,58 +44,49 @@ class NewStreamActionHandler(BaseActionHandler):
         self.execute_modification_prompt = execute_modification_prompt
 
     def handle_action(
-        self, messages: List[News], max_tool_calls: int = 5, is_creation: bool = False
+        self, news_stream: List[News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
         """
         Handle processing a news stream to determine and execute appropriate action
 
         Args:
-            messages: Initial message stream containing news source
+            news_stream: Initial message stream containing news source
             max_tool_calls: Maximum number of tool calls allowed
 
         Returns:
             Dict containing final response and collected knowledge base responses
         """
+        
+        with open("prompts/example_builder/preamble.txt", "r") as f:
+            preamble = f.read()
 
-        # First classify the action using action classifier prompt. Convert the news to a string.
-        action = None
-        if not is_creation:
-            news_string = "\n".join([news.model_dump_json() for news in messages])
-            messages = [{"role": "user", "content": news_string}]
+        step_messages = []
+        for _ in range(max_tool_calls):
+            news_string = "\n".join([news.model_dump_json() for news in news_stream])
+            step_messages += [{"role": "user", "content": news_string}]
 
-            action_response = super().handle_action(messages, max_tool_calls)
-            # Extract action from response
-            for content in action_response.get("content", []):
-                if isinstance(content, str) and "<action>" in content:
-                    action = content.split("<action>")[1].split("</action>")[0].strip()
-                    break
+            step_response = super().handle_action(step_messages, 1, step_by_step=True)
+            last_message = step_response["last_response"].content[0].text
+            step_messages.append(last_message)
 
-            if not action:
-                logger.warning("No action classified from news stream")
-                return {"content": "No action needed for this news stream"}
-        else:
-            action = "create"
+            # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
+            if self.system_prompt_file == self.action_classifier_prompt:
+                for content in step_response.get("content", []):
+                    if isinstance(content, str) and "<action>" in content:
+                        action = content.split("<action>")[1].split("</action>")[0].strip()
 
-        # Update system prompt based on classified action
-        if action == "create":  # TODO different tools needed
-            self.system_prompt_file = self.execute_creation_prompt
+                        if action == "create":
+                            self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
+                            creation_prompt = self.execute_creation_prompt.format(
+                                product_name="firecrawl",
+                                new_technology="new_tech",
+                                preamble=preamble,
+                            )
+                            self.system_prompt_file = creation_prompt
+                        elif action == "modify":
+                            self.system_prompt_file = self.execute_modification_prompt
+                            self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
+                        elif action == "none":
+                            return {"content": "No action needed for this news stream"}
 
-            # product_name
-            # new_technology
-            # Format creation prompt with product name and new technology
-            creation_prompt = self.execute_creation_prompt.format(
-                product_name="firecrawl",
-                new_technology="new_tech",
-                preamble="You are an AI assistant helping to create examples.",
-            )
-            self.system_prompt_file = creation_prompt
-
-            self.tools = EXAMPLE_CREATOR_TOOLS
-        elif action == "modify":
-            self.system_prompt_file = self.execute_modification_prompt
-            self.tools = EXAMPLE_CREATOR_TOOLS
-        else:
-            return {"content": "No action needed for this news stream"}
-
-        # Execute the creation/modification action
-        return super().handle_action(messages, max_tool_calls)
+            # 2. If the last tool called was the pr opener, then we can end with the last message.

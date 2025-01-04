@@ -553,7 +553,7 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return [], ""
 
     def __query_custom(
-        self, query: str, limit: int = 5, tb: Optional[str] = None
+        self, query: str, limit: int = 5, tb: Optional[str] = None, git_repo: Optional[str] = None
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the vector db for code search
@@ -561,12 +561,17 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         Args:
             query (str): Natural language query about the codebase
             limit (int, optional): Maximum number of results to return
-
+            git_repo (Optional[str]): The github repo to use for the search
         Returns:
             Tuple[List[KnowledgeBaseResponse], str]: List of KnowledgeBaseResponse objects containing search results,
                       String answer to the query
         """
         try:
+            og_repos = self.repos
+            if git_repo is not None:
+                self.repos = [Repository(remote="github.com", repository=git_repo, branch="main")]
+                # TODO: Add the repo to the vector db if not there already.
+
             query_vector = self.vector_db.vanilla_embed(query)
             results = self.vector_db.get_top_k_code(limit, query_vector)
 
@@ -583,15 +588,17 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
                 response += f"{json.dumps([step.model_dump() for step in cleaned_results])}"  # TODO not sure if we should surround this with tags? also untested rn.
 
             response += "</code_pages>"
+            self.repos = og_repos
             return [], response
 
         except Exception as e:
             logging.error(f"Failed to query documentation: {str(e)}")
             logging.error(traceback.format_exc())
+            self.repos = og_repos
             return [], str(e)
 
     def query(
-        self, query: str, limit: int = 5, tb: Optional[str] = None, **kwargs
+        self, query: str, limit: int = 5, tb: Optional[str] = None, git_repo: Optional[str] = None, **kwargs
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search code repositories with natural language queries
@@ -607,4 +614,4 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         if INDEX_WITH_GREPTILE:
             return self.__query_greptile(query, limit)
         else:
-            return self.__query_custom(query, limit, tb)
+            return self.__query_custom(query, limit, tb, git_repo)
