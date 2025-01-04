@@ -1,4 +1,4 @@
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import anthropic
 import logging
 import traceback
@@ -37,7 +37,11 @@ class BaseActionHandler:
         self.model = model
 
     def handle_action(
-        self, messages: List[Dict], max_tool_calls: int = 5, step_by_step: bool = False
+        self,
+        messages: List[Dict],
+        max_tool_calls: int = 5,
+        step_by_step: bool = False,
+        system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Handle a user action through chain-of-thought reasoning and tool usage
@@ -45,13 +49,17 @@ class BaseActionHandler:
         Args:
             messages: Initial message stream
             max_tool_calls: Maximum number of tool calls allowed
+            system_prompt: Optional system prompt to use instead of the one in the class
 
         Returns:
             Dict containing final response and collected knowledge base responses
         """
         # Load system prompt
-        with open(self.system_prompt_file, "r", encoding="utf8") as fp:
-            sysprompt = fp.read()
+        if system_prompt:
+            sysprompt = system_prompt
+        else:
+            with open(self.system_prompt_file, "r", encoding="utf8") as fp:
+                sysprompt = fp.read()
 
         # Initialize response tracking
         kb_responses = []

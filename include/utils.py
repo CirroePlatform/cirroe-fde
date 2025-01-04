@@ -11,6 +11,30 @@ import base64
 
 load_dotenv()
 
+import re
+
+
+def format_prompt(prompt: str, **kwargs) -> str:
+    """
+    Formats a prompt string with given variables.
+
+    Args:
+        prompt (str): The input prompt containing placeholders.
+        **kwargs: Variables to replace in the prompt.
+
+    Returns:
+        str: A partially formatted prompt.
+    """
+    # Regular expression to match placeholders in the prompt
+    placeholders = re.findall(r"\{(.*?)\}", prompt)
+
+    # Replace only the placeholders that are provided in kwargs
+    for placeholder in placeholders:
+        if placeholder in kwargs:
+            prompt = prompt.replace(f"{{{placeholder}}}", str(kwargs[placeholder]))
+
+    return prompt
+
 
 def num_tokens_from_string(string: str, model_name: str) -> int:
     """Returns the number of tokens in a text string."""

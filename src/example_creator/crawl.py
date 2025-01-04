@@ -17,6 +17,7 @@ from src.integrations.kbs.reddit_kb import RedditKnowledgeBase
 GH_TRENDING_INTERVAL = timedelta(days=1)
 REDDIT_INTERVAL = timedelta(days=1)
 
+
 class Crawl:
     """
     Crawl various kbs for user sentiment to create exmaples with
@@ -69,7 +70,6 @@ class Crawl:
             github_repos = self.crawl_github_trending()
             self.news_cache.update(github_repos)
 
-            # 4. Sleep for the interval - time taken to crawl.
             if not debug:
                 time.sleep(interval.total_seconds())
             else:
