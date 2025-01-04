@@ -33,6 +33,7 @@ LIGHT_DASH_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174009")
 MINDEE_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174014")
 VIDEO_DB_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174023")
 CHROMA_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174027")
+FIRECRAWL_ORG_ID = UUID("123e4567-e89b-12d3-a456-426614174028")
 
 GITFILES_CACHE_DIR = f"{CACHE_DIR}/gitfiles"
 
@@ -66,7 +67,7 @@ MODEL_HEAVY = "claude-3-5-sonnet-latest"
 DEBUG_TOOLS = [
     {
         "name": "execute_search",
-        "description": "A function to search the various knowledge bases for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
+        "description": "A function to search the various knowledge bases for the organization of the example creator for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -106,27 +107,141 @@ DEBUG_TOOLS = [
     }
 ]
 
-EXAMPLE_CREATOR_TOOLS = [
+EXAMPLE_CREATOR_BASE_TOOLS = DEBUG_TOOLS
+
+# Feel like we should only include this for complete failure cases.
+EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
     {
-        "name": "execute_codebase_search",
-        "description": "A function to search any given codebase for relevant code snippets",
+        "name": "search_web",
+        "description": "Search the web with the EXA search engine. Will return a list of links relevant to your query and optionally get their full page contents.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "query": {
-                    "type": "string",
-                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets",
+                    "type": "string", 
+                    "description": "The query string",
+                    "required": True
                 },
-                "codebase": {
-                    "type": "string",
-                    "description": "The codebase to search for relevant code snippets",
+                "useAutoprompt": {
+                    "type": "boolean",
+                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only."
                 },
+                "type": {
+                    "type": "string",
+                    "enum": ["keyword", "neural", "auto"],
+                    "description": "The type of search. Default auto, which automatically decides between keyword and neural."
+                },
+                "category": {
+                    "type": "string", 
+                    "enum": ["company", "research paper", "news", "pdf", "github", "tweet", "personal site", "linkedin profile", "financial report"],
+                    "description": "A data category to focus on."
+                },
+                "numResults": {
+                    "type": "integer",
+                    "description": "Number of search results to return. Default and Max is 10."
+                },
+                "includeDomains": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of domains to include in the search. If specified, results will only come from these domains."
+                },
+                "excludeDomains": {
+                    "type": "array", 
+                    "items": {"type": "string"},
+                    "description": "List of domains to exclude in the search. If specified, results will not include any from these domains."
+                },
+                "startCrawlDate": {
+                    "type": "string",
+                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format."
+                },
+                "endCrawlDate": {
+                    "type": "string", 
+                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format."
+                },
+                "startPublishedDate": {
+                    "type": "string",
+                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format."
+                },
+                "endPublishedDate": {
+                    "type": "string",
+                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format."
+                },
+                "includeText": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of strings that must be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
+                },
+                "excludeText": {
+                    "type": "array",
+                    "items": {"type": "string"}, 
+                    "description": "List of strings that must not be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
+                },
+                "contents": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "object",
+                            "description": "Parsed contents of the page."
+                        },
+                        "highlights": {
+                            "type": "object",
+                            "description": "Relevant extract(s) from the webpage."
+                        },
+                        "summary": {
+                            "type": "object",
+                            "description": "Summary of the webpage"
+                        },
+                        "livecrawl": {
+                            "type": "string",
+                            "enum": ["never", "fallback", "always"],
+                            "description": "Options for livecrawling contents. Default is \"never\" for neural/auto search, \"fallback\" for keyword search."
+                        },
+                        "livecrawlTimeout": {
+                            "type": "integer",
+                            "description": "The timeout for livecrawling in milliseconds. Max and default is 10000."
+                        },
+                        "subpages": {
+                            "type": "integer",
+                            "description": "The number of subpages to crawl."
+                        },
+                        "subpageTarget": {
+                            "type": "string",
+                            "description": "The target subpage or subpages. Can be a single string or an array of strings."
+                        },
+                    }
+                }
             },
-            "required": ["query", "codebase"],
         },
     }
 ]
 
+EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
+    {
+        "name": "get_existing_examples",
+        "description": "A function to return the file paths of existing examples from the codebase",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
+        "name": "get_example_contents",
+        "description": "A function to get the file contents of some example that has already been created",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "example_file_path": {
+                    "type": "string",
+                    "description": "The file path of some existing example",
+                },
+            },
+            "required": ["example_file_path"],
+        },
+    }
+]
+
+EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
+EXAMPLE_CREATOR_CREATION_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"

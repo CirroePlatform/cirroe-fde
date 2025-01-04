@@ -46,7 +46,7 @@ class Crawl:
         # 2. Cluster the messages into
         return []
 
-    def crawl_news(self, interval: timedelta):
+    def crawl_news(self, interval: timedelta, debug: bool = False):
         """
         Crawl for the top n news articles about the product. Constantly updates the news cache.
 
@@ -70,7 +70,10 @@ class Crawl:
             self.news_cache.update(github_repos)
 
             # 4. Sleep for the interval - time taken to crawl.
-            time.sleep(interval.total_seconds())
+            if not debug:
+                time.sleep(interval.total_seconds())
+            else:
+                break
 
     def crawl_reddit(self, subreddit_list: List[str]) -> Dict[str, News]:
         """
@@ -95,14 +98,6 @@ class Crawl:
                 )
 
         return reddit_news
-
-    def crawl_hacker_news(
-        self, start_time: datetime, end_time: datetime
-    ) -> Dict[str, News]:
-        """
-        Crawl hacker news for a list of posts and their content.
-        """
-        return {}
 
     def crawl_github_trending(self) -> Dict[str, News]:
         """
@@ -160,3 +155,11 @@ class Crawl:
             logging.error(f"Error crawling GitHub trending: {e}")
 
         return trending_news
+
+    def crawl_hacker_news(
+        self, start_time: datetime, end_time: datetime
+    ) -> Dict[str, News]:
+        """
+        Crawl hacker news for a list of posts and their content.
+        """
+        return {}

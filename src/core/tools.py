@@ -15,7 +15,7 @@ from include.constants import ORG_NAME, KnowledgeBaseType
 @typechecked
 class SearchTools:
 
-    def __init__(self, requestor_id: UUID, github_repos: List[Repository]):
+    def __init__(self, requestor_id: UUID, github_repos: Optional[List[Repository]] = None):
         self.requestor_id = requestor_id
         self.supa = SupaClient(user_id=self.requestor_id)
         self.org_name = self.get_org_name()
@@ -23,6 +23,7 @@ class SearchTools:
         self.github = GithubKnowledgeBase(
             org_id=self.requestor_id, org_name=self.org_name, repos=github_repos
         )
+
         self.issue_kb = IssueKnowledgeBase(self.requestor_id)
         self.documentation_kb = DocumentationKnowledgeBase(self.requestor_id)
         self.web_kb = WebKnowledgeBase(self.requestor_id)
@@ -39,6 +40,7 @@ class SearchTools:
         traceback: Optional[str] = None,
         user_provided_code: Optional[str] = None,
         user_setup_details: Optional[str] = None,
+        git_repo: Optional[str] = None,
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Execute a search over the codebase, issues, and documentation.
@@ -50,6 +52,7 @@ class SearchTools:
             traceback (Optional[str]): The traceback to use for cleaning the results
             user_provided_code (Optional[str]): The user provided code to use for cleaning the results
             user_setup_details (Optional[str]): The user setup details to use for cleaning the results
+            git_repo (Optional[str]): The github repo to use for the search
         """
         if isinstance(knowledge_base, str):
             knowledge_base = KnowledgeBaseType(knowledge_base)
@@ -61,6 +64,7 @@ class SearchTools:
                 traceback,
                 user_provided_code=user_provided_code,
                 user_setup_details=user_setup_details,
+                git_repo=git_repo,
             )
         elif knowledge_base == KnowledgeBaseType.ISSUES:
             return self.issue_kb.query(
@@ -72,14 +76,6 @@ class SearchTools:
             )
         elif knowledge_base == KnowledgeBaseType.DOCUMENTATION:
             return self.documentation_kb.query(
-                query,
-                limit,
-                traceback,
-                user_provided_code=user_provided_code,
-                user_setup_details=user_setup_details,
-            )
-        elif knowledge_base == KnowledgeBaseType.WEB:
-            return self.web_kb.query(
                 query,
                 limit,
                 traceback,
