@@ -4,6 +4,7 @@ import subprocess
 import os
 from src.core.event.tool_actions.handle_newstream_action import NewStreamActionHandler
 from src.example_creator.crawl import Crawl
+from src.example_creator.sandbox import Sandbox
 from datetime import timedelta
 from include.constants import (
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
@@ -17,12 +18,14 @@ def get_handler() -> NewStreamActionHandler:
     """Initialize and return the NewStreamActionHandler"""
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     search_tools = SearchTools(requestor_id=FIRECRAWL_ORG_ID)
+    sandbox = Sandbox()
 
     tools_map = {
         "execute_search": search_tools.execute_search,
         "get_existing_examples": None,
         "get_example_contents": None,
         "search_web": search_tools.web_kb.query,
+        "run_code_e2b": sandbox.run_code_e2b,
     }
 
     # Initialize handler with required prompts and tools
@@ -35,6 +38,8 @@ def get_handler() -> NewStreamActionHandler:
         execute_creation_prompt="include/prompts/example_builder/execute_creation.txt",
         execute_modification_prompt="include/prompts/example_builder/execute_modification.txt",
         product_name="firecrawl",
+        org_name="mendableai",
+        org_id=FIRECRAWL_ORG_ID,
     )
 
     return handler

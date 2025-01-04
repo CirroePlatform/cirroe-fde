@@ -13,3 +13,6 @@ c) If there is no recent event or news source that is relevant to the product, y
 To determine relevancy, take a look at code snippets, readmes, and discord messages about {product_name}, then consider the recent events or news sources, and determine whether there is acrtually a need for examples to help users understand the product.
 
 Output the action you will take in <action> tags. Your output should be either "create", "modify" or "none", let's think step by step.
+
+Here is the README for {product_name} so you can understand the product better, if you need more info beyond what's in the readme, search for it:
+{product_readme}

@@ -525,7 +525,14 @@ class VectorDB:
 
         for i, chunk in enumerate(chunks):
             chunk_key = f"{file.primary_key}-{i}"
-            prev_data = self.client.get(CODE, chunk_key)
+
+            try:
+                prev_data = self.client.get(CODE, chunk_key)
+            except Exception as e:
+                logging.error(f"Failed to get previous data for {chunk_key}: {str(e)}")
+                # logging.error(traceback.format_exc())
+                prev_data = []
+
             if len(prev_data) > 0:
                 # compare content, if there's even a slight difference, we should update the code vector.
                 prev_data_code = CodePage(**prev_data[0])

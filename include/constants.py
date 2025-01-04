@@ -250,8 +250,29 @@ EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
     },
 ]
 
-EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
-EXAMPLE_CREATOR_CREATION_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS
+EXAMPLE_CREATOR_RUN_CODE_TOOL = [
+    {
+        "name": "run_code_e2b",
+        "description": "A function to run the code in the example with E2B sandbox",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "code_files": {
+                    "type": "object",
+                    "description": "The code files to run, in the format of a dictionary mapping filenames to code content",
+                },
+                "execution_command": {
+                    "type": "string",
+                    "description": "The command to execute the code",
+                },
+            },
+            "required": ["code_files", "execution_command"],
+        },
+    }
+]
+
+EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+EXAMPLE_CREATOR_CREATION_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"
