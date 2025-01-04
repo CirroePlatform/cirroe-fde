@@ -141,13 +141,13 @@ class Sandbox:
 
         return "\n".join(output)
 
-    async def run_code_e2b(self, code: str, language: Language) -> Tuple[str, str]:
+    async def run_code_e2b(self, code_files: Dict[str, str], execution_command: str) -> Tuple[str, str]:
         """
         Executes code in E2B sandbox environment
 
         Args:
-            code: Code to execute
-            language: Programming language
+            code_files: Dictionary mapping filenames to code content
+            execution_command: Command to execute the code (e.g. "python main.py" or "npm start")
 
         Returns:
             Tuple of (stdout, stderr)
@@ -156,19 +156,30 @@ class Sandbox:
             # Create E2B session
             session = await e2b.Session.create(id="Sandbox", cwd="/code")
 
-            # Write code to file
-            ext = ".py" if language == Language.PYTHON else ".ts"
-            filename = f"temp{ext}"
-            await session.write_file(filename, code)
+            # Create project directory structure and write files
+            for filepath, content in code_files.items():
+                # Create any necessary subdirectories
+                dir_path = os.path.dirname(filepath)
+                if dir_path:
+                    await session.run(f"mkdir -p {dir_path}")
+                
+                # Write the file
+                await session.write_file(filepath, content)
 
-            # Execute code based on language
-            if language == Language.PYTHON:
-                result = await session.run(f"python {filename}")
-            else:
-                # For TypeScript, compile then run
+            # Install dependencies if package.json exists
+            if "package.json" in code_files:
+                await session.run("npm install")
+
+            # Install TypeScript globally if any .ts files
+            if any(f.endswith('.ts') for f in code_files.keys()):
                 await session.run("npm install -g typescript")
-                await session.run(f"tsc {filename}")
-                result = await session.run(f"node {filename.replace('.ts', '.js')}")
+                # Compile TypeScript files
+                ts_files = [f for f in code_files.keys() if f.endswith('.ts')]
+                if ts_files:
+                    await session.run("tsc " + " ".join(ts_files))
+
+            # Execute the provided command
+            result = await session.run(execution_command)
 
             await session.close()
             return result.stdout, result.stderr
@@ -190,7 +201,7 @@ class Sandbox:
         """
         try:
             # Parse files from code string
-            files = self._parse_example_files(code_string)
+            files = self.parse_example_files(code_string)
             if not files:
                 return "Error: No valid files found in code string"
 
@@ -241,7 +252,7 @@ class Sandbox:
             logging.error(f"GitHub PR creation error: {e}")
             return f"Error creating PR: {str(e)}"
 
-    def _parse_example_files(self, code_string: str) -> Dict[str, str]:
+    def parse_example_files(self, code_string: str) -> Dict[str, str]:
         """
         Parses example files from code string format
 

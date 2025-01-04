@@ -1,4 +1,5 @@
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Tuple
+import json
 import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import (
@@ -9,6 +10,8 @@ from include.constants import (
 import anthropic
 from include.utils import format_prompt
 from src.model.news import News
+from src.integrations.kbs.github_kb import GithubKnowledgeBase
+from src.example_creator.sandbox import Sandbox
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,8 @@ class NewStreamActionHandler(BaseActionHandler):
         execute_creation_prompt: str,
         execute_modification_prompt: str,
         product_name: str,
+        org_name: str,
+        org_id: str,
     ):
         """
         Initialize the news stream action handler
@@ -50,6 +55,12 @@ class NewStreamActionHandler(BaseActionHandler):
         self.execute_creation_prompt = execute_creation_prompt
         self.execute_modification_prompt = execute_modification_prompt
         self.product_name = product_name
+        self.org_name = org_name
+        self.org_id = org_id
+        self.github_kb = GithubKnowledgeBase(org_id=self.org_id, org_name=self.org_name)
+        self.product_readme = self.github_kb.get_readme(f"{self.org_name}/{self.product_name}")
+        self.sandbox = Sandbox()
+        self.preamble = None
 
     def __load_prompts(self):
         with open(self.action_classifier_prompt, "r") as f:
@@ -58,6 +69,45 @@ class NewStreamActionHandler(BaseActionHandler):
             self.execute_creation_prompt = f.read()
         with open(self.execute_modification_prompt, "r") as f:
             self.execute_modification_prompt = f.read()
+
+    def craft_pr_title_and_body(self, messages: List[any], code_files: str) -> Tuple[str, str]:
+        """
+        Craft a PR title and body from the messages
+
+        Args:
+            messages (List[any]): List of messages from the tools calling chain
+
+        Returns:
+            Tuple[str, str]: PR title and body
+        """
+        with open("include/prompts/example_builder/pr_title_and_desc.txt", "r") as f:
+            pr_title_and_desc_prompt = f.read()
+            pr_title_and_desc_prompt = format_prompt(
+                pr_title_and_desc_prompt,
+                preamble=self.preamble,
+                messages=json.dumps(messages),
+                code_files=json.dumps(code_files),
+            )
+
+        response = self.client.messages.create(
+            model=self.model,
+            messages=[{"role": "user", "content": pr_title_and_desc_prompt}],
+        )
+
+        title = (
+            response.content[0].text
+            .split("<title>")[1]
+            .split("</title>")[0]
+            .strip()
+        )
+        description = (
+            response.content[0].text
+            .split("<description>")[1]
+            .split("</description>")[0]
+            .strip()
+        )
+
+        return title, description
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
@@ -76,10 +126,12 @@ class NewStreamActionHandler(BaseActionHandler):
 
         with open("include/prompts/example_builder/preamble.txt", "r") as f:
             preamble = f.read()
+            self.preamble = preamble
             self.action_classifier_prompt = format_prompt(
                 self.action_classifier_prompt,
                 preamble=preamble,
                 product_name=self.product_name,
+                product_readme=self.product_readme,
             )
             self.execute_creation_prompt = format_prompt(
                 self.execute_creation_prompt,
@@ -134,4 +186,10 @@ class NewStreamActionHandler(BaseActionHandler):
                                     "content": "No action needed for this news stream"
                                 }
 
-                # 2. If the last message has the <updated_example> tag, then we can end with the last message, open a PR, and return out of this function.
+                if step_response["last_response"].stop_reason != "tool_use":
+                    code_files = step_response["content"][0].text.split("<code_files>")[1].split("</code_files>")[0].strip()
+                    title, description = self.craft_pr_title_and_body(step_messages, code_files)
+                    self.sandbox.create_github_pr(last_message, f"{self.org_name}/{self.product_name}", title, description)
+                    return {
+                        "content": "PR created successfully"
+                    }

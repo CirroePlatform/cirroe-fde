@@ -626,3 +626,29 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return self.__query_greptile(query, limit)
         else:
             return self.__query_custom(query, limit, tb, git_repo)
+
+    def get_readme(self, repo_name: str) -> str:
+        """
+        Get the README for the codebase
+
+        Args:
+            repo_name: Name of the repository in format "owner/repo"
+
+        Returns:
+            str: Contents of the README.md file
+        """
+        url = f"{GITHUB_API_BASE}/repos/{repo_name}/contents/README.md"
+
+        try:
+            response = requests.get(url, headers=self.github_headers)
+            response.raise_for_status()
+
+            content = response.json()
+            readme_response = requests.get(content["download_url"], headers=self.github_headers)
+            readme_response.raise_for_status()
+
+            return str(readme_response.content)
+
+        except Exception as e:
+            logging.error(f"Failed to get README for {repo_name}: {str(e)}")
+            return ""
