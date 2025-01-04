@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from enum import StrEnum
 from datetime import datetime
-from typing import List 
+from typing import List
 
 
 class NewsSource(StrEnum):
@@ -16,7 +16,8 @@ class News(BaseModel):
     url: str
     source: NewsSource
 
-class RedditNews(News):    
+
+class RedditNews(News):
     images: List[str]
     score: int
     created_utc: datetime

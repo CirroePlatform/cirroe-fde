@@ -553,7 +553,11 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return [], ""
 
     def __query_custom(
-        self, query: str, limit: int = 5, tb: Optional[str] = None, git_repo: Optional[str] = None
+        self,
+        query: str,
+        limit: int = 5,
+        tb: Optional[str] = None,
+        git_repo: Optional[str] = None,
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the vector db for code search
@@ -569,7 +573,9 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         try:
             og_repos = self.repos
             if git_repo is not None:
-                self.repos = [Repository(remote="github.com", repository=git_repo, branch="main")]
+                self.repos = [
+                    Repository(remote="github.com", repository=git_repo, branch="main")
+                ]
                 # TODO: Add the repo to the vector db if not there already.
 
             query_vector = self.vector_db.vanilla_embed(query)
@@ -598,7 +604,12 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return [], str(e)
 
     def query(
-        self, query: str, limit: int = 5, tb: Optional[str] = None, git_repo: Optional[str] = None, **kwargs
+        self,
+        query: str,
+        limit: int = 5,
+        tb: Optional[str] = None,
+        git_repo: Optional[str] = None,
+        **kwargs,
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Search code repositories with natural language queries

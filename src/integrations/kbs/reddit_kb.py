@@ -23,12 +23,12 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
             org_id: Organization ID to scope the knowledge base
         """
         super().__init__(org_id)
-        
+
         # Initialize Reddit API client
         self.reddit = praw.Reddit(
             client_id=os.getenv("REDDIT_CLIENT_ID"),
-            client_secret=os.getenv("REDDIT_CLIENT_SECRET"), 
-            user_agent="CirroeBot/1.0 by Puzzleheaded-Boot986"
+            client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
+            user_agent="CirroeBot/1.0 by Puzzleheaded-Boot986",
         )
 
     async def index(self, data: Any) -> bool:
@@ -49,11 +49,7 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
             return False
 
     def query(
-        self, 
-        query: str, 
-        limit: int = 5, 
-        tb: Optional[str] = None, 
-        **kwargs
+        self, query: str, limit: int = 5, tb: Optional[str] = None, **kwargs
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
         Query the Reddit knowledge base
@@ -91,16 +87,18 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
 
         # Check if the post is a media post (Reddit-hosted image)
         if hasattr(post, "is_reddit_media_domain") and post.is_reddit_media_domain:
-            if hasattr(post, "is_video") and not post.is_video: # ignoring videos for now.
+            if (
+                hasattr(post, "is_video") and not post.is_video
+            ):  # ignoring videos for now.
                 images.append(post.url)
 
         return images
-    
+
     def get_top_posts(
         self,
         subreddit_name: str,
         limit: int = 10,
-        time_interval: timedelta = timedelta(days=1)
+        time_interval: timedelta = timedelta(days=1),
     ) -> List[dict]:
         """
         Get top posts from a subreddit within a time interval
@@ -125,20 +123,22 @@ class RedditKnowledgeBase(BaseKnowledgeBase):
             for post in subreddit.top(time_filter="day"):
                 post_time = datetime.fromtimestamp(post.created_utc)
                 images = self.get_images_from_post(post)
-                
+
                 if post_time >= start_time:
-                    posts.append({
-                        "id": post.id,
-                        "title": post.title,
-                        "content": post.selftext,
-                        "url": post.url,
-                        "score": post.score,
-                        "created_utc": post.created_utc,
-                        "num_comments": post.num_comments,
-                        "author": str(post.author),
-                        "images": images,
-                    })
-            
+                    posts.append(
+                        {
+                            "id": post.id,
+                            "title": post.title,
+                            "content": post.selftext,
+                            "url": post.url,
+                            "score": post.score,
+                            "created_utc": post.created_utc,
+                            "num_comments": post.num_comments,
+                            "author": str(post.author),
+                            "images": images,
+                        }
+                    )
+
             return posts
 
         except Exception as e:

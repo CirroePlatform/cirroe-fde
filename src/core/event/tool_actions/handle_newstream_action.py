@@ -1,8 +1,13 @@
 from typing import Dict, List, Any
 import logging
 from .handle_base_action import BaseActionHandler
-from include.constants import EXAMPLE_CREATOR_CREATION_TOOLS, EXAMPLE_CREATOR_MODIFICATION_TOOLS
+from include.constants import (
+    EXAMPLE_CREATOR_CREATION_TOOLS,
+    EXAMPLE_CREATOR_MODIFICATION_TOOLS,
+    EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
+)
 import anthropic
+from include.utils import format_prompt
 from src.model.news import News
 
 logger = logging.getLogger(__name__)
@@ -20,6 +25,7 @@ class NewStreamActionHandler(BaseActionHandler):
         action_classifier_prompt: str,
         execute_creation_prompt: str,
         execute_modification_prompt: str,
+        product_name: str,
     ):
         """
         Initialize the news stream action handler
@@ -40,11 +46,21 @@ class NewStreamActionHandler(BaseActionHandler):
             tools_map=tools_map,
             model=model,
         )
+        self.action_classifier_prompt = action_classifier_prompt
         self.execute_creation_prompt = execute_creation_prompt
         self.execute_modification_prompt = execute_modification_prompt
+        self.product_name = product_name
+
+    def __load_prompts(self):
+        with open(self.action_classifier_prompt, "r") as f:
+            self.action_classifier_prompt = f.read()
+        with open(self.execute_creation_prompt, "r") as f:
+            self.execute_creation_prompt = f.read()
+        with open(self.execute_modification_prompt, "r") as f:
+            self.execute_modification_prompt = f.read()
 
     def handle_action(
-        self, news_stream: List[News], max_tool_calls: int = 15
+        self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
         """
         Handle processing a news stream to determine and execute appropriate action
@@ -56,37 +72,66 @@ class NewStreamActionHandler(BaseActionHandler):
         Returns:
             Dict containing final response and collected knowledge base responses
         """
-        
-        with open("prompts/example_builder/preamble.txt", "r") as f:
+        self.__load_prompts()
+
+        with open("include/prompts/example_builder/preamble.txt", "r") as f:
             preamble = f.read()
+            self.action_classifier_prompt = format_prompt(
+                self.action_classifier_prompt,
+                preamble=preamble,
+                product_name=self.product_name,
+            )
+            self.execute_creation_prompt = format_prompt(
+                self.execute_creation_prompt,
+                product_name=self.product_name,
+                new_technology="new_tech",
+                preamble=preamble,
+            )
+            self.execute_modification_prompt = format_prompt(
+                self.execute_modification_prompt,
+                product_name=self.product_name,
+                preamble=preamble,
+            )
 
-        step_messages = []
-        for _ in range(max_tool_calls):
-            news_string = "\n".join([news.model_dump_json() for news in news_stream])
-            step_messages += [{"role": "user", "content": news_string}]
+        news_string = "\n".join(
+            [news.model_dump_json() for news in news_stream.values()]
+        )
+        step_size = len(news_string) // 3
+        cur_prompt = self.action_classifier_prompt
+        self.tools = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
 
-            step_response = super().handle_action(step_messages, 1, step_by_step=True)
-            last_message = step_response["last_response"].content[0].text
-            step_messages.append(last_message)
+        for i in range(0, len(news_string), step_size):
+            step_messages = [
+                {"role": "user", "content": news_string[i : i + step_size]}
+            ]
 
-            # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
-            if self.system_prompt_file == self.action_classifier_prompt:
-                for content in step_response.get("content", []):
-                    if isinstance(content, str) and "<action>" in content:
-                        action = content.split("<action>")[1].split("</action>")[0].strip()
+            for _ in range(max_tool_calls):
+                step_response = super().handle_action(
+                    step_messages, 1, step_by_step=True, system_prompt=cur_prompt
+                )
+                last_message = step_response["last_response"].content[0].text
 
-                        if action == "create":
-                            self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
-                            creation_prompt = self.execute_creation_prompt.format(
-                                product_name="firecrawl",
-                                new_technology="new_tech",
-                                preamble=preamble,
+                # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
+                if cur_prompt == self.action_classifier_prompt:
+                    for content in step_response.get("content", []):
+                        if (
+                            isinstance(content, str) and "<action>" in content
+                        ) or "<action>" in last_message:
+                            action = (
+                                content.split("<action>")[1]
+                                .split("</action>")[0]
+                                .strip()
                             )
-                            self.system_prompt_file = creation_prompt
-                        elif action == "modify":
-                            self.system_prompt_file = self.execute_modification_prompt
-                            self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
-                        elif action == "none":
-                            return {"content": "No action needed for this news stream"}
 
-            # 2. If the last tool called was the pr opener, then we can end with the last message.
+                            if action == "create":
+                                cur_prompt = self.execute_creation_prompt
+                                self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
+                            elif action == "modify":
+                                cur_prompt = self.execute_modification_prompt
+                                self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
+                            elif action == "none":
+                                return {
+                                    "content": "No action needed for this news stream"
+                                }
+
+                # 2. If the last message has the <updated_example> tag, then we can end with the last message, open a PR, and return out of this function.

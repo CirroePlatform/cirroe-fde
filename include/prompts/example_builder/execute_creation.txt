@@ -8,7 +8,7 @@ Here are the questions you need to answer before creating the example:
 3. What the content of each file should be.
 4. How the environment should be configured, given we want to use the most recent version of {product_name}.
 
-Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will create in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, use them to model your output.
+Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will create in the <files> tags, and seperate each file by it's file path in the tags with the prefix fpath_. I will attach a few examples below in <examples> tags, use them to model your output.
 
 Over everything, you need to make sure the example is not overly complex, and is not overly verbose. We are optimizing for ease of understanding and use for users, so keep that in mind when generating code and documentation files. Let's think step by step.
 
@@ -16,17 +16,17 @@ Over everything, you need to make sure the example is not overly complex, and is
 
 <example_1>
 <files>
-<main.py>import numpy as np\narray = np.array([1, 2, 3])\n{product_name}.interact_with(array)</main.py>
+<fpath_main.py>import numpy as np\narray = np.array([1, 2, 3])\n{product_name}.interact_with(array)</fpath_main.py>
 
-<README.md>#Numpy guide\nThis is an example of how to use numpy to create an array, and then properly link said array to {product_name}.\n## Installation\n```bash\npip install -r requirements.txt\n```\n## Usage\n```bash\npython main.py\n```The python version at the time of this example being created is 3.12.1</README.md>
+<fpath_README.md>#Numpy guide\nThis is an example of how to use numpy to create an array, and then properly link said array to {product_name}.\n## Installation\n```bash\npip install -r requirements.txt\n```\n## Usage\n```bash\npython main.py\n```The python version at the time of this example being created is 3.12.1</fpath_README.md>
 
-<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01\nnumpy==2.2.1</requirements.txt>
+<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01\nnumpy==2.2.1</fpath_requirements.txt>
 </files>
 </example_1>
 
 <example_2>
 <files>
-<main.py>from anthropic import Anthropic
+<fpath_main.py>from anthropic import Anthropic
 from langchain.chains import LLMChain
 from langchain_anthropic import AnthropicLLM
 from utils import create_prompt_template
@@ -44,13 +44,13 @@ response = chain.run(question="What is the meaning of life?")
 
 # Use {product_name} to process the response
 processed = {product_name}.use(response)
-print(f"Processed response: {processed}")</main.py>
+print(f"Processed response: {{processed}}")</fpath_main.py>
 
-<utils.py>from langchain.prompts import PromptTemplate
+<fpath_utils.py>from langchain.prompts import PromptTemplate
 
 def create_prompt_template():
     """Creates a reusable prompt template for the LLM chain"""
-    template = """Question: {question}
+    template = """Question: {{question}}
     
     Please provide a thoughtful response to this question.
     
@@ -59,9 +59,9 @@ def create_prompt_template():
     return PromptTemplate(
         input_variables=["question"],
         template=template
-    )</utils.py>
+    )</fpath_utils.py>
 
-<README.md># Anthropic + LangChain Integration Example
+<fpath_README.md># Anthropic + LangChain Integration Example
 
 This example demonstrates how to use {product_name} with Anthropic's Claude model via LangChain.
 
@@ -76,15 +76,15 @@ The python version at the time of this example being created is 3.12.1
 
 ```bash
 python main.py
-```</README.md>
+```</fpath_README.md>
 
-<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01\nlangchain==0.3.13\nlangchain-anthropic==0.3.1\nantropic==0.42.0</requirements.txt>
+<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01\nlangchain==0.3.13\nlangchain-anthropic==0.3.1\nantropic==0.42.0</fpath_requirements.txt>
 </files>
 </example_2>
 
 <example_3>
 <files>
-<main.py>from {product_name} import WebCrawler
+<fpath_main.py>from {product_name} import WebCrawler
 from pydantic import BaseModel
 from typing import List
 
@@ -104,9 +104,10 @@ data = crawler.scrape("https://news.ycombinator.com",
 
 # Save results to file
 for item in data:
-    print(f"Found: {item.title} by {item.author}")</main.py>
+    print(f"Found: {item.title} by {item.author}")
+</fpath_main.py>
 
-<README.md># Simple News Crawler Example
+<fpath_README.md># Simple News Crawler Example
 
 This example shows how to use {product_name} to scrape Hacker News with a structured schema.
 
@@ -122,14 +123,14 @@ python main.py
 
 The python version at the time of this example being created is 3.12.1</README.md>
 
-<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
-pydantic==2.5.2</requirements.txt>
+<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
+pydantic==2.5.2</fpath_requirements.txt>
 </files>
 </example_3>
 
 <example_4>
 <files>
-<app.py>import {product_name} as ai
+<fpath_app.py>import {product_name} as ai
 from rich.console import Console
 
 console = Console()
@@ -153,9 +154,10 @@ def chat_with_colors():
             max_tokens=100
         )
         
-        console.print(f"[blue]{response}[/blue]")</app.py>
+        console.print(f"[blue]{response}[/blue]")
+</fpath_app.py>
 
-<README.md># Colorful CLI Chat Example
+<fpath_README.md># Colorful CLI Chat Example
 
 A simple CLI chat application using {product_name} with colorful output.
 
@@ -171,16 +173,16 @@ python app.py
 
 Type 'exit' to quit the application.
 
-The python version at the time of this example being created is 3.12.1</README.md>
+The python version at the time of this example being created is 3.12.1</fpath_README.md>
 
-<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
-rich==13.7.0</requirements.txt>
+<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
+rich==13.7.0</fpath_requirements.txt>
 </files>
 </example_4>
 
 <example_5>
 <files>
-<app.ts>import { Assistant } from '{product_name}';
+<fpath_app.ts>import { Assistant } from '{product_name}';
 import chalk from 'chalk';
 import * as readline from 'readline';
 
@@ -225,9 +227,9 @@ async function chatWithColors() {
     await askQuestion();
 }
 
-chatWithColors().catch(console.error);</app.ts>
+chatWithColors().catch(console.error);</fpath_app.ts>
 
-<package.json>{
+<fpath_package.json>{
     "name": "colorful-cli-chat",
     "version": "1.0.0",
     "description": "A simple CLI chat application using {product_name} with colorful output",
@@ -246,9 +248,9 @@ chatWithColors().catch(console.error);</app.ts>
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"
     }
-}</package.json>
+}</fpath_package.json>
 
-<tsconfig.json>{
+<fpath_tsconfig.json>{
     "compilerOptions": {
         "target": "ES2020",
         "module": "commonjs",
@@ -261,9 +263,9 @@ chatWithColors().catch(console.error);</app.ts>
     },
     "include": ["*.ts"],
     "exclude": ["node_modules", "dist"]
-}</tsconfig.json>
+}</fpath_tsconfig.json>
 
-<README.md># Colorful CLI Chat Example (TypeScript)
+<fpath_README.md># Colorful CLI Chat Example (TypeScript)
 
 A simple CLI chat application using {product_name} with colorful output, written in TypeScript.
 
@@ -285,7 +287,7 @@ npm run dev
 
 Type 'exit' to quit the application.
 
-The python version at the time of this example being created is 3.12.1</README.md> 
+The python version at the time of this example being created is 3.12.1</fpath_README.md> 
 </files>
 </example_5>
 

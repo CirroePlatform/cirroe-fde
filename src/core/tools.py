@@ -15,7 +15,9 @@ from include.constants import ORG_NAME, KnowledgeBaseType
 @typechecked
 class SearchTools:
 
-    def __init__(self, requestor_id: UUID, github_repos: Optional[List[Repository]] = None):
+    def __init__(
+        self, requestor_id: UUID, github_repos: Optional[List[Repository]] = None
+    ):
         self.requestor_id = requestor_id
         self.supa = SupaClient(user_id=self.requestor_id)
         self.org_name = self.get_org_name()

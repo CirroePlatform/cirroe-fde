@@ -5,8 +5,13 @@ This file is used to test the example creator tools by executing code examples i
 import subprocess
 import sys
 import os
-from typing import Tuple
+from typing import Tuple, Dict, Any
 from enum import Enum
+import e2b
+from github import Github
+import re
+import logging
+from datetime import datetime
 
 
 class Language(Enum):
@@ -20,6 +25,7 @@ class Sandbox:
     """
 
     def __init__(self):
+        self.gh = Github(os.getenv("GITHUB_TOKEN"))
         # Verify node/npm is installed for TypeScript execution
         self._verify_typescript_deps()
 
@@ -134,3 +140,125 @@ class Sandbox:
             output.append(stderr)
 
         return "\n".join(output)
+
+    async def run_code_e2b(self, code: str, language: Language) -> Tuple[str, str]:
+        """
+        Executes code in E2B sandbox environment
+
+        Args:
+            code: Code to execute
+            language: Programming language
+
+        Returns:
+            Tuple of (stdout, stderr)
+        """
+        try:
+            # Create E2B session
+            session = await e2b.Session.create(id="Sandbox", cwd="/code")
+
+            # Write code to file
+            ext = ".py" if language == Language.PYTHON else ".ts"
+            filename = f"temp{ext}"
+            await session.write_file(filename, code)
+
+            # Execute code based on language
+            if language == Language.PYTHON:
+                result = await session.run(f"python {filename}")
+            else:
+                # For TypeScript, compile then run
+                await session.run("npm install -g typescript")
+                await session.run(f"tsc {filename}")
+                result = await session.run(f"node {filename.replace('.ts', '.js')}")
+
+            await session.close()
+            return result.stdout, result.stderr
+
+        except Exception as e:
+            logging.error(f"E2B execution error: {e}")
+            return "", str(e)
+
+    def create_github_pr(self, code_string: str, repo_name: str) -> str:
+        """
+        Creates a PR on GitHub with example code
+
+        Args:
+            code_string: Example code in format from execute_creation.txt
+            repo_name: Target repository name (format: owner/repo)
+
+        Returns:
+            PR URL if successful, error message if not
+        """
+        try:
+            # Parse files from code string
+            files = self._parse_example_files(code_string)
+            if not files:
+                return "Error: No valid files found in code string"
+
+            # Get repo
+            repo = self.gh.get_repo(repo_name)
+
+            # Create new branch
+            base_branch = repo.default_branch
+            new_branch = f"example-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            base_ref = repo.get_git_ref(f"heads/{base_branch}")
+            repo.create_git_ref(f"refs/heads/{new_branch}", base_ref.object.sha)
+
+            # Create/update files in new branch
+            commit_message = "Add new example"
+            for file_path, content in files.items():
+                try:
+                    # Check if file exists
+                    existing_file = repo.get_contents(
+                        f"examples/{file_path}", ref=new_branch
+                    )
+                    repo.update_file(
+                        f"examples/{file_path}",
+                        commit_message,
+                        content,
+                        existing_file.sha,
+                        branch=new_branch,
+                    )
+                except:
+                    # File doesn't exist, create it
+                    repo.create_file(
+                        f"examples/{file_path}",
+                        commit_message,
+                        content,
+                        branch=new_branch,
+                    )
+
+            # Create PR
+            pr = repo.create_pull(
+                title="Add new example",
+                body="Automatically generated example code",
+                head=new_branch,
+                base=base_branch,
+            )
+
+            return pr.html_url
+
+        except Exception as e:
+            logging.error(f"GitHub PR creation error: {e}")
+            return f"Error creating PR: {str(e)}"
+
+    def _parse_example_files(self, code_string: str) -> Dict[str, str]:
+        """
+        Parses example files from code string format
+
+        Args:
+            code_string: String containing file definitions
+
+        Returns:
+            Dictionary mapping file paths to contents
+        """
+        files = {}
+        # Extract content between <fpath_*> tags
+        pattern = r"<fpath_([^>]+)>(.*?)</fpath_\1>"
+        matches = re.finditer(pattern, code_string, re.DOTALL)
+
+        for match in matches:
+            file_path = match.group(1)
+            content = match.group(2)
+            files[file_path] = content.strip()
+
+        return files

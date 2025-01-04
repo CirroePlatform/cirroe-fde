@@ -5,8 +5,13 @@ import os
 from src.core.event.tool_actions.handle_newstream_action import NewStreamActionHandler
 from src.example_creator.crawl import Crawl
 from datetime import timedelta
-from include.constants import EXAMPLE_CREATOR_CLASSIFIER_TOOLS, NEWSCHECK_INTERVAL_HOURS, FIRECRAWL_ORG_ID
+from include.constants import (
+    EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
+    NEWSCHECK_INTERVAL_HOURS,
+    FIRECRAWL_ORG_ID,
+)
 from src.core.tools import SearchTools
+
 
 def get_handler() -> NewStreamActionHandler:
     """Initialize and return the NewStreamActionHandler"""
@@ -25,10 +30,11 @@ def get_handler() -> NewStreamActionHandler:
         client=client,
         tools=EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
         tools_map=tools_map,
-        model="claude-3.5-sonnet-latest",
-        action_classifier_prompt="prompts/example_builder/action_classifier.txt",
-        execute_creation_prompt="prompts/example_builder/execute_creation.txt",
-        execute_modification_prompt="prompts/example_builder/execute_modification.txt",
+        model="claude-3-5-sonnet-20241022",
+        action_classifier_prompt="include/prompts/example_builder/action_classifier.txt",
+        execute_creation_prompt="include/prompts/example_builder/execute_creation.txt",
+        execute_modification_prompt="include/prompts/example_builder/execute_modification.txt",
+        product_name="firecrawl",
     )
 
     return handler
@@ -50,6 +56,7 @@ def get_crawler(debug: bool = False) -> Crawl:
     )  # TODO: This should be fired off in a separate daemon thread.
 
     return crawler
+
 
 def main(action: str):
     """CLI interface for creating or modifying examples"""

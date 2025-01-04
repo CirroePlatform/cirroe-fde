@@ -118,98 +118,108 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
             "type": "object",
             "properties": {
                 "query": {
-                    "type": "string", 
+                    "type": "string",
                     "description": "The query string",
-                    "required": True
+                    "required": True,
                 },
                 "useAutoprompt": {
                     "type": "boolean",
-                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only."
+                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only.",
                 },
                 "type": {
                     "type": "string",
                     "enum": ["keyword", "neural", "auto"],
-                    "description": "The type of search. Default auto, which automatically decides between keyword and neural."
+                    "description": "The type of search. Default auto, which automatically decides between keyword and neural.",
                 },
                 "category": {
-                    "type": "string", 
-                    "enum": ["company", "research paper", "news", "pdf", "github", "tweet", "personal site", "linkedin profile", "financial report"],
-                    "description": "A data category to focus on."
+                    "type": "string",
+                    "enum": [
+                        "company",
+                        "research paper",
+                        "news",
+                        "pdf",
+                        "github",
+                        "tweet",
+                        "personal site",
+                        "linkedin profile",
+                        "financial report",
+                    ],
+                    "description": "A data category to focus on.",
                 },
                 "numResults": {
                     "type": "integer",
-                    "description": "Number of search results to return. Default and Max is 10."
+                    "description": "Number of search results to return. Default and Max is 10.",
                 },
                 "includeDomains": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of domains to include in the search. If specified, results will only come from these domains."
+                    "description": "List of domains to include in the search. If specified, results will only come from these domains.",
                 },
                 "excludeDomains": {
-                    "type": "array", 
+                    "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of domains to exclude in the search. If specified, results will not include any from these domains."
+                    "description": "List of domains to exclude in the search. If specified, results will not include any from these domains.",
                 },
                 "startCrawlDate": {
                     "type": "string",
-                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format."
+                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format.",
                 },
                 "endCrawlDate": {
-                    "type": "string", 
-                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format."
+                    "type": "string",
+                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format.",
                 },
                 "startPublishedDate": {
                     "type": "string",
-                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format."
+                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format.",
                 },
                 "endPublishedDate": {
                     "type": "string",
-                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format."
+                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format.",
                 },
                 "includeText": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of strings that must be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
+                    "description": "List of strings that must be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words.",
                 },
                 "excludeText": {
                     "type": "array",
-                    "items": {"type": "string"}, 
-                    "description": "List of strings that must not be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
+                    "items": {"type": "string"},
+                    "description": "List of strings that must not be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words.",
                 },
                 "contents": {
                     "type": "object",
                     "properties": {
                         "text": {
                             "type": "object",
-                            "description": "Parsed contents of the page."
+                            "description": "Parsed contents of the page.",
                         },
                         "highlights": {
                             "type": "object",
-                            "description": "Relevant extract(s) from the webpage."
+                            "description": "Relevant extract(s) from the webpage.",
                         },
                         "summary": {
                             "type": "object",
-                            "description": "Summary of the webpage"
+                            "description": "Summary of the webpage",
                         },
                         "livecrawl": {
                             "type": "string",
                             "enum": ["never", "fallback", "always"],
-                            "description": "Options for livecrawling contents. Default is \"never\" for neural/auto search, \"fallback\" for keyword search."
+                            "description": 'Options for livecrawling contents. Default is "never" for neural/auto search, "fallback" for keyword search.',
                         },
                         "livecrawlTimeout": {
                             "type": "integer",
-                            "description": "The timeout for livecrawling in milliseconds. Max and default is 10000."
+                            "description": "The timeout for livecrawling in milliseconds. Max and default is 10000.",
                         },
                         "subpages": {
                             "type": "integer",
-                            "description": "The number of subpages to crawl."
+                            "description": "The number of subpages to crawl.",
                         },
                         "subpageTarget": {
                             "type": "string",
-                            "description": "The target subpage or subpages. Can be a single string or an array of strings."
+                            "description": "The target subpage or subpages. Can be a single string or an array of strings.",
                         },
-                    }
-                }
+                    },
+                },
             },
         },
     }
@@ -237,7 +247,7 @@ EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
             },
             "required": ["example_file_path"],
         },
-    }
+    },
 ]
 
 EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
@@ -272,4 +282,4 @@ CHANNEL = "cirroe-support"
 
 # Crawl constants
 NEWSCHECK_INTERVAL_HOURS = 1
-SUBREDDIT_LIST = ["singularity", "aiagents", "AI", "LLMDevs", "LLM"]
+SUBREDDIT_LIST = ["singularity", "aiagents", "LLMDevs", "LLM"]
