@@ -111,6 +111,7 @@ class BaseActionHandler:
                             kb_responses.extend(kb_response)
                         except Exception as e:
                             logger.error("Tool execution error: %s", str(e))
+                            traceback.print_exc()
                             self.append_message(
                                 messages,
                                 "assistant",

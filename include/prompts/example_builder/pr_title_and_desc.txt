@@ -1,33 +1,48 @@
 {preamble}
 
-You will be provided with two key pieces of information:
+You are a skilled software developer tasked with creating a Pull Request (PR) for code changes or a new example related to {product_name}. Your goal is to craft a concise and informative PR title and a comprehensive PR description based on the provided information.
 
-1. Messages from the tools calling chain, which include thoughts and reasoning for why the code was created. These messages are enclosed in <messages> tags.
-2. The code files that make up the example, enclosed in <code_files> tags.
+Here are the messages from the tools calling chain and the code files that make up the example:
 
-Your job is to craft a concise and informative PR title and a comprehensive PR description based on this information. Follow these guidelines:
+<messages_and_code>
+{{messages}}
+</messages_and_code>
 
-For the PR title:
-1. Keep it brief and to the point (ideally under 70 characters).
-2. Clearly state the main purpose of the changes or the new example.
-3. Use present tense and start with a verb (e.g., "Add", "Update", "Refactor").
+Please follow these steps to create the PR title and description:
 
-For the PR description:
-1. Provide a brief overview of what the example demonstrates.
-2. Explain the key features or concepts of {{PRODUCT_NAME}} that are showcased.
-3. Mention any significant changes if this is an update to an existing example.
-4. Include any important implementation details or design decisions, referencing the messages from the tools calling chain.
-5. If applicable, note any dependencies or setup requirements.
-6. Consider adding a brief usage example or highlighting a key code snippet.
+1. Inside <analysis> tags, organize your thoughts and plan your PR title and description. Include the following:
+   a) Identify the main purpose of the changes or the new example.
+   b) List key features or concepts of {product_name} that are showcased.
+   c) Note any important implementation details from the messages.
+   d) Highlight significant code portions or changes.
+   e) Identify any trending technologies integrated into the code, explaining the reasoning behind their use and potential benefits.
+   f) List specific code snippets that showcase key features or changes.
+   g) Consider and note any potential challenges or trade-offs in the implementation.
 
-Before writing your final output, use a <scratchpad> to organize your thoughts and plan your PR title and description. In your scratchpad, you may want to:
-1. Identify the main purpose of the example or changes.
-2. List key features or concepts of {{PRODUCT_NAME}} demonstrated.
-3. Note any important implementation details from the messages.
-4. Highlight significant code portions or changes.
+2. Based on your analysis, create a PR title that meets these criteria:
+   - Keep it brief (ideally under 70 characters).
+   - Clearly state the main purpose of the changes or the new example.
+   - Use present tense and start with a verb (e.g., "Add", "Update", "Refactor").
+   - Ensure the title is between 5 and 10 words.
 
-After your scratchpad, provide your final PR title and description. Enclose the PR title in <title> tags and the PR description in <description> tags.
+3. Create a comprehensive PR description that includes:
+   - A brief overview of what the example demonstrates.
+   - Explanation of the key features or concepts of {product_name} that are showcased.
+   - Any significant changes if this is an update to an existing example.
+   - Important implementation details or design decisions, referencing the messages from the tools calling chain.
+   - Dependencies or setup requirements, if applicable.
+   - A brief usage example or highlighting of a key code snippet.
+   - Notes on trending technologies integrated, explaining the reasoning and potential benefits.
+   - Discussion of any challenges or trade-offs encountered in the implementation.
 
-<messages>
-{messages}
-</messages>
+4. Present your final PR title and description using the following format:
+
+<title>
+[Your PR title here]
+</title>
+
+<description>
+[Your PR description here]
+</description>
+
+Remember to be thorough in your analysis to ensure a high-quality PR title and description.
