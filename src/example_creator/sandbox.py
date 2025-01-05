@@ -5,18 +5,17 @@ This file is used to test the example creator tools by executing code examples i
 import traceback
 import subprocess
 import sys
+import json
 import os
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict
 from enum import Enum
 from e2b import Sandbox as e2b_sandbox
-from src.integrations.kbs.github_kb import GithubKnowledgeBase
+from e2b import CommandResult
 import re
 import asyncio
 import logging
-from datetime import datetime
 from include.constants import GITHUB_API_BASE
 import requests
-import base64
 
 
 class Language(Enum):
@@ -155,8 +154,8 @@ class Sandbox:
         return "\n".join(output)
 
     def run_code_e2b(
-        self, code_files: Dict[str, str], execution_command: str
-    ) -> Tuple[str, str]:
+        self, code_files: str | Dict[str, str], execution_command: str
+    ) -> CommandResult:
         """
         Executes code in E2B sandbox environment
 
@@ -175,37 +174,41 @@ class Sandbox:
             )
 
             # Create project directory structure and write files
+            if isinstance(code_files, str):
+                code_files = json.loads(code_files)
+
             for filepath, content in code_files.items():
                 # Create any necessary subdirectories
                 dir_path = os.path.dirname(filepath)
                 if dir_path:
-                    asyncio.run(sandbox.files.write(dir_path, ""))
+                    sandbox.files.write(dir_path, "")
 
                 # Write the file
-                asyncio.run(sandbox.files.write(filepath, content))
+                # asyncio.run(sandbox.files.write(filepath, content))
+                sandbox.files.write(filepath, content)
 
             # Install dependencies if package.json exists
             if "package.json" in code_files:
-                asyncio.run(sandbox.run("npm install"))
+                sandbox.commands.run("npm install")
 
             # Install TypeScript globally if any .ts files
             if any(f.endswith(".ts") for f in code_files.keys()):
-                asyncio.run(sandbox.run("npm install -g typescript"))
+                sandbox.commands.run("npm install -g typescript")
                 # Compile TypeScript files
                 ts_files = [f for f in code_files.keys() if f.endswith(".ts")]
                 if ts_files:
-                    asyncio.run(sandbox.run("tsc " + " ".join(ts_files)))
+                    sandbox.commands.run("tsc " + " ".join(ts_files))
 
             # Execute the provided command
-            result = asyncio.run(sandbox.run(execution_command))
-
-            sandbox.kill()
-            return result.stdout, result.stderr
+            result = sandbox.commands.run(execution_command)
 
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
-            sandbox.kill()
-            return "", str(e)
+            traceback.print_exc()
+            result = CommandResult(stdout="", stderr=str(e))
+
+        sandbox.kill()
+        return result
 
     def create_github_pr(
         self,
@@ -255,38 +258,53 @@ class Sandbox:
             response.raise_for_status()
 
             # Create/update files in new branch
+            # Create a tree with all file changes
+            tree_items = []
             for file_path, content in files.items():
-                # file_path = f"examples/{file_path}"
-                url = f"{GITHUB_API_BASE}/repos/{repo_name}/contents/{file_path}"
+                # Create a blob for each file
+                url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/blobs"
+                blob_payload = {
+                    "content": content,
+                    "encoding": "utf-8"
+                }
+                blob_response = requests.post(url, headers=self.github_headers, json=blob_payload)
+                blob_response.raise_for_status()
+                blob_sha = blob_response.json()["sha"]
 
-                try:
-                    # Check if file exists
-                    response = requests.get(
-                        url, headers=self.github_headers, params={"ref": branch_name}
-                    )
-                    response.raise_for_status()
-                    existing_file = response.json()
+                # Add file to tree
+                tree_items.append({
+                    "path": file_path,
+                    "mode": "100644",
+                    "type": "blob",
+                    "sha": blob_sha
+                })
 
-                    # Update existing file
-                    payload = {
-                        "message": commit_msg,
-                        "content": base64.b64encode(content.encode()).decode(),
-                        "sha": existing_file["sha"],
-                        "branch": branch_name,
-                    }
-                    requests.put(url, headers=self.github_headers, json=payload)
+            # Create a tree with all changes
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/trees"
+            tree_payload = {
+                "base_tree": base_sha,
+                "tree": tree_items
+            }
+            tree_response = requests.post(url, headers=self.github_headers, json=tree_payload)
+            tree_response.raise_for_status()
+            new_tree_sha = tree_response.json()["sha"]
 
-                except requests.exceptions.HTTPError as e:
-                    if e.response.status_code == 404:
-                        # Create new file
-                        payload = {
-                            "message": commit_msg,
-                            "content": base64.b64encode(content.encode()).decode(),
-                            "branch": branch_name,
-                        }
-                        requests.put(url, headers=self.github_headers, json=payload)
-                    else:
-                        raise
+            # Create a commit with the new tree
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits"
+            commit_payload = {
+                "message": commit_msg,
+                "tree": new_tree_sha,
+                "parents": [base_sha]
+            }
+            commit_response = requests.post(url, headers=self.github_headers, json=commit_payload)
+            commit_response.raise_for_status()
+            new_commit_sha = commit_response.json()["sha"]
+
+            # Update branch reference to point to new commit
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
+            ref_payload = {"sha": new_commit_sha}
+            ref_response = requests.patch(url, headers=self.github_headers, json=ref_payload)
+            ref_response.raise_for_status()
 
             # Create PR
             url = f"{GITHUB_API_BASE}/repos/{repo_name}/pulls"
