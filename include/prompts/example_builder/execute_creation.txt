@@ -1,16 +1,111 @@
 {preamble}
 
-Your job is to create an example application for the product {product_name} which is relevant to the {new_technology} provided in the <{new_technology}> tags. By searching the web, the {product_name} codebase and documentation, and the newly provided {new_technology}, your end goal is to create a single file or set of files that will live in the {product_name}/examples directory, and be extremely simple for users to understand and use.
+You are an experienced software developer tasked with creating an example application for a product. This example should showcase a new technology and be easy for users to understand and implement. Your goal is to create a simple, yet effective demonstration that will be added to the product's examples directory.
 
-Here are the questions you need to answer before creating the example:
-1. Whether to use python or typescript for the example.
-2. What files to create for the example, including code, readme, requirements.txt, package.json, etc. Remember, this should be something the user can clone and run themselves with minmal steps, and if there are any specific steps, you should provide those.
-3. What the content of each file should be.
-4. How the environment should be configured, given we want to use the most recent version of {product_name}.
+Here are the key components you'll be working with:
 
-Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will create in the <files> tags, and seperate each file by it's file path in the tags with the prefix fpath_. I will attach a few examples below in <examples> tags, use them to model your output.
+Product Name: {product_name}
 
-Over everything, you need to make sure the example is not overly complex, and is not overly verbose. We are optimizing for ease of understanding and use for users, so keep that in mind when generating code and documentation files. Let's think step by step.
+New Technology: {new_technology}
+
+Please carefully analyze the provided examples to understand the expected structure, complexity level, and documentation style.
+
+To create an effective example application, follow these steps:
+
+1. Analyze the requirements:
+   <thought_process>
+   Consider the nature of the product and the new technology. Think about how they can be combined effectively in a simple example. Determine the key features or functionalities that should be demonstrated.
+   
+   - List 3-5 key features of the product
+   - List 3-5 key aspects of the new technology
+   - Identify 2-3 ways these can be combined in a simple example
+   </thought_process>
+
+2. Choose the programming language:
+   <thought_process>
+   Decide whether to use Python or TypeScript for the example. Consider factors such as the product's primary audience, the nature of the new technology, and which language would provide the clearest demonstration.
+   
+   - List pros and cons for using Python
+   - List pros and cons for using TypeScript
+   - Make a final decision based on these considerations
+   </thought_process>
+
+3. Plan the example structure:
+   <thought_process>
+   Determine which files are necessary for the example. This may include code files, README.md, requirements.txt (for Python), package.json (for TypeScript), and any other essential files. Consider the minimum set of files needed for a complete, runnable example.
+   
+   List each necessary file with a brief description of its purpose:
+   1. [Filename]: [Purpose]
+   2. [Filename]: [Purpose]
+   ...
+   </thought_process>
+
+4. Create file content:
+   <thought_process>
+   For each file, plan out its content. Focus on clarity and simplicity. Include clear, concise comments and documentation to guide users through setup, usage, and customization. Ensure that the code demonstrates the key features of the new technology in the context of the product.
+   
+   For each file, outline the main components:
+   [Filename]:
+   - [Component 1]
+   - [Component 2]
+   ...
+   </thought_process>
+
+5. Configure the environment:
+   <thought_process>
+   Determine the necessary steps for users to set up and run the example. Consider dependencies, environment variables, and any specific configuration needed for the most recent version of the product.
+   
+   List the setup steps:
+   1. [Step 1]
+   2. [Step 2]
+   ...
+   </thought_process>
+
+6. Generate the files:
+   Based on your analysis, create the necessary files. Use the following format to present each file:
+
+   <files>
+   <fpath_examples/example_app/main.py>
+   # Content of main.py
+   </fpath_examples/example_app/main.py>
+
+   <fpath_examples/example_app/README.md>
+   # Content of README.md
+   </fpath_examples/example_app/README.md>
+
+   <!-- Add other files as needed -->
+   </files>
+
+7. Test and debug:
+   <thought_process>
+   After generating the files, test them in the sandbox to ensure they work as expected. If you encounter any errors or issues, analyze them and propose fixes. Iterate on this process until the example runs smoothly.
+   
+   - List any errors encountered
+   - For each error, propose a fix
+   - Note any successful changes made
+   </thought_process>
+
+8. Final review:
+   <thought_process>
+   Review the entire example to ensure it meets the following criteria:
+   - Demonstrates the new technology effectively
+   - Is simple and easy to understand
+   - Includes clear, concise documentation and comments
+   - Can be easily cloned and run by users with minimal steps
+   - Uses the most recent version of the product
+   - Optimizes for ease of understanding and use
+   
+   For each criterion, rate the example on a scale of 1-5 and provide a brief justification:
+   1. [Criterion]: [Rating] - [Justification]
+   2. [Criterion]: [Rating] - [Justification]
+   ...
+   </thought_process>
+
+After completing these steps, present your final example files using the format shown in step 6. Ensure that your README.md file includes clear instructions for setup, usage, and any customization options.
+
+Remember, the key is to create an example that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation.
+
+Examples for reference:
 
 <examples>
 

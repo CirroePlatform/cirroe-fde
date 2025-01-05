@@ -23,7 +23,7 @@ from include.constants import (
     ARROYO_ORG_ID,
     PREDIBASE_ORG_ID,
     CHROMA_ORG_ID,
-    FIRECRAWL_ORG_ID
+    FIRECRAWL_ORG_ID,
 )
 
 
@@ -100,9 +100,7 @@ def discord_wrapper():
     from rich.console import Console
     from rich.markdown import Markdown
 
-    disc_msg = DiscordMessage(
-        content=disc_msg, author="juan", attachments=[]
-    )
+    disc_msg = DiscordMessage(content=disc_msg, author="juan", attachments=[])
     response = DiscordMessageHandler(QDRANT_ORG_ID).handle_discord_message(
         disc_msg, max_tool_calls=5
     )
@@ -174,6 +172,7 @@ def collect_data_for_links():
         "sentry.io",
     ]
     bulk_extract_github_links(links)
+
 
 if __name__ == "__main__":
     poll_wrapper()

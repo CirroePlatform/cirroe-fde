@@ -228,7 +228,7 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
 EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
     {
         "name": "get_existing_examples",
-        "description": "A function to return the file paths of existing examples from the codebase",
+        "description": "A function to get list of example filenames from the firecrawl/examples directory on GitHub",
         "input_schema": {
             "type": "object",
             "properties": {},
@@ -236,16 +236,24 @@ EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
     },
     {
         "name": "get_example_contents",
-        "description": "A function to get the file contents of some example that has already been created",
+        "description": "A function to recursively fetch contents of a repository from GitHub API",
         "input_schema": {
             "type": "object",
             "properties": {
-                "example_file_path": {
+                "repository": {
                     "type": "string",
-                    "description": "The file path of some existing example",
+                    "description": "Repository name to fetch contents from",
+                },
+                "code_pages": {
+                    "type": "array",
+                    "description": "List to append CodePage objects to",
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Current path being fetched in the repository",
                 },
             },
-            "required": ["example_file_path"],
+            "required": ["repository"],
         },
     },
 ]
@@ -271,8 +279,12 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
     }
 ]
 
-EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
-EXAMPLE_CREATOR_CREATION_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+EXAMPLE_CREATOR_MODIFICATION_TOOLS = (
+    EXAMPLE_CREATOR_CLASSIFIER_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+)
+EXAMPLE_CREATOR_CREATION_TOOLS = (
+    EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+)
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"

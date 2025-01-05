@@ -8,10 +8,13 @@ import os
 from typing import Tuple, Dict, Any
 from enum import Enum
 import e2b
-from github import Github
+from src.integrations.kbs.github_kb import GithubKnowledgeBase
 import re
 import logging
 from datetime import datetime
+from include.constants import GITHUB_API_BASE
+import requests
+import base64
 
 
 class Language(Enum):
@@ -25,7 +28,6 @@ class Sandbox:
     """
 
     def __init__(self):
-        self.gh = Github(os.getenv("GITHUB_TOKEN"))
         # Verify node/npm is installed for TypeScript execution
         self._verify_typescript_deps()
 
@@ -141,7 +143,9 @@ class Sandbox:
 
         return "\n".join(output)
 
-    async def run_code_e2b(self, code_files: Dict[str, str], execution_command: str) -> Tuple[str, str]:
+    async def run_code_e2b(
+        self, code_files: Dict[str, str], execution_command: str
+    ) -> Tuple[str, str]:
         """
         Executes code in E2B sandbox environment
 
@@ -162,7 +166,7 @@ class Sandbox:
                 dir_path = os.path.dirname(filepath)
                 if dir_path:
                     await session.run(f"mkdir -p {dir_path}")
-                
+
                 # Write the file
                 await session.write_file(filepath, content)
 
@@ -171,10 +175,10 @@ class Sandbox:
                 await session.run("npm install")
 
             # Install TypeScript globally if any .ts files
-            if any(f.endswith('.ts') for f in code_files.keys()):
+            if any(f.endswith(".ts") for f in code_files.keys()):
                 await session.run("npm install -g typescript")
                 # Compile TypeScript files
-                ts_files = [f for f in code_files.keys() if f.endswith('.ts')]
+                ts_files = [f for f in code_files.keys() if f.endswith(".ts")]
                 if ts_files:
                     await session.run("tsc " + " ".join(ts_files))
 
@@ -205,48 +209,74 @@ class Sandbox:
             if not files:
                 return "Error: No valid files found in code string"
 
-            # Get repo
-            repo = self.gh.get_repo(repo_name)
+            # Get default branch
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}"
+            response = requests.get(url, headers=self.github_headers)
+            response.raise_for_status()
+            repo_data = response.json()
+            base_branch = repo_data["default_branch"]
+
+            # Get base branch SHA
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{base_branch}"
+            response = requests.get(url, headers=self.github_headers)
+            response.raise_for_status()
+            base_sha = response.json()["object"]["sha"]
 
             # Create new branch
-            base_branch = repo.default_branch
             new_branch = f"example-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-            base_ref = repo.get_git_ref(f"heads/{base_branch}")
-            repo.create_git_ref(f"refs/heads/{new_branch}", base_ref.object.sha)
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs"
+            payload = {"ref": f"refs/heads/{new_branch}", "sha": base_sha}
+            response = requests.post(url, headers=self.github_headers, json=payload)
+            response.raise_for_status()
 
             # Create/update files in new branch
             commit_message = "Add new example"
             for file_path, content in files.items():
+                file_path = f"examples/{file_path}"
+                url = f"{GITHUB_API_BASE}/repos/{repo_name}/contents/{file_path}"
+
                 try:
                     # Check if file exists
-                    existing_file = repo.get_contents(
-                        f"examples/{file_path}", ref=new_branch
+                    response = requests.get(
+                        url, headers=self.github_headers, params={"ref": new_branch}
                     )
-                    repo.update_file(
-                        f"examples/{file_path}",
-                        commit_message,
-                        content,
-                        existing_file.sha,
-                        branch=new_branch,
-                    )
-                except:
-                    # File doesn't exist, create it
-                    repo.create_file(
-                        f"examples/{file_path}",
-                        commit_message,
-                        content,
-                        branch=new_branch,
-                    )
+                    response.raise_for_status()
+                    existing_file = response.json()
+
+                    # Update existing file
+                    payload = {
+                        "message": commit_message,
+                        "content": base64.b64encode(content.encode()).decode(),
+                        "sha": existing_file["sha"],
+                        "branch": new_branch,
+                    }
+                    requests.put(url, headers=self.github_headers, json=payload)
+
+                except requests.exceptions.HTTPError as e:
+                    if e.response.status_code == 404:
+                        # Create new file
+                        payload = {
+                            "message": commit_message,
+                            "content": base64.b64encode(content.encode()).decode(),
+                            "branch": new_branch,
+                        }
+                        requests.put(url, headers=self.github_headers, json=payload)
+                    else:
+                        raise
 
             # Create PR
-            pr = repo.create_pull(
-                title="Add new example",
-                body="Automatically generated example code",
-                head=new_branch,
-                base=base_branch,
-            )
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/pulls"
+            payload = {
+                "title": "Add new example",
+                "body": "Automatically generated example code",
+                "head": new_branch,
+                "base": base_branch,
+            }
+            response = requests.post(url, headers=self.github_headers, json=payload)
+            response.raise_for_status()
+            pr_data = response.json()
 
-            return pr.html_url
+            return pr_data["html_url"]
 
         except Exception as e:
             logging.error(f"GitHub PR creation error: {e}")
@@ -268,7 +298,8 @@ class Sandbox:
         matches = re.finditer(pattern, code_string, re.DOTALL)
 
         for match in matches:
-            file_path = match.group(1)
+            # Remove fpath_ prefix from the file path
+            file_path = match.group(1).replace("fpath_", "")
             content = match.group(2)
             files[file_path] = content.strip()
 

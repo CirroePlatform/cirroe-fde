@@ -105,7 +105,7 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
 
                 # Get readme content
                 readme_response = requests.get(
-                    f"https://api.github.com/repos{relative_url}/README.md",
+                    f"{GITHUB_API_BASE}/repos{relative_url}/README.md",
                     headers={"Accept": "application/vnd.github.raw"},
                 )
 
@@ -390,63 +390,8 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return code_pages
         logging.info(f"Fetching and indexing contents for {repository}")
 
-        def fetch_contents(path: str = ""):
-            url = (
-                f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
-            )
-            response = requests.get(url, headers=self.github_headers)
-            response.raise_for_status()
-
-            contents = response.json()
-
-            # Handle both single file and directory responses
-            if not isinstance(contents, list):
-                contents = [contents]
-
-            for item in contents:
-                if item["type"] == "file":
-                    # If file is non-text data, skip it
-                    if (
-                        item["name"]
-                        .lower()
-                        .endswith(
-                            (
-                                ".png",
-                                ".jpg",
-                                ".jpeg",
-                                ".gif",
-                                ".bmp",
-                                ".tiff",
-                                ".ico",
-                                ".webp",
-                            )
-                        )
-                    ):
-                        continue
-
-                    # Get raw file content
-                    content_response = requests.get(
-                        item["download_url"], headers=self.github_headers
-                    )
-                    content_response.raise_for_status()
-
-                    code_pages.append(
-                        CodePage(
-                            primary_key=item["path"],
-                            content=content_response.text,
-                            org_id=str(self.org_id),
-                            page_type=CodePageType.CODE,
-                            sha=item["sha"],
-                        )
-                    )
-                    logging.info(f"Fetched code file: {item['path']}")
-
-                elif item["type"] == "dir":
-                    # TODO switch to postorder traversal, add AI summaries, can do merkle tree of the files.
-                    fetch_contents(item["path"])
-
         try:
-            fetch_contents()
+            self.fetch_contents(repository, code_pages)
 
             # Cache the files for future use
             os.makedirs(GITFILES_CACHE_DIR, exist_ok=True)
@@ -462,6 +407,69 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             logging.error(f"Failed to fetch repository contents: {str(e)}")
             logging.error(traceback.format_exc())
             return []
+
+    def fetch_contents(
+        self, repository: str, code_pages: List[CodePage] = [], path: str = ""
+    ):
+        """
+        Recursively fetch contents of a repository from GitHub API
+
+        Args:
+            repository: Repository name
+            code_pages: List to append CodePage objects to
+            path: Current path being fetched
+        """
+        url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/contents/{path}"
+        response = requests.get(url, headers=self.github_headers)
+        response.raise_for_status()
+
+        contents = response.json()
+
+        # Handle both single file and directory responses
+        if not isinstance(contents, list):
+            contents = [contents]
+
+        for item in contents:
+            if item["type"] == "file":
+                # If file is non-text data, skip it
+                if (
+                    item["name"]
+                    .lower()
+                    .endswith(
+                        (
+                            ".png",
+                            ".jpg",
+                            ".jpeg",
+                            ".gif",
+                            ".bmp",
+                            ".tiff",
+                            ".ico",
+                            ".webp",
+                        )
+                    )
+                ):
+                    continue
+
+                # Get raw file content
+                content_response = requests.get(
+                    item["download_url"], headers=self.github_headers
+                )
+                content_response.raise_for_status()
+
+                code_pages.append(
+                    CodePage(
+                        primary_key=item["path"],
+                        content=content_response.text,
+                        org_id=str(self.org_id),
+                        page_type=CodePageType.CODE,
+                        sha=item["sha"],
+                    )
+                )
+                logging.info(f"Fetched code file: {item['path']}")
+
+            elif item["type"] == "dir":
+                # TODO switch to postorder traversal, add AI summaries, can do merkle tree of the files.
+                self.fetch_contents(repository, code_pages, item["path"])
 
     def index_custom(self, repository: Repository) -> bool:
         """
@@ -644,7 +652,9 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             response.raise_for_status()
 
             content = response.json()
-            readme_response = requests.get(content["download_url"], headers=self.github_headers)
+            readme_response = requests.get(
+                content["download_url"], headers=self.github_headers
+            )
             readme_response.raise_for_status()
 
             return str(readme_response.content)

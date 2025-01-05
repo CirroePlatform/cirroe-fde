@@ -58,7 +58,9 @@ class NewStreamActionHandler(BaseActionHandler):
         self.org_name = org_name
         self.org_id = org_id
         self.github_kb = GithubKnowledgeBase(org_id=self.org_id, org_name=self.org_name)
-        self.product_readme = self.github_kb.get_readme(f"{self.org_name}/{self.product_name}")
+        self.product_readme = self.github_kb.get_readme(
+            f"{self.org_name}/{self.product_name}"
+        )
         self.sandbox = Sandbox()
         self.preamble = None
 
@@ -70,7 +72,9 @@ class NewStreamActionHandler(BaseActionHandler):
         with open(self.execute_modification_prompt, "r") as f:
             self.execute_modification_prompt = f.read()
 
-    def craft_pr_title_and_body(self, messages: List[any], code_files: str) -> Tuple[str, str]:
+    def craft_pr_title_and_body(
+        self, messages: List[any], code_files: str
+    ) -> Tuple[str, str]:
         """
         Craft a PR title and body from the messages
 
@@ -95,14 +99,11 @@ class NewStreamActionHandler(BaseActionHandler):
         )
 
         title = (
-            response.content[0].text
-            .split("<title>")[1]
-            .split("</title>")[0]
-            .strip()
+            response.content[0].text.split("<title>")[1].split("</title>")[0].strip()
         )
         description = (
-            response.content[0].text
-            .split("<description>")[1]
+            response.content[0]
+            .text.split("<description>")[1]
             .split("</description>")[0]
             .strip()
         )
@@ -187,9 +188,19 @@ class NewStreamActionHandler(BaseActionHandler):
                                 }
 
                 if step_response["last_response"].stop_reason != "tool_use":
-                    code_files = step_response["content"][0].text.split("<code_files>")[1].split("</code_files>")[0].strip()
-                    title, description = self.craft_pr_title_and_body(step_messages, code_files)
-                    self.sandbox.create_github_pr(last_message, f"{self.org_name}/{self.product_name}", title, description)
-                    return {
-                        "content": "PR created successfully"
-                    }
+                    code_files = (
+                        step_response["content"][0]
+                        .text.split("<code_files>")[1]
+                        .split("</code_files>")[0]
+                        .strip()
+                    )
+                    title, description = self.craft_pr_title_and_body(
+                        step_messages, code_files
+                    )
+                    self.sandbox.create_github_pr(
+                        last_message,
+                        f"{self.org_name}/{self.product_name}",
+                        title,
+                        description,
+                    )
+                    return {"content": "PR created successfully"}
