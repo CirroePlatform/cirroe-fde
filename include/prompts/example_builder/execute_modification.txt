@@ -16,7 +16,7 @@ Here are the questions you need to answer before altering the example:
 1. What files to modify, and what changes to make to them.
 2. What the content of each file should be after the modification.
 
-Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will modify in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, with the inputs wrapped in <inputs> tags, and the outputs wrapped in <outputs> tags. Use them to model your output.
+Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will modify in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, with the inputs wrapped in <inputs> tags, and the output code files wrapped in <files> tags. Use them to model your output.
 
 <examples>
 <example_1>
@@ -87,7 +87,7 @@ Multi-Turn Conversations: Enable dynamic, interactive dialogues.
 </{new_technology}>
 </inputs>
 
-<outputs>
+<files>
 <updated_example>
 <main.py>import numpy as np
 from langchain.callbacks import HumanApprovalCallbackHandler
@@ -135,7 +135,7 @@ The example will now pause for human approval before completing the array transf
 
 The python version at the time of this example being created is 3.12.1</README.md>
 </updated_example>
-</outputs>
+</files>
 
 </example_1>
 
