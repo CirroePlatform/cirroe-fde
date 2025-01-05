@@ -73,8 +73,8 @@ class NewStreamActionHandler(BaseActionHandler):
             self.execute_modification_prompt = f.read()
 
     def craft_pr_title_and_body(
-        self, messages: List[any], code_files: str
-    ) -> Tuple[str, str]:
+        self, messages: List[any]
+    ) -> Tuple[str, str, str, str]:
         """
         Craft a PR title and body from the messages
 
@@ -82,7 +82,7 @@ class NewStreamActionHandler(BaseActionHandler):
             messages (List[any]): List of messages from the tools calling chain
 
         Returns:
-            Tuple[str, str]: PR title and body
+            Tuple[str, str, str, str]: PR title, description, commit message, and branch name
         """
         with open("include/prompts/example_builder/pr_title_and_desc.txt", "r") as f:
             pr_title_and_desc_prompt = f.read()
@@ -90,7 +90,7 @@ class NewStreamActionHandler(BaseActionHandler):
                 pr_title_and_desc_prompt,
                 preamble=self.preamble,
                 messages=json.dumps(messages),
-                code_files=json.dumps(code_files),
+                product_name=self.product_name,
             )
 
         response = self.client.messages.create(
@@ -108,8 +108,20 @@ class NewStreamActionHandler(BaseActionHandler):
             .split("</description>")[0]
             .strip()
         )
+        commit_msg = (
+            response.content[0]
+            .text.split("<commit_msg>")[1]
+            .split("</commit_msg>")[0]
+            .strip()
+        )
+        branch_name = (
+            response.content[0]
+            .text.split("<branch_name>")[1]
+            .split("</branch_name>")[0]
+            .strip()
+        )
 
-        return title, description
+        return title, description, commit_msg, branch_name
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
@@ -206,13 +218,16 @@ class NewStreamActionHandler(BaseActionHandler):
                         .split("</files>")[0]
                         .strip()
                     )
-                    title, description = self.craft_pr_title_and_body(
-                        step_messages, files
+                    title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
+                        step_messages
                     )
                     self.sandbox.create_github_pr(
                         last_message,
-                        f"{self.org_name}/{self.product_name}",
+                        # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
+                        "Cirr0e/firecrawl-examples",
                         title,
                         description,
+                        commit_msg,
+                        branch_name,
                     )
                     return {"content": "PR created successfully"}

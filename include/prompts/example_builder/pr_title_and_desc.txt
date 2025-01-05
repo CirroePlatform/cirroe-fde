@@ -1,11 +1,11 @@
 {preamble}
 
-You are a skilled software developer tasked with creating a Pull Request (PR) for code changes or a new example related to {product_name}. Your goal is to craft a concise and informative PR title and a comprehensive PR description based on the provided information.
+You are a skilled software developer tasked with creating a Pull Request (PR) for code changes or a new example related to {product_name}. Your goal is to craft a concise and informative PR title, a comprehensive PR description, a commit message, and branch name based on the provided information.
 
 Here are the messages from the tools calling chain and the code files that make up the example:
 
 <messages_and_code>
-{{messages}}
+{messages}
 </messages_and_code>
 
 Please follow these steps to create the PR title and description:
@@ -35,7 +35,7 @@ Please follow these steps to create the PR title and description:
    - Notes on trending technologies integrated, explaining the reasoning and potential benefits.
    - Discussion of any challenges or trade-offs encountered in the implementation.
 
-4. Present your final PR title and description using the following format:
+4. Present your final PR title, description, commit message, and branch name using the following format:
 
 <title>
 [Your PR title here]
@@ -45,4 +45,12 @@ Please follow these steps to create the PR title and description:
 [Your PR description here]
 </description>
 
-Remember to be thorough in your analysis to ensure a high-quality PR title and description.
+<commit_msg>
+[Your commit message here]
+</commit_msg>
+
+<branch_name>
+[Your branch name here]
+</branch_name>
+
+Remember to be thorough in your analysis to ensure a high-quality PR title, description, commit message, and branch name.
