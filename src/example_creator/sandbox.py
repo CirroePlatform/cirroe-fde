@@ -10,6 +10,7 @@ from enum import Enum
 import e2b
 from src.integrations.kbs.github_kb import GithubKnowledgeBase
 import re
+import asyncio
 import logging
 from datetime import datetime
 from include.constants import GITHUB_API_BASE
@@ -143,7 +144,7 @@ class Sandbox:
 
         return "\n".join(output)
 
-    async def run_code_e2b(
+    def run_code_e2b(
         self, code_files: Dict[str, str], execution_command: str
     ) -> Tuple[str, str]:
         """
@@ -158,34 +159,34 @@ class Sandbox:
         """
         try:
             # Create E2B session
-            session = await e2b.Session.create(id="Sandbox", cwd="/code")
+            session = asyncio.run(e2b.Session.create(id="Sandbox", cwd="/code"))
 
             # Create project directory structure and write files
             for filepath, content in code_files.items():
                 # Create any necessary subdirectories
                 dir_path = os.path.dirname(filepath)
                 if dir_path:
-                    await session.run(f"mkdir -p {dir_path}")
+                    asyncio.run(session.run(f"mkdir -p {dir_path}"))
 
                 # Write the file
-                await session.write_file(filepath, content)
+                asyncio.run(session.write_file(filepath, content))
 
             # Install dependencies if package.json exists
             if "package.json" in code_files:
-                await session.run("npm install")
+                asyncio.run(session.run("npm install"))
 
             # Install TypeScript globally if any .ts files
             if any(f.endswith(".ts") for f in code_files.keys()):
-                await session.run("npm install -g typescript")
+                asyncio.run(session.run("npm install -g typescript"))
                 # Compile TypeScript files
                 ts_files = [f for f in code_files.keys() if f.endswith(".ts")]
                 if ts_files:
-                    await session.run("tsc " + " ".join(ts_files))
+                    asyncio.run(session.run("tsc " + " ".join(ts_files)))
 
             # Execute the provided command
-            result = await session.run(execution_command)
+            result = asyncio.run(session.run(execution_command))
 
-            await session.close()
+            asyncio.run(session.close())
             return result.stdout, result.stderr
 
         except Exception as e:

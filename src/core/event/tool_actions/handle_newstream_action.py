@@ -95,6 +95,7 @@ class NewStreamActionHandler(BaseActionHandler):
 
         response = self.client.messages.create(
             model=self.model,
+            max_tokens=4096,
             messages=[{"role": "user", "content": pr_title_and_desc_prompt}],
         )
 
@@ -109,15 +110,6 @@ class NewStreamActionHandler(BaseActionHandler):
         )
 
         return title, description
-
-    def pop_last_msg(self, messages: List[any]) -> List[any]:
-        """
-        Pop the last message from the list, and re-add a user message with the last message.
-        """
-        last_msg = messages[-1]
-        messages = messages[:-1]
-        messages.append({"role": "user", "content": last_msg["content"]})
-        return messages
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
@@ -177,7 +169,6 @@ class NewStreamActionHandler(BaseActionHandler):
                 if (
                     cur_prompt == self.action_classifier_prompt
                     and "<action>" in last_message
-                    and step_messages[-1]["role"] == "user"
                 ):
                     action = (
                         last_message.split("<action>")[1].split("</action>")[0].strip()
@@ -186,25 +177,37 @@ class NewStreamActionHandler(BaseActionHandler):
                     if action == "create":
                         cur_prompt = self.execute_creation_prompt
                         self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
-                        continue
+                        if step_messages[-1]["role"] != "user":
+                            step_messages += [
+                                {
+                                    "role": "user",
+                                    "content": "We've identified a need to create a new example, now let's continue to develop the example based on all previous information.",
+                                }
+                            ]
                     elif action == "modify":
                         cur_prompt = self.execute_modification_prompt
                         self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
-                        continue
+                        if step_messages[-1]["role"] != "user":
+                            step_messages += [
+                                {
+                                    "role": "user",
+                                    "content": "We've identified a need to modify an existing example, now let's continue to develop the example based on all previous information.",
+                                }
+                            ]
                     elif action == "none":
                         return {"content": "No action needed for this news stream"}
 
                 if (
                     step_response["response"].stop_reason != "tool_use"
-                    and "<code_files>" in last_message
+                    and "<files>" in last_message
                 ):
-                    code_files = (
-                        last_message.split("<code_files>")[1]
-                        .split("</code_files>")[0]
+                    files = (
+                        last_message.split("<files>")[1]
+                        .split("</files>")[0]
                         .strip()
                     )
                     title, description = self.craft_pr_title_and_body(
-                        step_messages, code_files
+                        step_messages, files
                     )
                     self.sandbox.create_github_pr(
                         last_message,
