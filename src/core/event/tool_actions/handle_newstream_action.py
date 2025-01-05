@@ -110,6 +110,15 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return title, description
 
+    def pop_last_msg(self, messages: List[any]) -> List[any]:
+        """
+        Pop the last message from the list, and re-add a user message with the last message.
+        """
+        last_msg = messages[-1]
+        messages = messages[:-1]
+        messages.append({"role": "user", "content": last_msg["content"]})
+        return messages
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
@@ -162,35 +171,35 @@ class NewStreamActionHandler(BaseActionHandler):
                 step_response = super().handle_action(
                     step_messages, 1, step_by_step=True, system_prompt=cur_prompt
                 )
-                last_message = step_response["last_response"].content[0].text
+                last_message = step_response["response"].content[0].text
 
                 # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
-                if cur_prompt == self.action_classifier_prompt:
-                    for content in step_response.get("content", []):
-                        if (
-                            isinstance(content, str) and "<action>" in content
-                        ) or "<action>" in last_message:
-                            action = (
-                                content.split("<action>")[1]
-                                .split("</action>")[0]
-                                .strip()
-                            )
+                if (
+                    cur_prompt == self.action_classifier_prompt
+                    and "<action>" in last_message
+                    and step_messages[-1]["role"] == "user"
+                ):
+                    action = (
+                        last_message.split("<action>")[1].split("</action>")[0].strip()
+                    )
 
-                            if action == "create":
-                                cur_prompt = self.execute_creation_prompt
-                                self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
-                            elif action == "modify":
-                                cur_prompt = self.execute_modification_prompt
-                                self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
-                            elif action == "none":
-                                return {
-                                    "content": "No action needed for this news stream"
-                                }
+                    if action == "create":
+                        cur_prompt = self.execute_creation_prompt
+                        self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
+                        continue
+                    elif action == "modify":
+                        cur_prompt = self.execute_modification_prompt
+                        self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
+                        continue
+                    elif action == "none":
+                        return {"content": "No action needed for this news stream"}
 
-                if step_response["last_response"].stop_reason != "tool_use":
+                if (
+                    step_response["response"].stop_reason != "tool_use"
+                    and "<code_files>" in last_message
+                ):
                     code_files = (
-                        step_response["content"][0]
-                        .text.split("<code_files>")[1]
+                        last_message.split("<code_files>")[1]
                         .split("</code_files>")[0]
                         .strip()
                     )

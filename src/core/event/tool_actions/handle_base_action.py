@@ -68,7 +68,7 @@ class BaseActionHandler:
         response = self.client.messages.create(
             model=self.model,
             system=sysprompt,
-            max_tokens=4096,
+            max_tokens=8192,
             tools=self.tools,
             tool_choice={"type": "auto"},
             messages=messages,
@@ -130,13 +130,13 @@ class BaseActionHandler:
                 if step_by_step:
                     return {
                         "messages": messages,
-                        "last_response": response,
+                        "response": response,
                     }
 
                 response = self.client.messages.create(
                     model=self.model,
                     system=sysprompt,
-                    max_tokens=4096,
+                    max_tokens=8192,
                     tools=self.tools,
                     tool_choice={"type": "auto"},
                     messages=messages,
@@ -152,9 +152,12 @@ class BaseActionHandler:
                 )
                 break
 
-        final_response = self.generate_final_response(response)
+        final_response = (
+            self.generate_final_response(response) if not step_by_step else response
+        )
 
         return {
+            "messages": messages,
             "response": final_response,
             "kb_responses": kb_responses,
         }
@@ -208,6 +211,7 @@ class BaseActionHandler:
         if last_message.content:
             for content in last_message.content:
                 if hasattr(content, "text"):
+                    final_response = content.text
                     if (
                         SOLUTION_TAG_OPEN in content.text
                         and SOLUTION_TAG_CLOSE in content.text
