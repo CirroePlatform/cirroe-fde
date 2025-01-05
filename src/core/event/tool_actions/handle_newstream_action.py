@@ -162,13 +162,16 @@ class NewStreamActionHandler(BaseActionHandler):
         news_string = "\n".join(
             [news.model_dump_json() for news in news_stream.values()]
         )
-        step_size = len(news_string) // 3
+        step_size = len(news_string) // 2
         cur_prompt = self.action_classifier_prompt
         self.tools = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
 
         for i in range(0, len(news_string), step_size):
             step_messages = [
-                {"role": "user", "content": news_string[i : i + step_size]}
+                {
+                    "role": "user",
+                    "content": f"<news>{news_string[i : i + step_size]}</news>",
+                }
             ]
 
             for _ in range(max_tool_calls):
