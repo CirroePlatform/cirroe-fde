@@ -2,12 +2,13 @@
 This file is used to test the example creator tools by executing code examples in a sandbox.
 """
 
+import traceback
 import subprocess
 import sys
 import os
 from typing import Tuple, Dict, Any
 from enum import Enum
-import e2b
+from e2b import Sandbox as e2b_sandbox
 from src.integrations.kbs.github_kb import GithubKnowledgeBase
 import re
 import asyncio
@@ -31,6 +32,15 @@ class Sandbox:
     def __init__(self):
         # Verify node/npm is installed for TypeScript execution
         self._verify_typescript_deps()
+
+        self.e2b_api_key = os.getenv("E2B_API_KEY")
+
+        self.gh_token = os.getenv("GITHUB_TEST_TOKEN")
+        self.github_headers = {
+            "Authorization": f"Bearer {self.gh_token}",
+            "Accept": "application/vnd.github.v3+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
 
     def _verify_typescript_deps(self):
         """Verifies TypeScript dependencies are installed"""
@@ -159,48 +169,63 @@ class Sandbox:
         """
         try:
             # Create E2B session
-            session = asyncio.run(e2b.Session.create(id="Sandbox", cwd="/code"))
+            sandbox = e2b_sandbox(
+                timeout=60,
+                api_key=self.e2b_api_key,
+            )
 
             # Create project directory structure and write files
             for filepath, content in code_files.items():
                 # Create any necessary subdirectories
                 dir_path = os.path.dirname(filepath)
                 if dir_path:
-                    asyncio.run(session.run(f"mkdir -p {dir_path}"))
+                    asyncio.run(sandbox.files.write(dir_path, ""))
 
                 # Write the file
-                asyncio.run(session.write_file(filepath, content))
+                asyncio.run(sandbox.files.write(filepath, content))
 
             # Install dependencies if package.json exists
             if "package.json" in code_files:
-                asyncio.run(session.run("npm install"))
+                asyncio.run(sandbox.run("npm install"))
 
             # Install TypeScript globally if any .ts files
             if any(f.endswith(".ts") for f in code_files.keys()):
-                asyncio.run(session.run("npm install -g typescript"))
+                asyncio.run(sandbox.run("npm install -g typescript"))
                 # Compile TypeScript files
                 ts_files = [f for f in code_files.keys() if f.endswith(".ts")]
                 if ts_files:
-                    asyncio.run(session.run("tsc " + " ".join(ts_files)))
+                    asyncio.run(sandbox.run("tsc " + " ".join(ts_files)))
 
             # Execute the provided command
-            result = asyncio.run(session.run(execution_command))
+            result = asyncio.run(sandbox.run(execution_command))
 
-            asyncio.run(session.close())
+            sandbox.kill()
             return result.stdout, result.stderr
 
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
+            sandbox.kill()
             return "", str(e)
 
-    def create_github_pr(self, code_string: str, repo_name: str) -> str:
+    def create_github_pr(
+        self,
+        code_string: str,
+        repo_name: str,
+        title: str,
+        body: str,
+        commit_msg: str,
+        branch_name: str,
+    ) -> str:
         """
         Creates a PR on GitHub with example code
 
         Args:
             code_string: Example code in format from execute_creation.txt
             repo_name: Target repository name (format: owner/repo)
-
+            title: Title of the PR
+            body: Body of the PR
+            commit_msg: Commit message for the PR
+            branch_name: Name of the branch to create the PR on
         Returns:
             PR URL if successful, error message if not
         """
@@ -224,32 +249,30 @@ class Sandbox:
             base_sha = response.json()["object"]["sha"]
 
             # Create new branch
-            new_branch = f"example-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
             url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs"
-            payload = {"ref": f"refs/heads/{new_branch}", "sha": base_sha}
+            payload = {"ref": f"refs/heads/{branch_name}", "sha": base_sha}
             response = requests.post(url, headers=self.github_headers, json=payload)
             response.raise_for_status()
 
             # Create/update files in new branch
-            commit_message = "Add new example"
             for file_path, content in files.items():
-                file_path = f"examples/{file_path}"
+                # file_path = f"examples/{file_path}"
                 url = f"{GITHUB_API_BASE}/repos/{repo_name}/contents/{file_path}"
 
                 try:
                     # Check if file exists
                     response = requests.get(
-                        url, headers=self.github_headers, params={"ref": new_branch}
+                        url, headers=self.github_headers, params={"ref": branch_name}
                     )
                     response.raise_for_status()
                     existing_file = response.json()
 
                     # Update existing file
                     payload = {
-                        "message": commit_message,
+                        "message": commit_msg,
                         "content": base64.b64encode(content.encode()).decode(),
                         "sha": existing_file["sha"],
-                        "branch": new_branch,
+                        "branch": branch_name,
                     }
                     requests.put(url, headers=self.github_headers, json=payload)
 
@@ -257,9 +280,9 @@ class Sandbox:
                     if e.response.status_code == 404:
                         # Create new file
                         payload = {
-                            "message": commit_message,
+                            "message": commit_msg,
                             "content": base64.b64encode(content.encode()).decode(),
-                            "branch": new_branch,
+                            "branch": branch_name,
                         }
                         requests.put(url, headers=self.github_headers, json=payload)
                     else:
@@ -268,9 +291,9 @@ class Sandbox:
             # Create PR
             url = f"{GITHUB_API_BASE}/repos/{repo_name}/pulls"
             payload = {
-                "title": "Add new example",
-                "body": "Automatically generated example code",
-                "head": new_branch,
+                "title": title,
+                "body": body,
+                "head": branch_name,
                 "base": base_branch,
             }
             response = requests.post(url, headers=self.github_headers, json=payload)
@@ -280,6 +303,7 @@ class Sandbox:
             return pr_data["html_url"]
 
         except Exception as e:
+            traceback.print_exc()
             logging.error(f"GitHub PR creation error: {e}")
             return f"Error creating PR: {str(e)}"
 
