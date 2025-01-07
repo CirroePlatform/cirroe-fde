@@ -16,6 +16,7 @@ from include.constants import (
     NEWSCHECK_INTERVAL_HOURS,
     FIRECRAWL_ORG_ID,
     GITHUB_API_BASE,
+    MODEL_LIGHT,
 )
 
 
@@ -66,7 +67,7 @@ def get_handler() -> NewStreamActionHandler:
         client=client,
         tools=EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
         tools_map=tools_map,
-        model="claude-3-5-sonnet-20241022",
+        model=MODEL_LIGHT,
         action_classifier_prompt="include/prompts/example_builder/action_classifier.txt",
         execute_creation_prompt="include/prompts/example_builder/execute_creation.txt",
         execute_modification_prompt="include/prompts/example_builder/execute_modification.txt",

@@ -567,7 +567,6 @@ openai
 </files>
 </example_2>
 
-
 <example_3>
 <files>
 <fpath_examples/scrape_and_analyze_airbnb_data_e2b/.env.template>
@@ -2931,3 +2930,4 @@ def is_valid_url(url: str) -> bool:
 </fpath_automated_price_tracking/utils.py>
 </files>
 </example_4>
+

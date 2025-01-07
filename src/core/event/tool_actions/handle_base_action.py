@@ -2,10 +2,12 @@ from typing import Dict, List, Any, Tuple, Optional
 import anthropic
 import logging
 import traceback
+import re
 
 SOLUTION_TAG_OPEN = "<solution>"
 SOLUTION_TAG_CLOSE = "</solution>"
-
+EXAMPLE_TAG_OPEN = "<example_"
+EXAMPLE_TAG_CLOSE = "</example_"
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +38,38 @@ class BaseActionHandler:
         self.tools_map = tools_map
         self.model = model
 
+    def _extract_examples(self, prompt: str) -> Tuple[str, List[Dict[str, str]]]:
+        """
+        Extract examples from the prompt and return the base prompt and examples separately.
+        
+        Args:
+            prompt: The full system prompt
+            
+        Returns:
+            Tuple of (base prompt, list of example dictionaries)
+        """
+        # Find all example blocks
+        example_pattern = f"{EXAMPLE_TAG_OPEN}(\\d+)>(.*?){EXAMPLE_TAG_CLOSE}\\1>"
+        examples = []
+        base_prompt = prompt
+
+        for match in re.finditer(example_pattern, prompt, re.DOTALL):
+            example_num = match.group(1)
+            example_content = match.group(2)
+            examples.append({
+                "type": "text",
+                "text": example_content,
+                "cache_control": {"type": "ephemeral"}
+            })
+            # Replace example in base prompt with placeholder
+            base_prompt = base_prompt.replace(match.group(0), f"[Example {example_num}]")
+
+        return base_prompt, examples
+
     def handle_action(
         self,
         messages: List[Dict],
         max_tool_calls: int = 5,
-        step_by_step: bool = False,
         system_prompt: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
@@ -56,18 +85,27 @@ class BaseActionHandler:
         """
         # Load system prompt
         if system_prompt:
-            sysprompt = system_prompt
+            raw_sysprompt = system_prompt
         else:
             with open(self.system_prompt_file, "r", encoding="utf8") as fp:
-                sysprompt = fp.read()
+                raw_sysprompt = fp.read()
+
+        # Extract base prompt and examples
+        base_prompt, examples = self._extract_examples(raw_sysprompt)
+
+        # Create system messages with caching
+        system_messages = [
+            {"type": "text", "text": base_prompt}
+        ] + examples
 
         # Initialize response tracking
         kb_responses = []
         tool_calls_made = 0
+        final_response = None
 
         response = self.client.messages.create(
             model=self.model,
-            system=sysprompt,
+            system=system_messages,
             max_tokens=8192,
             tools=self.tools,
             tool_choice={"type": "auto"},
@@ -125,17 +163,13 @@ class BaseActionHandler:
                         tool_calls_made += 1
 
                 if response.stop_reason != "tool_use":
+                    # Generate final response before breaking
+                    final_response = self.generate_final_response(response)
                     break
-
-                if step_by_step:
-                    return {
-                        "messages": messages,
-                        "response": response,
-                    }
 
                 response = self.client.messages.create(
                     model=self.model,
-                    system=sysprompt,
+                    system=system_messages,
                     max_tokens=8192,
                     tools=self.tools,
                     tool_choice={"type": "auto"},
@@ -151,10 +185,6 @@ class BaseActionHandler:
                     "Encountered an unexpected error. Let me try to formulate a response with the information I have.",
                 )
                 break
-
-        final_response = (
-            self.generate_final_response(response) if not step_by_step else response
-        )
 
         return {
             "messages": messages,
@@ -197,14 +227,14 @@ class BaseActionHandler:
     def generate_final_response(
         self,
         last_message: Dict[str, Any],
-    ) -> str:
+    ) -> Optional[str]:
         """Generate the final response after tool usage
 
         Args:
             last_message (Dict[str, Any]): The last message from the agent
 
         Returns:
-            str: The final response
+            Optional[str]: The final response if a solution is found, None otherwise
         """
         final_response = None
 
@@ -222,5 +252,5 @@ class BaseActionHandler:
                             .strip()
                         )
                         break
-
+                    
         return final_response
