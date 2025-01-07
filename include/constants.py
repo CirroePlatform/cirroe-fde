@@ -271,7 +271,11 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
                 },
                 "execution_command": {
                     "type": "string",
-                    "description": "The command to execute the code",
+                    "description": "The command to execute the code example",
+                },
+                "build_command": {
+                    "type": "string",
+                    "description": "The command to build the code",
                 },
             },
             "required": ["code_files", "execution_command"],

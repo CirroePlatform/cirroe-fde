@@ -154,7 +154,7 @@ class Sandbox:
         return "\n".join(output)
 
     def run_code_e2b(
-        self, code_files: str | Dict[str, str], execution_command: str
+        self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None
     ) -> CommandResult:
         """
         Executes code in E2B sandbox environment
@@ -200,12 +200,20 @@ class Sandbox:
                     sandbox.commands.run("tsc " + " ".join(ts_files))
 
             # Execute the provided command
+            build_success = False
+            if build_command:
+                result = sandbox.commands.run(build_command)
+                build_success = result.exit_code == 0
+
             result = sandbox.commands.run(execution_command)
 
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
-            traceback.print_exc()
-            result = CommandResult(stdout="", stderr=str(e), exit_code=1, error=str(e))
+            err = str(e)
+            if not build_success:
+                err = f"\nBuild command failed: {build_command}\n{err}"
+
+            result = CommandResult(stdout="", stderr=err, exit_code=1, error=err)
 
         sandbox.kill()
         return [], result
