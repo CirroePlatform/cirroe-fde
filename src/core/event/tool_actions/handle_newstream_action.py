@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, Tuple
 import json
+import time
 import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import (
@@ -190,21 +191,20 @@ class NewStreamActionHandler(BaseActionHandler):
                 }
             ]
 
-            for _ in range(max_tool_calls):
-                step_response = super().handle_action(
-                    step_messages, 1, step_by_step=True, system_prompt=cur_prompt
-                )
-                last_message = step_response["response"].content[0].text
+            step_response = super().handle_action(
+                step_messages, max_tool_calls, system_prompt=cur_prompt
+            )
+            last_message = step_response["response"]
 
-                # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
-                if (
-                    cur_prompt == self.action_classifier_prompt
-                    and "<action>" in last_message
-                ):
-                    action = (
-                        last_message.split("<action>")[1].split("</action>")[0].strip()
-                    )
-                    break
+            # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
+            action: str | None = None
+            if (
+                cur_prompt == self.action_classifier_prompt
+                and "<action>" in last_message
+            ):
+                action = (
+                    last_message.split("<action>")[1].split("</action>")[0].strip()
+                )
 
             if action == "create":
                 cur_prompt = self._handle_action_case(
@@ -221,14 +221,12 @@ class NewStreamActionHandler(BaseActionHandler):
                     step_messages
                 )
             elif action == "none":
-                return {"content": "No action needed for this news stream"}
+                time.sleep(60) # Just so we don't overload the anthropic API
+                continue
 
-            step_response = super().handle_action(step_messages, max_tool_calls, step_by_step=False, system_prompt=cur_prompt)
-            last_message = step_response["response"].content[0].text
-            if (
-                step_response["response"].stop_reason != "tool_use"
-                and "<files>" in last_message
-            ):
+            step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
+            last_message = step_response["response"]
+            if ("<files>" in last_message):
                 title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
                     step_messages
                 )
@@ -242,4 +240,8 @@ class NewStreamActionHandler(BaseActionHandler):
                     branch_name,
                 )
 
-            return {"content": "PR created successfully"}
+                logging.info("PR created successfully")
+
+            time.sleep(60) # Just so we don't overload the anthropic API
+
+        return {"content": "Completed news stream processing"}

@@ -100,6 +100,8 @@ new_technology==1.0.0
 other_dependency==2.3.4
 </updated_example>
 
+Examples for reference:
+
 <examples>
 <example_1>
 

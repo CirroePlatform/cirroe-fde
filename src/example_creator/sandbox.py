@@ -40,6 +40,13 @@ class Sandbox:
             "Accept": "application/vnd.github.v3+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
+        self.sanbox_env_file = ".env" # This is just going to have a ton of different env variables. If an env variable is not found during execution, I need to be pinged to add it
+        self.sandbox_file_content = self.load_env_file()
+
+    def load_env_file(self) -> str:
+        """Loads the env file"""
+        with open(self.sanbox_env_file, "r") as f:
+            return f.read()
 
     def _verify_typescript_deps(self):
         """Verifies TypeScript dependencies are installed"""
@@ -166,6 +173,8 @@ class Sandbox:
         Returns:
             Tuple of (stdout, stderr)
         """
+        build_success = False
+        setup_success = False
         try:
             # Create E2B session
             sandbox = e2b_sandbox(
@@ -176,6 +185,9 @@ class Sandbox:
             # Create project directory structure and write files
             if isinstance(code_files, str):
                 code_files = json.loads(code_files)
+
+            # Write the env file to the sandbox
+            sandbox.files.write(self.sanbox_env_file, self.sandbox_file_content)
 
             for filepath, content in code_files.items():
                 # Create any necessary subdirectories
@@ -199,8 +211,8 @@ class Sandbox:
                 if ts_files:
                     sandbox.commands.run("tsc " + " ".join(ts_files))
 
+            setup_success = True
             # Execute the provided command
-            build_success = False
             if build_command:
                 result = sandbox.commands.run(build_command)
                 build_success = result.exit_code == 0
@@ -210,7 +222,7 @@ class Sandbox:
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
             err = str(e)
-            if not build_success:
+            if not build_success and setup_success:
                 err = f"\nBuild command failed: {build_command}\n{err}"
 
             result = CommandResult(stdout="", stderr=err, exit_code=1, error=err)

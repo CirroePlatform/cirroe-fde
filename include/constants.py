@@ -261,7 +261,7 @@ EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
 EXAMPLE_CREATOR_RUN_CODE_TOOL = [
     {
         "name": "run_code_e2b",
-        "description": "A function to run the code in the example with E2B sandbox",
+        "description": "A function to run the code in the example with E2B sandbox, and get the stdout and stderr",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -271,11 +271,11 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
                 },
                 "execution_command": {
                     "type": "string",
-                    "description": "The command to execute the code example",
+                    "description": "The command to only execute the code, without building it",
                 },
                 "build_command": {
                     "type": "string",
-                    "description": "The command to build the code",
+                    "description": "The command to build the code, install any dependencies, or set up the environment in any other way",
                 },
             },
             "required": ["code_files", "execution_command"],
