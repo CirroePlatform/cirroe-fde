@@ -276,7 +276,20 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
             },
             "required": ["code_files", "execution_command"],
         },
-    }
+    },
+    {
+        "name": "get_latest_version",
+        "description": "A function to get the latest version of a given pip dependency from PyPI",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "package_name": {
+                    "type": "string",
+                    "description": "The name of the pip dependency",
+                }
+            },
+        },
+    },
 ]
 
 EXAMPLE_CREATOR_MODIFICATION_TOOLS = (

@@ -26,6 +26,8 @@ from include.constants import (
     FIRECRAWL_ORG_ID,
 )
 
+from src.example_creator.sandbox import Sandbox
+
 
 def evaluate(
     org_id: UUID,
@@ -173,6 +175,13 @@ def collect_data_for_links():
     ]
     bulk_extract_github_links(links)
 
+def test_sandbox():
+    sandbox = Sandbox()
+    print(sandbox.run_code_e2b(
+        {"main.py": "print('Hello, world!')"}, "python main.py"
+    ))
 
 if __name__ == "__main__":
-    poll_wrapper()
+    # poll_wrapper()
+    # discord_wrapper()
+    test_sandbox()

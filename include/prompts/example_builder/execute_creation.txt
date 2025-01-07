@@ -1,92 +1,84 @@
 {preamble}
 
-You are an experienced software developer tasked with creating an example application for a product. This example should showcase a new technology and be easy for users to understand and implement. Your goal is to create a simple, yet effective demonstration that will be added to the product's examples directory.
-
-Here are the key components you'll be working with:
-
-Product Name: {product_name}
-
-New Technology: {new_technology}
+You are an experienced software developer tasked with creating an example application that showcases a new technology in conjunction with a specific product. Your goal is to create a simple, yet effective demonstration that will be added to the product's examples directory. This example should be easy for users to understand and implement.
 
 Please carefully analyze the provided examples to understand the expected structure, complexity level, and documentation style.
 
 To create an effective example application, follow these steps:
 
 1. Analyze the requirements:
-   <thought_process>
+   <analysis>
    Consider the nature of the product and the new technology. Think about how they can be combined effectively in a simple example. Determine the key features or functionalities that should be demonstrated.
    
-   - List 3-5 key features of the product
-   - List 3-5 key aspects of the new technology
-   - Identify 2-3 ways these can be combined in a simple example
-   </thought_process>
+   - List 3-5 key features of the product, providing a specific example for each
+   - List 3-5 key aspects of the new technology, providing a specific example for each
+   - Identify 2-3 ways these can be combined in a simple example, explaining how each combination showcases both the product and the new technology
+   </analysis>
 
 2. Choose the programming language:
-   <thought_process>
+   <analysis>
    Decide whether to use Python or TypeScript for the example. Consider factors such as the product's primary audience, the nature of the new technology, and which language would provide the clearest demonstration.
    
-   - List pros and cons for using Python
-   - List pros and cons for using TypeScript
-   - Make a final decision based on these considerations
-   </thought_process>
+   - List pros and cons for using Python, considering the target audience's preferences and technical background
+   - List pros and cons for using TypeScript, considering the target audience's preferences and technical background
+   - Make a final decision based on these considerations, explaining how it best serves the target audience and showcases the technology
+   </analysis>
 
 3. Plan the example structure:
-   <thought_process>
-   Determine which files are necessary for the example. This may include code files, README.md, requirements.txt (for Python), package.json (for TypeScript), and any other essential files. Consider the minimum set of files needed for a complete, runnable example.
-   
-   List each necessary file with a brief description of its purpose:
-   1. [Filename]: [Purpose]
-   2. [Filename]: [Purpose]
-   ...
-   </thought_process>
+   <analysis>
+   Determine which files are necessary for the example. This should include:
+   - Main code file (e.g., main.py or app.ts)
+   - README.md with setup and usage instructions
+   - Requirements file (requirements.txt for Python or package.json for TypeScript)
+   - Any other essential files for the example to function
+
+   List each necessary file with a brief description of its purpose and how it contributes to demonstrating the new technology with the product.
+   </analysis>
 
 4. Create file content:
-   <thought_process>
+   <analysis>
    For each file, plan out its content. Focus on clarity and simplicity. Include clear, concise comments and documentation to guide users through setup, usage, and customization. Ensure that the code demonstrates the key features of the new technology in the context of the product.
    
-   For each file, outline the main components:
+   For each file, outline the main components and provide a specific code snippet or example for each:
    [Filename]:
-   - [Component 1]
-   - [Component 2]
+   - [Component 1]: [Code snippet or example]
+   - [Component 2]: [Code snippet or example]
    ...
-   </thought_process>
+   </analysis>
 
 5. Configure the environment:
-   <thought_process>
+   <analysis>
    Determine the necessary steps for users to set up and run the example. Consider dependencies, environment variables, and any specific configuration needed for the most recent version of the product.
    
-   List the setup steps:
-   1. [Step 1]
-   2. [Step 2]
+   List the setup steps, providing specific commands or actions for each:
+   1. [Step 1]: [Specific command or action]
+   2. [Step 2]: [Specific command or action]
    ...
-   </thought_process>
+   </analysis>
 
 6. Generate the files:
    Based on your analysis, create the necessary files. Use the following format to present each file:
 
    <files>
-   <fpath_examples/example_app/main.py>
-   # Content of main.py
-   </fpath_examples/example_app/main.py>
-
-   <fpath_examples/example_app/README.md>
-   # Content of README.md
-   </fpath_examples/example_app/README.md>
+   <fpath_examples/example_app/[filename]>
+   # Content of [filename]
+   </fpath_examples/example_app/[filename]>
 
    <!-- Add other files as needed -->
    </files>
 
 7. Test and debug:
-   <thought_process>
-   After generating the files, test them in the sandbox to ensure they work as expected. If you encounter any errors or issues, analyze them and propose fixes. Iterate on this process until the example runs smoothly.
+   <analysis>
+   After generating the files, consider how you would test them to ensure they work as expected. Think about potential errors or issues that might arise, and propose fixes. Iterate on this process until you're confident the example would run smoothly.
    
-   - List any errors encountered
-   - For each error, propose a fix
-   - Note any successful changes made
-   </thought_process>
+   - List any potential errors that might occur, providing a specific example for each
+   - For each error, propose a fix with a code snippet or specific action
+   - Note any changes that would need to be made for successful execution, explaining how each change improves the example
+   - Propose 2-3 specific test cases with expected outputs to verify the example's functionality
+   </analysis>
 
 8. Final review:
-   <thought_process>
+   <analysis>
    Review the entire example to ensure it meets the following criteria:
    - Demonstrates the new technology effectively
    - Is simple and easy to understand
@@ -96,14 +88,21 @@ To create an effective example application, follow these steps:
    - Optimizes for ease of understanding and use
    
    For each criterion, rate the example on a scale of 1-5 and provide a brief justification:
-   1. [Criterion]: [Rating] - [Justification]
-   2. [Criterion]: [Rating] - [Justification]
+   1. [Criterion]: [Rating] - [Justification with specific example]
+   2. [Criterion]: [Rating] - [Justification with specific example]
    ...
-   </thought_process>
+   </analysis>
 
 After completing these steps, present your final example files using the format shown in step 6. Ensure that your README.md file includes clear instructions for setup, usage, and any customization options.
 
 Remember, the key is to create an example that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation.
+
+Important requirements:
+1. You must include at least one successful execution of the sandbox tool. This tool takes code and an execution command, runs the code in a virtual sandbox, and returns the stderr + stdout. Use this to verify that your example works correctly.
+2. Provide a way to automatically set up the environment. This can be through requirements.txt, package.json, or any other appropriate method, as long as it allows for easy configuration and execution.
+3. Include a README.md file with detailed setup instructions.
+
+Your final output should be a set of files that form a complete, runnable example of how to use the product with the new technology. Make sure to think through each step carefully and provide a comprehensive solution.
 
 Examples for reference:
 
