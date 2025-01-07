@@ -409,7 +409,7 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return []
 
     def fetch_contents(
-        self, repository: str, code_pages: List[CodePage] = [], path: str = ""
+        self, repository: str, code_pages: List[CodePage] = [], path: str = "", include_dirs: bool = False
     ):
         """
         Recursively fetch contents of a repository from GitHub API
@@ -469,7 +469,17 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
 
             elif item["type"] == "dir":
                 # TODO switch to postorder traversal, add AI summaries, can do merkle tree of the files.
-                self.fetch_contents(repository, code_pages, item["path"])
+                if include_dirs:
+                    code_pages.append(
+                        CodePage(
+                            primary_key=item["path"],
+                            content="", # TODO: we can add a summary of the directory contents.
+                            org_id=str(self.org_id),
+                            page_type=CodePageType.DIRECTORY,
+                            sha=item["sha"],
+                        )
+                    )
+                self.fetch_contents(repository, code_pages, item["path"], include_dirs)
 
     def index_custom(self, repository: Repository) -> bool:
         """

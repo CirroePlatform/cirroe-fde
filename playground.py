@@ -1,4 +1,6 @@
 from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
+import os
+import logging
 from scripts.oss_ghub_issue_analysis import (
     analyze_repos,
     bulk_extract_github_links,
@@ -7,6 +9,8 @@ from scripts.oss_ghub_issue_analysis import (
 from src.storage.supa import SupaClient
 from test.eval_agent import Orchestrator
 from src.core.event.poll import poll_for_issues
+from src.model.code import CodePage, CodePageType
+from typing import List
 from uuid import UUID
 import asyncio
 from src.core.event.tool_actions.handle_discord_message import DiscordMessageHandler
@@ -27,7 +31,7 @@ from include.constants import (
 )
 
 from src.example_creator.sandbox import Sandbox
-
+from src.core.tools import SearchTools
 
 def evaluate(
     org_id: UUID,
@@ -177,7 +181,35 @@ def test_sandbox():
         {"main.py": "print('Hello, world!')"}, "python main.py"
     ))
 
+def get_example_contents_llm_readable(repo: str):
+    search_tools = SearchTools(requestor_id=FIRECRAWL_ORG_ID)
+
+    # Get list of example directories by fetching contents and filtering for directories
+    dirs: List[CodePage] = []
+    search_tools.github.fetch_contents(repo, dirs, include_dirs=True)
+    example_dirs = [
+        item.primary_key for item in dirs
+        if item.page_type == CodePageType.DIRECTORY
+    ]
+    logging.info(f"Found {len(example_dirs)} example directories")
+
+    for example_dir in example_dirs:
+        # For each example directory, fetch all its contents
+        codefiles: List[CodePage] = []
+        search_tools.github.fetch_contents(repo, codefiles, example_dir)
+        
+        # Create the formatted string for this example
+        codefile_str = "\n".join([
+            f"<fpath_{codefile.primary_key}>\n{codefile.content}\n</fpath_{codefile.primary_key}>" 
+            for codefile in codefiles
+        ])
+
+        # Write to a file named after the example. Create directory if it doesn't exist
+        logging.info(f"Writing to file: {example_dir}")
+        os.makedirs(os.path.dirname(f"examples/{example_dir}"), exist_ok=True)
+        output_file = f"examples/{example_dir}.txt"
+        with open(output_file, "w") as f:
+            f.write(codefile_str)
+
 if __name__ == "__main__":
-    # poll_wrapper()
-    # discord_wrapper()
-    test_sandbox()
+    get_example_contents_llm_readable("firecrawl-app-examples")
