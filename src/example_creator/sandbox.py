@@ -205,10 +205,10 @@ class Sandbox:
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
             traceback.print_exc()
-            result = CommandResult(stdout="", stderr=str(e))
+            result = CommandResult(stdout="", stderr=str(e), exit_code=1, error=str(e))
 
         sandbox.kill()
-        return result
+        return [], result
 
     def create_github_pr(
         self,

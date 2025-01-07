@@ -123,6 +123,20 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return title, description, commit_msg, branch_name
 
+    def _handle_action_case(self, action_type, prompt, tools, step_messages):
+        """Helper function to handle create/modify action cases"""
+        self.tools = tools
+        cur_prompt = prompt
+        if step_messages[-1]["role"] != "user":
+            action_msg = "create a new" if action_type == "create" else "modify an existing"
+            step_messages += [
+                {
+                    "role": "user", 
+                    "content": f"We've identified a need to {action_msg} example, now let's continue to develop the example based on all previous information."
+                }
+            ]
+        return cur_prompt
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
@@ -150,7 +164,6 @@ class NewStreamActionHandler(BaseActionHandler):
             self.execute_creation_prompt = format_prompt(
                 self.execute_creation_prompt,
                 product_name=self.product_name,
-                new_technology="new_tech",
                 preamble=preamble,
             )
             self.execute_modification_prompt = format_prompt(
@@ -188,49 +201,42 @@ class NewStreamActionHandler(BaseActionHandler):
                     action = (
                         last_message.split("<action>")[1].split("</action>")[0].strip()
                     )
+                    break
 
-                    if action == "create":
-                        cur_prompt = self.execute_creation_prompt
-                        self.tools = EXAMPLE_CREATOR_CREATION_TOOLS
-                        if step_messages[-1]["role"] != "user":
-                            step_messages += [
-                                {
-                                    "role": "user",
-                                    "content": "We've identified a need to create a new example, now let's continue to develop the example based on all previous information.",
-                                }
-                            ]
-                    elif action == "modify":
-                        cur_prompt = self.execute_modification_prompt
-                        self.tools = EXAMPLE_CREATOR_MODIFICATION_TOOLS
-                        if step_messages[-1]["role"] != "user":
-                            step_messages += [
-                                {
-                                    "role": "user",
-                                    "content": "We've identified a need to modify an existing example, now let's continue to develop the example based on all previous information.",
-                                }
-                            ]
-                    elif action == "none":
-                        return {"content": "No action needed for this news stream"}
+            if action == "create":
+                cur_prompt = self._handle_action_case(
+                    "create",
+                    self.execute_creation_prompt,
+                    EXAMPLE_CREATOR_CREATION_TOOLS,
+                    step_messages
+                )
+            elif action == "modify":
+                cur_prompt = self._handle_action_case(
+                    "modify", 
+                    self.execute_modification_prompt,
+                    EXAMPLE_CREATOR_MODIFICATION_TOOLS,
+                    step_messages
+                )
+            elif action == "none":
+                return {"content": "No action needed for this news stream"}
 
-                if (
-                    step_response["response"].stop_reason != "tool_use"
-                    and "<files>" in last_message
-                ):
-                    files = (
-                        last_message.split("<files>")[1]
-                        .split("</files>")[0]
-                        .strip()
-                    )
-                    title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
-                        step_messages
-                    )
-                    self.sandbox.create_github_pr(
-                        last_message,
-                        # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
-                        "Cirr0e/firecrawl-examples",
-                        title,
-                        description,
-                        commit_msg,
-                        branch_name,
-                    )
-                    return {"content": "PR created successfully"}
+            step_response = super().handle_action(step_messages, max_tool_calls, step_by_step=False, system_prompt=cur_prompt)
+            last_message = step_response["response"].content[0].text
+            if (
+                step_response["response"].stop_reason != "tool_use"
+                and "<files>" in last_message
+            ):
+                title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
+                    step_messages
+                )
+                self.sandbox.create_github_pr(
+                    last_message,
+                    # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
+                    "Cirr0e/firecrawl-examples",
+                    title,
+                    description,
+                    commit_msg,
+                    branch_name,
+                )
+
+            return {"content": "PR created successfully"}

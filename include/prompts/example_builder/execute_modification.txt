@@ -1,22 +1,104 @@
 {preamble}
 
-Your job is to modify an existing example for {product_name} to be more up to date with the {new_technology} provided in the <{new_technology}> tags. You will be provided with the following data:
-1. The existing example code files, in <existing_example> tags
-2. The {new_technology} name and description in <{new_technology}> tags.
+Your goal is to modify existing examples to ensure they are up-to-date, follow best practices, and include the latest supported features.
 
-Given the above provided data, output the modified files in the <updated_example> tags. Only files that you modify should be included in the output, and they should be wrapped in <file_name> tags. Here are some tenants to follow when performing your modification:
+Here's the information you'll be working with:
 
-Tenets:
-1. Ensure best practices for the programming language you are using on the example are followed.
-2. Ensure the example is up to date with the {new_technology} provided in the <{new_technology}> tags.
-3. Ensure the example is up to date with the latest supported features of {product_name}
-4. Modifications are concise, and only include nessecary changes, unless otherwise specified.
+1. New technology description:
+<new_technology>
+{new_technology}
+</new_technology>
 
-Here are the questions you need to answer before altering the example:
-1. What files to modify, and what changes to make to them.
-2. What the content of each file should be after the modification.
+2. Existing example code:
+<existing_example>
+{existing_example}
+</existing_example>
 
-Feel free to list out the questions, answers for each one of them, and reasonings for the answers. Once you have answered all of these questions, output the files you will modify in the <files> tags, and seperate each file by it's file path in the tags. I will attach a few examples below in <examples> tags, with the inputs wrapped in <inputs> tags, and the output code files wrapped in <files> tags. Use them to model your output.
+Your task is to analyze the existing example, incorporate the new technology, and provide updated code files. Follow these steps:
+
+1. Analyze the existing example and the new technology.
+2. Identify which files need to be modified and what changes are required.
+3. Make the necessary modifications, ensuring:
+   a. Best practices for the programming language are followed.
+   b. The example is up-to-date with the provided new technology.
+   c. The example uses the latest supported features of {product_name}.
+   d. Modifications are concise and include only necessary changes.
+4. Create a README.md file with setup instructions.
+5. Provide environment configuration (e.g., requirements.txt, package.json).
+6. Ensure the modified code can be executed in a sandbox environment.
+
+Before producing the final output, wrap your analysis and planning process inside <analysis_and_planning> tags. Include the following steps:
+
+a. Analyze the existing code and new technology:
+   - Summarize the key features of the existing code
+   - Identify how the new technology can be integrated
+
+b. List files to modify or create:
+   - Number each file, e.g., 1. example.py, 2. README.md, etc.
+
+c. Plan specific modifications for each file:
+   - Outline the changes needed for each file listed in step b
+
+d. Verify best practices and up-to-date features:
+   - List specific best practices you'll implement
+   - Note any outdated features that need updating
+
+e. Outline README.md content:
+   - Provide a brief structure for the README.md file
+
+f. Plan environment setup:
+   - List required dependencies and their versions
+
+g. Consider sandbox execution:
+   - Note any potential issues with sandbox execution and how to address them
+
+After your analysis and planning process, provide the updated example in the following format:
+
+<updated_example>
+<file_name>path/to/file1.ext</file_name>
+[Contents of file1]
+
+<file_name>path/to/file2.ext</file_name>
+[Contents of file2]
+
+<file_name>README.md</file_name>
+[Contents of README.md]
+
+<file_name>environment_config_file</file_name>
+[Contents of environment configuration file]
+</updated_example>
+
+Ensure that you include all modified files, the README.md, and the environment configuration file in your output.
+
+Example output structure:
+
+<analysis_and_planning>
+[Your detailed analysis and planning process following the steps outlined above]
+</analysis_and_planning>
+
+<updated_example>
+<file_name>example.py</file_name>
+# Updated example code
+import new_technology
+
+def main():
+    # Implementation using new technology
+    pass
+
+<file_name>README.md</file_name>
+# Example Project
+
+## Setup Instructions
+1. Install dependencies: `pip install -r requirements.txt`
+2. Run the example: `python example.py`
+
+## New Technology Integration
+This example demonstrates the use of [new technology name] for [brief description].
+
+<file_name>requirements.txt</file_name>
+new_technology==1.0.0
+other_dependency==2.3.4
+</updated_example>
 
 <examples>
 <example_1>
@@ -140,3 +222,5 @@ The python version at the time of this example being created is 3.12.1</README.m
 </example_1>
 
 </examples>
+
+Remember to execute the code in a sandbox environment and include the results in your analysis and planning process. Now, proceed with updating the example based on the provided information.

@@ -1,5 +1,6 @@
 from src.core.event.tool_actions.handle_newstream_action import NewStreamActionHandler
 from src.example_creator.sandbox import Sandbox
+from include.utils import get_latest_version
 from src.example_creator.crawl import Crawl
 from src.core.tools import SearchTools
 from datetime import timedelta
@@ -57,6 +58,7 @@ def get_handler() -> NewStreamActionHandler:
         "get_example_contents": search_tools.github.fetch_contents,
         "search_web": search_tools.web_kb.query,
         "run_code_e2b": sandbox.run_code_e2b,
+        "get_latest_version": get_latest_version,
     }
 
     # Initialize handler with required prompts and tools

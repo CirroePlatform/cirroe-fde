@@ -3,6 +3,7 @@ from itertools import chain
 from typing import List, Tuple
 
 import tiktoken
+import requests
 import logger
 import uuid
 import re
@@ -11,7 +12,31 @@ import base64
 
 load_dotenv()
 
-import re
+def get_latest_version(package_name: str) -> str:
+    """
+    Fetches the latest version of a given pip dependency from PyPI.
+    
+    Args:
+        package_name (str): The name of the pip dependency.
+    
+    Returns:
+        str: The latest version of the package, or an error message if the package is not found.
+    """
+    url = f"https://pypi.org/pypi/{package_name}/json"
+    
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
+        data = response.json()
+        return data['info']['version']
+    except requests.exceptions.HTTPError as http_err:
+        return f"HTTP error occurred: {http_err}"
+    except requests.exceptions.RequestException as req_err:
+        return f"Request error occurred: {req_err}"
+    except KeyError:
+        return "Unexpected response format from PyPI."
+    except Exception as err:
+        return f"An error occurred: {err}"
 
 
 def format_prompt(prompt: str, **kwargs) -> str:
