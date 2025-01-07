@@ -110,279 +110,2824 @@ Examples for reference:
 
 <example_1>
 <files>
-<fpath_main.py>import numpy as np\narray = np.array([1, 2, 3])\n{product_name}.interact_with(array)</fpath_main.py>
+<fpath_examples/kubernetes/cluster-install/README.md>
+# Install Firecrawl on a Kubernetes Cluster (Simple Version)
+# Before installing
+1. Set [secret.yaml](secret.yaml) and [configmap.yaml](configmap.yaml) and do not check in secrets
+   - **Note**: If `REDIS_PASSWORD` is configured in the secret, please modify the ConfigMap to reflect the following format for `REDIS_URL` and `REDIS_RATE_LIMIT_URL`:
+     ```yaml
+     REDIS_URL: "redis://:password@host:port"
+     REDIS_RATE_LIMIT_URL: "redis://:password@host:port"
+     ```
+     Replace `password`, `host`, and `port` with the appropriate values.
 
-<fpath_README.md>#Numpy guide\nThis is an example of how to use numpy to create an array, and then properly link said array to {product_name}.\n## Installation\n```bash\npip install -r requirements.txt\n```\n## Usage\n```bash\npython main.py\n```The python version at the time of this example being created is 3.12.1</fpath_README.md>
 
-<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01\nnumpy==2.2.1</fpath_requirements.txt>
+2. Build Docker images, and host it in your Docker Registry (replace the target registry with your own)
+   1. API (which is also used as a worker image)
+      1. ```bash
+         docker build --no-cache -t ghcr.io/winkk-dev/firecrawl:latest ../../../apps/api
+         docker push ghcr.io/winkk-dev/firecrawl:latest
+         ```
+   2. Playwright 
+      1. ```bash
+            docker build --no-cache -t ghcr.io/winkk-dev/firecrawl-playwright:latest ../../../apps/playwright-service
+            docker push ghcr.io/winkk-dev/firecrawl-playwright:latest
+         ```
+3. Replace the image in [worker.yaml](worker.yaml), [api.yaml](api.yaml) and [playwright-service.yaml](playwright-service.yaml)
+
+## Install
+```bash
+kubectl apply -f configmap.yaml
+kubectl apply -f secret.yaml
+kubectl apply -f playwright-service.yaml
+kubectl apply -f api.yaml
+kubectl apply -f worker.yaml
+kubectl apply -f redis.yaml
+```
+
+
+# Port Forwarding for Testing
+```bash
+kubectl port-forward svc/api 3002:3002 -n dev
+```
+
+# Delete Firecrawl
+```bash
+kubectl delete -f configmap.yaml
+kubectl delete -f secret.yaml
+kubectl delete -f playwright-service.yaml
+kubectl delete -f api.yaml
+kubectl delete -f worker.yaml
+kubectl delete -f redis.yaml
+```
+
+</fpath_examples/kubernetes/cluster-install/README.md>
+<fpath_examples/kubernetes/cluster-install/api.yaml>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: api
+          image: ghcr.io/winkk-dev/firecrawl:latest
+          imagePullPolicy: Always
+          args: [ "pnpm", "run", "start:production" ]
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+          #- secretRef:
+          #    name: firecrawl-secret
+          livenessProbe:
+            httpGet:
+              path: /v0/health/liveness
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v0/health/readiness
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - protocol: TCP
+      port: 3002
+      targetPort: 3002
+
+</fpath_examples/kubernetes/cluster-install/api.yaml>
+<fpath_examples/kubernetes/cluster-install/configmap.yaml>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: firecrawl-config
+data:
+  NUM_WORKERS_PER_QUEUE: "8"
+  PORT: "3002"
+  HOST: "0.0.0.0"
+  REDIS_URL: "redis://redis:6379"
+  REDIS_RATE_LIMIT_URL: "redis://redis:6379"
+  PLAYWRIGHT_MICROSERVICE_URL: "http://playwright-service:3000/html"
+  USE_DB_AUTHENTICATION: "false"
+  HDX_NODE_BETA_MODE: "1"
+
+</fpath_examples/kubernetes/cluster-install/configmap.yaml>
+<fpath_examples/kubernetes/cluster-install/playwright-service.yaml>
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: playwright-service-config
+data:
+  PORT: "3000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playwright-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playwright-service
+  template:
+    metadata:
+      labels:
+        app: playwright-service
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: playwright-service
+          image: ghcr.io/winkk-dev/firecrawl-playwright:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: playwright-service-config
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: playwright-service
+spec:
+  selector:
+    app: playwright-service
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+
+</fpath_examples/kubernetes/cluster-install/playwright-service.yaml>
+<fpath_examples/kubernetes/cluster-install/redis.yaml>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:alpine
+        command: [ "/bin/sh", "-c" ]  # Run a shell script as entrypoint
+        args:
+          - |
+            if [ -n "$REDIS_PASSWORD" ]; then
+              echo "Starting Redis with authentication"
+              exec redis-server --bind 0.0.0.0 --requirepass "$REDIS_PASSWORD"
+            else
+              echo "Starting Redis without authentication"
+              exec redis-server --bind 0.0.0.0
+            fi
+        env:
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: firecrawl-secret
+                key: REDIS_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+    - protocol: TCP
+      port: 6379
+      targetPort: 6379
+
+</fpath_examples/kubernetes/cluster-install/redis.yaml>
+<fpath_examples/kubernetes/cluster-install/secret.yaml>
+apiVersion: v1
+kind: Secret
+metadata:
+  name: firecrawl-secret
+type: Opaque
+data:
+  OPENAI_API_KEY: ""
+  SLACK_WEBHOOK_URL: ""
+  LLAMAPARSE_API_KEY: ""
+  BULL_AUTH_KEY: ""
+  TEST_API_KEY: ""
+  POSTHOG_API_KEY: ""
+  POSTHOG_HOST: ""
+  SCRAPING_BEE_API_KEY: ""
+  STRIPE_PRICE_ID_STANDARD: ""
+  STRIPE_PRICE_ID_SCALE: ""
+  FIRE_ENGINE_BETA_URL: ""
+  REDIS_PASSWORD: ""
+
+</fpath_examples/kubernetes/cluster-install/secret.yaml>
+<fpath_examples/kubernetes/cluster-install/worker.yaml>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: worker
+          image: ghcr.io/winkk-dev/firecrawl:latest
+          imagePullPolicy: Always
+          args: [ "pnpm", "run", "workers" ]
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+          #- secretRef:
+          #    name: firecrawl-secret
+
+</fpath_examples/kubernetes/cluster-install/worker.yaml>
 </files>
 </example_1>
 
 <example_2>
 <files>
-<fpath_main.py>from anthropic import Anthropic
-from langchain.chains import LLMChain
-from langchain_anthropic import AnthropicLLM
-from utils import create_prompt_template
+<fpath_examples/openai_swarm_firecrawl/.env.example>
+OPENAI_API_KEY=
+FIRECRAWL_API_KEY=
+</fpath_examples/openai_swarm_firecrawl/.env.example>
+<fpath_examples/openai_swarm_firecrawl/README.md>
+# Swarm Firecrawl Marketing Agent
 
-# Initialize Anthropic client
-anthropic = Anthropic()
+A multi-agent system using [OpenAI Swarm](https://github.com/openai/swarm) for AI-powered marketing strategies using [Firecrawl](https://firecrawl.dev) for web scraping.
 
-# Create LangChain components
-llm = AnthropicLLM(model="claude-2")
-prompt = create_prompt_template()
-chain = LLMChain(llm=llm, prompt=prompt)
+## Agents
 
-# Run chain and get response
-response = chain.run(question="What is the meaning of life?")
+1. User Interface: Manages user interactions
+2. Website Scraper: Extracts clean LLM-ready content via Firecrawl API
+3. Analyst: Provides marketing insights
+4. Campaign Idea: Generates marketing campaign concepts
+5. Copywriter: Creates compelling marketing copy
 
-# Use {product_name} to process the response
-processed = {product_name}.use(response)
-print(f"Processed response: {{processed}}")</fpath_main.py>
+## Requirements
 
-<fpath_utils.py>from langchain.prompts import PromptTemplate
+- [Firecrawl](https://firecrawl.dev) API key
+- [OpenAI](https://platform.openai.com/api-keys) API key
 
-def create_prompt_template():
-    """Creates a reusable prompt template for the LLM chain"""
-    template = """Question: {{question}}
-    
-    Please provide a thoughtful response to this question.
-    
-    Answer:"""
-    
-    return PromptTemplate(
-        input_variables=["question"],
-        template=template
-    )</fpath_utils.py>
+## Setup
 
-<fpath_README.md># Anthropic + LangChain Integration Example
+1. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
 
-This example demonstrates how to use {product_name} with Anthropic's Claude model via LangChain.
-
-## Installation
-
-```bash
-pip install -r requirements.txt
-```
-The python version at the time of this example being created is 3.12.1
+2. Set up your environment variables in a `.env` file:
+   ```
+   OPENAI_API_KEY=your_openai_api_key
+   FIRECRAWL_API_KEY=your_firecrawl_api_key
+   ```
 
 ## Usage
 
-```bash
-python main.py
-```</fpath_README.md>
+Run the main script to start the interactive demo:
 
-<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01\nlangchain==0.3.13\nlangchain-anthropic==0.3.1\nantropic==0.42.0</fpath_requirements.txt>
+```
+python main.py
+```
+</fpath_examples/openai_swarm_firecrawl/README.md>
+<fpath_examples/openai_swarm_firecrawl/main.py>
+import os
+from firecrawl import FirecrawlApp
+from swarm import Agent
+from swarm.repl import run_demo_loop
+import dotenv
+from openai import OpenAI
+
+dotenv.load_dotenv()
+
+# Initialize FirecrawlApp and OpenAI
+app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+def scrape_website(url):
+    """Scrape a website using Firecrawl."""
+    scrape_status = app.scrape_url(
+        url,
+        params={'formats': ['markdown']}
+    )
+    return scrape_status
+
+def generate_completion(role, task, content):
+    """Generate a completion using OpenAI."""
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": f"You are a {role}. {task}"},
+            {"role": "user", "content": content}
+        ]
+    )
+    return response.choices[0].message.content
+
+def analyze_website_content(content):
+    """Analyze the scraped website content using OpenAI."""
+    analysis = generate_completion(
+        "marketing analyst",
+        "Analyze the following website content and provide key insights for marketing strategy.",
+        content
+    )
+    return {"analysis": analysis}
+
+def generate_copy(brief):
+    """Generate marketing copy based on a brief using OpenAI."""
+    copy = generate_completion(
+        "copywriter",
+        "Create compelling marketing copy based on the following brief.",
+        brief
+    )
+    return {"copy": copy}
+
+def create_campaign_idea(target_audience, goals):
+    """Create a campaign idea based on target audience and goals using OpenAI."""
+    campaign_idea = generate_completion(
+        "marketing strategist",
+        "Create an innovative campaign idea based on the target audience and goals provided.",
+        f"Target Audience: {target_audience}\nGoals: {goals}"
+    )
+    return {"campaign_idea": campaign_idea}
+
+def handoff_to_copywriter():
+    """Hand off the campaign idea to the copywriter agent."""
+    return copywriter_agent
+
+def handoff_to_analyst():
+    """Hand off the website content to the analyst agent."""
+    return analyst_agent
+
+def handoff_to_campaign_idea():
+    """Hand off the target audience and goals to the campaign idea agent."""
+    return campaign_idea_agent
+
+def handoff_to_website_scraper():
+    """Hand off the url to the website scraper agent."""
+    return website_scraper_agent
+
+user_interface_agent = Agent(
+    name="User Interface Agent",
+    instructions="You are a user interface agent that handles all interactions with the user. You need to always start with a URL that the user wants to create a marketing strategy for. Ask clarification questions if needed. Be concise.",
+    functions=[handoff_to_website_scraper],
+)
+
+website_scraper_agent = Agent(
+    name="Website Scraper Agent",
+    instructions="You are a website scraper agent specialized in scraping website content.",
+    functions=[scrape_website, handoff_to_analyst],
+)
+
+analyst_agent = Agent(
+    name="Analyst Agent",
+    instructions="You are an analyst agent that examines website content and provides insights for marketing strategies. Be concise.",
+    functions=[analyze_website_content, handoff_to_campaign_idea],
+)
+
+campaign_idea_agent = Agent(
+    name="Campaign Idea Agent",
+    instructions="You are a campaign idea agent that creates innovative marketing campaign ideas based on website content and target audience. Be concise.",
+    functions=[create_campaign_idea, handoff_to_copywriter],
+)
+
+copywriter_agent = Agent(
+    name="Copywriter Agent",
+    instructions="You are a copywriter agent specialized in creating compelling marketing copy based on website content and campaign ideas. Be concise.",
+    functions=[generate_copy],
+)
+
+if __name__ == "__main__":
+    # Run the demo loop with the user interface agent
+    run_demo_loop(user_interface_agent, stream=True)
+</fpath_examples/openai_swarm_firecrawl/main.py>
+<fpath_examples/openai_swarm_firecrawl/requirements.txt>
+firecrawl-py
+openai
+</fpath_examples/openai_swarm_firecrawl/requirements.txt>
 </files>
 </example_2>
 
+
 <example_3>
 <files>
-<fpath_main.py>from {product_name} import WebCrawler
-from pydantic import BaseModel
-from typing import List
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/.env.template>
+# TODO: Get your E2B API key from https://e2b.dev/docs
+E2B_API_KEY=""
 
-class NewsItem(BaseModel):
-    title: str
-    url: str
-    author: str
-    rank: str
-    upvotes: str
+# TODO: Get your Firecrawl API key from https://firecrawl.dev
+FIRECRAWL_API_KEY=""
 
-# Initialize crawler with simple configuration
-crawler = WebCrawler()
-data = crawler.scrape("https://news.ycombinator.com", 
-    schema=NewsItem,
-    max_items=10
-)
+# TODO: Get your Anthropic API key from https://anthropic.com
+ANTHROPIC_API_KEY=""
 
-# Save results to file
-for item in data:
-    print(f"Found: {item.title} by {item.author}")
-</fpath_main.py>
 
-<fpath_README.md># Simple News Crawler Example
 
-This example shows how to use {product_name} to scrape Hacker News with a structured schema.
 
-## Installation
-```bash
-pip install -r requirements.txt
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/.env.template>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/.prettierignore>
+# Ignore artifacts:
+node_modules
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/.prettierignore>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/README.md>
+# Scrape and Analyze Airbnb Data with Firecrawl and E2B
+
+This example demonstrates how to scrape Airbnb data and analyze it using [Firecrawl](https://www.firecrawl.dev/) and the [Code Interpreter SDK](https://github.com/e2b-dev/code-interpreter) from E2B.
+
+## Prerequisites
+
+- Node.js installed on your machine
+- An E2B API key
+- A Firecrawl API key
+- A Anthropic API key
+
+## Setup & run
+
+### 1. Install dependencies
+
+```
+npm install
 ```
 
-## Usage
-```bash
-python main.py
+### 2. Set up `.env`
+
+1. Copy `.env.template` to `.env`
+2. Get [E2B API key](https://e2b.dev/docs/getting-started/api-key)
+3. Get [Firecrawl API key](https://firecrawl.dev)
+4. Get [Anthropic API key](https://anthropic.com)
+
+### 3. Run the example
+
 ```
+npm run start
+```
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/README.md>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/airbnb_listings.json>
+[
+  {
+    "title": "2br Victorian House with Breathtaking views",
+    "price_per_night": 356,
+    "location": "Potrero Hill",
+    "rating": 4.98,
+    "reviews": 184
+  },
+  {
+    "title": "543c - convenient cozy private bedroom for 1 person",
+    "price_per_night": 52,
+    "location": "Inner Richmond",
+    "rating": 4.72,
+    "reviews": 68
+  },
+  {
+    "title": "Clean Bright Airy Private Apt in the Heart of SF",
+    "price_per_night": 269,
+    "location": "Marina District",
+    "rating": 4.95,
+    "reviews": 239
+  },
+  {
+    "title": "Garden Suite by Golden Gate Park, Private Bathrm",
+    "price_per_night": 79,
+    "location": "Outer Richmond",
+    "rating": 4.82,
+    "reviews": 1113
+  },
+  {
+    "title": "#2 private bathroom next to The Ritz- Carlton",
+    "price_per_night": 98,
+    "location": "Union Square",
+    "rating": 4.96,
+    "reviews": 494
+  },
+  {
+    "title": "Central, cozy one-bedroom condo in San Francisco",
+    "price_per_night": 262,
+    "location": "San Francisco",
+    "rating": 4.98,
+    "reviews": 46
+  },
+  {
+    "title": "Large Light Filled Quiet Artist built 2BR Apt",
+    "price_per_night": 273,
+    "location": "Mission District",
+    "rating": 4.99,
+    "reviews": 132
+  },
+  {
+    "title": "Oceanside Getaway",
+    "price_per_night": 160,
+    "location": "Outer Sunset",
+    "rating": 4.93,
+    "reviews": 559
+  },
+  {
+    "title": "Perfect getaway near Japantown",
+    "price_per_night": 159,
+    "location": "Japantown",
+    "rating": 4.92,
+    "reviews": 515
+  },
+  {
+    "title": "Style & Comfort-Private Suite near UCSF and GGPark",
+    "price_per_night": 155,
+    "location": "Inner Sunset",
+    "rating": 4.98,
+    "reviews": 439
+  },
+  {
+    "title": "Central quiet Victorian Flat",
+    "price_per_night": 224,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 15
+  },
+  {
+    "title": "Palm Trees private room near Ocean Beach Zoo GGPK",
+    "price_per_night": 76,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 200
+  },
+  {
+    "title": "Spacious 1BR in the Mission w/ huge living room",
+    "price_per_night": 195,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 7
+  },
+  {
+    "title": "Modern Hilltop Studio - Private Entry and Garden",
+    "price_per_night": 230,
+    "location": "San Francisco",
+    "rating": 4.94,
+    "reviews": 196
+  },
+  {
+    "title": "Bright Modern Private Soma Studio Street Entrance",
+    "price_per_night": 125,
+    "location": "San Francisco",
+    "rating": 4.9,
+    "reviews": 214
+  },
+  {
+    "title": "Castro private room & bath VIEW (no cleaning fee)",
+    "price_per_night": 112,
+    "location": "San Francisco",
+    "rating": 4.94,
+    "reviews": 440
+  },
+  {
+    "title": "Nob Hill Studio",
+    "price_per_night": 148,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 42
+  },
+  {
+    "title": "Spacious and Sunny Noe Valley Gem!",
+    "price_per_night": 115,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 68
+  },
+  {
+    "title": "SF Ocean Beach In-law Suite",
+    "price_per_night": 162,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 646
+  },
+  {
+    "title": "Comfortable, cozy, private studio - Bernal Heights",
+    "price_per_night": 145,
+    "location": "San Francisco",
+    "rating": 4.9,
+    "reviews": 866
+  },
+  {
+    "title": "Casa Pinudo Queen Bed Room & City-View Roofdeck",
+    "price_per_night": 100,
+    "location": "San Francisco",
+    "rating": 4.87,
+    "reviews": 47
+  },
+  {
+    "title": "Bright bedroom in Victorian home",
+    "price_per_night": 114,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 183
+  },
+  {
+    "title": "#1 SF 24th ave& kirkham st Master king room",
+    "price_per_night": 104,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 59
+  },
+  {
+    "title": "Cheerful 1 bedroom",
+    "price_per_night": 137,
+    "location": "San Francisco",
+    "rating": 4.79,
+    "reviews": 111
+  },
+  {
+    "title": "Luxury Studio Near SFO, SFSU ,BART, Walk to shops!",
+    "price_per_night": 116,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 139
+  },
+  {
+    "title": "#4 SF Sunset 24th ave&kirkham st Deluxe king room",
+    "price_per_night": 104,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 74
+  },
+  {
+    "title": "Modern room & loft, private entrance",
+    "price_per_night": 78,
+    "location": "San Bruno",
+    "rating": 4.88,
+    "reviews": 868
+  },
+  {
+    "title": "1 Queen bedded room w/full bath",
+    "price_per_night": 117,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 120
+  },
+  {
+    "title": "Charming Noe Valley Garden Oasis",
+    "price_per_night": 249,
+    "location": "San Francisco",
+    "rating": 4.89,
+    "reviews": 199
+  },
+  {
+    "title": "Beautiful Garden Studio in heart of Nopa",
+    "price_per_night": 343,
+    "location": "San Francisco",
+    "rating": 4.76,
+    "reviews": 259
+  },
+  {
+    "title": "#4 SF Sunset 24th ave&kirkham st Deluxe king room",
+    "price_per_night": 175,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 74
+  },
+  {
+    "title": "Noteworthy Large Private Bedroom - Best Location",
+    "price_per_night": 159,
+    "location": "San Francisco",
+    "rating": 4.86,
+    "reviews": 63
+  },
+  {
+    "title": "Primary Suite Golden Gate Bridge view Private Deck",
+    "price_per_night": 317,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 445
+  },
+  {
+    "title": "Private Room: Escape to the Mission",
+    "price_per_night": 186,
+    "location": "San Francisco",
+    "rating": 4.72,
+    "reviews": 501
+  },
+  {
+    "title": "#1 SF 24th ave& kirkham st Master king room",
+    "price_per_night": 176,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 59
+  },
+  {
+    "title": "Private Suite",
+    "price_per_night": 154,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 77
+  },
+  {
+    "title": "501 Post road, San Francisco 94102",
+    "price_per_night": 267,
+    "location": "San Francisco"
+  },
+  {
+    "title": "Most Desired Vacation Spot in San Francisco.",
+    "price_per_night": 650,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 78
+  },
+  {
+    "title": "The House Protects The Dreamer - 2BR/1BA Victorian",
+    "price_per_night": 376,
+    "location": "San Francisco",
+    "rating": 4.92,
+    "reviews": 179
+  },
+  {
+    "title": "Private Junior Room in Artist's Flat",
+    "price_per_night": 130,
+    "location": "San Francisco",
+    "rating": 4.7,
+    "reviews": 165
+  },
+  {
+    "title": "Serenity by the Park , Your Golden Gate Getaway",
+    "price_per_night": 238,
+    "location": "San Francisco",
+    "rating": 4.86,
+    "reviews": 21
+  },
+  {
+    "title": "Golden Getaway • Spacious Private Room 15m to SFO",
+    "price_per_night": 113,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 169
+  },
+  {
+    "title": "Modern studio next to beach, G.G Park & transport",
+    "price_per_night": 300,
+    "location": "San Francisco",
+    "rating": 4.87,
+    "reviews": 318
+  },
+  {
+    "title": "Affordable Cozy Private Room near San Francisco",
+    "price_per_night": 88,
+    "location": "San Francisco"
+  },
+  {
+    "title": "Affordable Room w/ Great View in San Francisco",
+    "price_per_night": 134,
+    "location": "San Francisco",
+    "rating": 4.79,
+    "reviews": 121
+  },
+  {
+    "title": "Nob Hill Studio",
+    "price_per_night": 250,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 42
+  },
+  {
+    "title": "Cozy Sunset suite",
+    "price_per_night": 120,
+    "location": "San Francisco",
+    "rating": 4.66,
+    "reviews": 98
+  },
+  {
+    "title": "Stay with Dongmei",
+    "price_per_night": 48,
+    "location": "San Francisco",
+    "rating": 4.76,
+    "reviews": 343
+  },
+  {
+    "title": "Mediterranean style private studio",
+    "price_per_night": 139,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 489
+  },
+  {
+    "title": "Cozy Garden Unit with All Amenities",
+    "price_per_night": 122,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 446
+  },
+  {
+    "title": "Private Sunset Getaway",
+    "price_per_night": 88,
+    "location": "San Francisco",
+    "rating": 4.85,
+    "reviews": 26
+  },
+  {
+    "title": "Pacifica studio- ocean view from deck",
+    "price_per_night": 91,
+    "location": "Pacifica",
+    "rating": 4.76,
+    "reviews": 352
+  },
+  {
+    "title": "Sweet Suite w/ EV charger & Parking, 5 min to SFSU",
+    "price_per_night": 167,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 141
+  },
+  {
+    "title": "Light-Filled Hillside Studio Apartment",
+    "price_per_night": 128,
+    "location": "San Francisco",
+    "rating": 4.79,
+    "reviews": 148
+  },
+  {
+    "title": "Stay with Benoîte",
+    "price_per_night": 72,
+    "location": "San Francisco",
+    "rating": 4.87,
+    "reviews": 131
+  },
+  {
+    "title": "Serene King Suite with Jacuzzi & Fireplace",
+    "price_per_night": 225,
+    "location": "San Francisco",
+    "rating": 4.89,
+    "reviews": 18
+  },
+  {
+    "title": "Stay with Ryan",
+    "price_per_night": 225,
+    "location": "San Francisco",
+    "rating": 4.89,
+    "reviews": 18
+  },
+  {
+    "title": "Perfectly located Castro",
+    "price_per_night": 99,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 488
+  },
+  {
+    "title": "Sweet garden suite with free parking",
+    "price_per_night": 169,
+    "location": "San Francisco",
+    "rating": 4.99,
+    "reviews": 226
+  },
+  {
+    "title": "Bright+Modern Brand New Guest House-Great Location",
+    "price_per_night": 118,
+    "location": "South San Francisco",
+    "rating": 5,
+    "reviews": 37
+  },
+  {
+    "title": "Garden studio - Presidio, Baker Beach",
+    "price_per_night": 194,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 68
+  },
+  {
+    "title": "Single Small private 1br 1ba no clean fee!",
+    "price_per_night": 106,
+    "location": "San Francisco",
+    "rating": 4.78,
+    "reviews": 310
+  },
+  {
+    "title": "Private Cozy room 3",
+    "price_per_night": 53,
+    "location": "San Francisco",
+    "rating": 4.86,
+    "reviews": 332
+  },
+  {
+    "title": "Central Mission Potrero 1BED-1BATH",
+    "price_per_night": 164,
+    "location": "San Francisco",
+    "rating": 4.81,
+    "reviews": 324
+  },
+  {
+    "title": "Cozy Remodeled Suite in Oceanview With Parking",
+    "price_per_night": 151,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 310
+  }
+]
 
-The python version at the time of this example being created is 3.12.1</README.md>
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/airbnb_listings.json>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/codeInterpreter.ts>
+import { CodeInterpreter } from '@e2b/code-interpreter'
 
-<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
-pydantic==2.5.2</fpath_requirements.txt>
+export async function codeInterpret(
+  codeInterpreter: CodeInterpreter,
+  code: string
+) {
+  console.log(
+    `\n${'='.repeat(50)}\n> Running following AI-generated code:\n${code}\n${'='.repeat(50)}`
+  )
+
+  const exec = await codeInterpreter.notebook.execCell(code, {
+    // You can stream logs from the code interpreter
+    // onStderr: (stderr: string) => console.log("\n[Code Interpreter stdout]", stderr),
+    // onStdout: (stdout: string) => console.log("\n[Code Interpreter stderr]", stdout),
+    //
+    // You can also stream additional results like charts, images, etc.
+    // onResult: ...
+  })
+
+  if (exec.error) {
+    console.log('[Code Interpreter error]', exec.error) // Runtime error
+    return undefined
+  }
+
+  return exec
+}
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/codeInterpreter.ts>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/index.ts>
+// @ts-ignore
+import * as fs from 'fs'
+
+import 'dotenv/config'
+import { CodeInterpreter, Execution } from '@e2b/code-interpreter'
+import Anthropic from '@anthropic-ai/sdk'
+import { Buffer } from 'buffer'
+
+import { MODEL_NAME, SYSTEM_PROMPT, tools } from './model'
+
+import { codeInterpret } from './codeInterpreter'
+import { scrapeAirbnb } from './scraping'
+
+const anthropic = new Anthropic()
+
+async function chat(
+  codeInterpreter: CodeInterpreter,
+  userMessage: string
+): Promise<Execution | undefined> {
+  console.log('Waiting for Claude...')
+
+  const msg = await anthropic.beta.tools.messages.create({
+    model: MODEL_NAME,
+    system: SYSTEM_PROMPT,
+    max_tokens: 4096,
+    messages: [{ role: 'user', content: userMessage }],
+    tools,
+  })
+
+  console.log(
+    `\n${'='.repeat(50)}\nModel response: ${msg.content}\n${'='.repeat(50)}`
+  )
+  console.log(msg)
+
+  if (msg.stop_reason === 'tool_use') {
+    const toolBlock = msg.content.find((block) => block.type === 'tool_use')
+    // @ts-ignore
+    const toolName = toolBlock?.name ?? ''
+    // @ts-ignore
+    const toolInput = toolBlock?.input ?? ''
+
+    console.log(
+      `\n${'='.repeat(50)}\nUsing tool: ${toolName}\n${'='.repeat(50)}`
+    )
+
+    if (toolName === 'execute_python') {
+      const code = toolInput.code
+      return codeInterpret(codeInterpreter, code)
+    }
+    return undefined
+  }
+}
+
+async function run() {
+  // Load the Airbnb prices data from the JSON file
+  let data
+  const readDataFromFile = () => {
+    try {
+      return fs.readFileSync('airbnb_listings.json', 'utf8')
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        console.log('File not found, scraping data...')
+        return null
+      } else {
+        throw err
+      }
+    }
+  }
+
+  const fetchData = async () => {
+    data = readDataFromFile()
+    if (!data || data.trim() === '[]') {
+      console.log('File is empty or contains an empty list, scraping data...')
+      data = await scrapeAirbnb()
+    }
+  }
+
+  await fetchData()
+
+  // Parse the JSON data
+  const prices = JSON.parse(data)
+
+  // Convert prices array to a string representation of a Python list
+  const pricesList = JSON.stringify(prices)
+
+  const userMessage = `
+  Load the Airbnb prices data from the airbnb listing below and visualize the distribution of prices with a histogram. Listing data: ${pricesList}
+`
+
+  const codeInterpreter = await CodeInterpreter.create()
+  const codeOutput = await chat(codeInterpreter, userMessage)
+  if (!codeOutput) {
+    console.log('No code output')
+    return
+  }
+
+  const logs = codeOutput.logs
+  console.log(logs)
+
+  if (codeOutput.results.length == 0) {
+    console.log('No results')
+    return
+  }
+
+  const firstResult = codeOutput.results[0]
+  console.log(firstResult.text)
+
+  if (firstResult.png) {
+    const pngData = Buffer.from(firstResult.png, 'base64')
+    const filename = 'airbnb_prices_chart.png'
+    fs.writeFileSync(filename, pngData)
+    console.log(`✅ Saved chart to ${filename}`)
+  }
+
+  await codeInterpreter.close()
+}
+
+run()
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/index.ts>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/model.ts>
+import { Tool } from '@anthropic-ai/sdk/src/resources/beta/tools'
+
+export const MODEL_NAME = 'claude-3-opus-20240229'
+
+export const SYSTEM_PROMPT = `
+## your job & context
+you are a python data scientist. you are given tasks to complete and you run python code to solve them.
+- the python code runs in jupyter notebook.
+- every time you call \`execute_python\` tool, the python code is executed in a separate cell. it's okay to multiple calls to \`execute_python\`.
+- display visualizations using matplotlib or any other visualization library directly in the notebook. don't worry about saving the visualizations to a file.
+- you have access to the internet and can make api requests.
+- you also have access to the filesystem and can read/write files.
+- you can install any pip package (if it exists) if you need to but the usual packages for data analysis are already preinstalled.
+- you can run any python code you want, everything is running in a secure sandbox environment.
+`
+
+export const tools: Tool[] = [
+  {
+    name: 'execute_python',
+    description:
+      'Execute python code in a Jupyter notebook cell and returns any result, stdout, stderr, display_data, and error.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        code: {
+          type: 'string',
+          description: 'The python code to execute in a single cell.',
+        },
+      },
+      required: ['code'],
+    },
+  },
+]
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/model.ts>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/package-lock.json>
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "hello-world",
+      "version": "1.0.0",
+      "license": "ISC",
+      "dependencies": {
+        "@anthropic-ai/sdk": "^0.20.7",
+        "@e2b/code-interpreter": "^0.0.2",
+        "@mendable/firecrawl-js": "^0.0.21",
+        "buffer": "^6.0.3",
+        "dotenv": "^16.4.5"
+      },
+      "devDependencies": {
+        "@types/node": "^20.12.12",
+        "prettier": "3.2.5",
+        "tsx": "^4.7.3",
+        "typescript": "^5.4.5"
+      }
+    },
+    "node_modules/@anthropic-ai/sdk": {
+      "version": "0.20.9",
+      "resolved": "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.20.9.tgz",
+      "integrity": "sha512-Lq74+DhiEQO6F9/gdVOLmHx57pX45ebK2Q/zH14xYe1157a7QeUVknRqIp0Jz5gQI01o7NKbuv9Dag2uQsLjDg==",
+      "dependencies": {
+        "@types/node": "^18.11.18",
+        "@types/node-fetch": "^2.6.4",
+        "abort-controller": "^3.0.0",
+        "agentkeepalive": "^4.2.1",
+        "form-data-encoder": "1.7.2",
+        "formdata-node": "^4.3.2",
+        "node-fetch": "^2.6.7",
+        "web-streams-polyfill": "^3.2.1"
+      }
+    },
+    "node_modules/@anthropic-ai/sdk/node_modules/@types/node": {
+      "version": "18.19.33",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-18.19.33.tgz",
+      "integrity": "sha512-NR9+KrpSajr2qBVp/Yt5TU/rp+b5Mayi3+OlMlcg2cVCfRmcG5PWZ7S4+MG9PZ5gWBoc9Pd0BKSRViuBCRPu0A==",
+      "dependencies": {
+        "undici-types": "~5.26.4"
+      }
+    },
+    "node_modules/@e2b/code-interpreter": {
+      "version": "0.0.2",
+      "resolved": "https://registry.npmjs.org/@e2b/code-interpreter/-/code-interpreter-0.0.2.tgz",
+      "integrity": "sha512-hEXSV1Sgg04Yr9/HH2Lt41IlvOSoQtzLBQ+x9pv88o0/sHWKHwy+2j0Jw91DEZ/OiNJvKjAnw1n1HWhlUqfPfQ==",
+      "dependencies": {
+        "e2b": "^0.13.1",
+        "isomorphic-ws": "^5.0.0",
+        "ws": "^8.15.1"
+      },
+      "engines": {
+        "node": ">=18"
+      }
+    },
+    "node_modules/@esbuild/aix-ppc64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.20.2.tgz",
+      "integrity": "sha512-D+EBOJHXdNZcLJRBkhENNG8Wji2kgc9AZ9KiPr1JuZjsNtyHzrsfLRrY0tk2H2aoFu6RANO1y1iPPUCDYWkb5g==",
+      "cpu": [
+        "ppc64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "aix"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/android-arm": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.20.2.tgz",
+      "integrity": "sha512-t98Ra6pw2VaDhqNWO2Oph2LXbz/EJcnLmKLGBJwEwXX/JAN83Fym1rU8l0JUWK6HkIbWONCSSatf4sf2NBRx/w==",
+      "cpu": [
+        "arm"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/android-arm64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.20.2.tgz",
+      "integrity": "sha512-mRzjLacRtl/tWU0SvD8lUEwb61yP9cqQo6noDZP/O8VkwafSYwZ4yWy24kan8jE/IMERpYncRt2dw438LP3Xmg==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/android-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.20.2.tgz",
+      "integrity": "sha512-btzExgV+/lMGDDa194CcUQm53ncxzeBrWJcncOBxuC6ndBkKxnHdFJn86mCIgTELsooUmwUm9FkhSp5HYu00Rg==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/darwin-arm64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.20.2.tgz",
+      "integrity": "sha512-4J6IRT+10J3aJH3l1yzEg9y3wkTDgDk7TSDFX+wKFiWjqWp/iCfLIYzGyasx9l0SAFPT1HwSCR+0w/h1ES/MjA==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/darwin-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.20.2.tgz",
+      "integrity": "sha512-tBcXp9KNphnNH0dfhv8KYkZhjc+H3XBkF5DKtswJblV7KlT9EI2+jeA8DgBjp908WEuYll6pF+UStUCfEpdysA==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/freebsd-arm64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.20.2.tgz",
+      "integrity": "sha512-d3qI41G4SuLiCGCFGUrKsSeTXyWG6yem1KcGZVS+3FYlYhtNoNgYrWcvkOoaqMhwXSMrZRl69ArHsGJ9mYdbbw==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/freebsd-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.20.2.tgz",
+      "integrity": "sha512-d+DipyvHRuqEeM5zDivKV1KuXn9WeRX6vqSqIDgwIfPQtwMP4jaDsQsDncjTDDsExT4lR/91OLjRo8bmC1e+Cw==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-arm": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.20.2.tgz",
+      "integrity": "sha512-VhLPeR8HTMPccbuWWcEUD1Az68TqaTYyj6nfE4QByZIQEQVWBB8vup8PpR7y1QHL3CpcF6xd5WVBU/+SBEvGTg==",
+      "cpu": [
+        "arm"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-arm64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm64/-/linux-arm64-0.20.2.tgz",
+      "integrity": "sha512-9pb6rBjGvTFNira2FLIWqDk/uaf42sSyLE8j1rnUpuzsODBq7FvpwHYZxQ/It/8b+QOS1RYfqgGFNLRI+qlq2A==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-ia32": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ia32/-/linux-ia32-0.20.2.tgz",
+      "integrity": "sha512-o10utieEkNPFDZFQm9CoP7Tvb33UutoJqg3qKf1PWVeeJhJw0Q347PxMvBgVVFgouYLGIhFYG0UGdBumROyiig==",
+      "cpu": [
+        "ia32"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-loong64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.20.2.tgz",
+      "integrity": "sha512-PR7sp6R/UC4CFVomVINKJ80pMFlfDfMQMYynX7t1tNTeivQ6XdX5r2XovMmha/VjR1YN/HgHWsVcTRIMkymrgQ==",
+      "cpu": [
+        "loong64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-mips64el": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-mips64el/-/linux-mips64el-0.20.2.tgz",
+      "integrity": "sha512-4BlTqeutE/KnOiTG5Y6Sb/Hw6hsBOZapOVF6njAESHInhlQAghVVZL1ZpIctBOoTFbQyGW+LsVYZ8lSSB3wkjA==",
+      "cpu": [
+        "mips64el"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-ppc64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-ppc64/-/linux-ppc64-0.20.2.tgz",
+      "integrity": "sha512-rD3KsaDprDcfajSKdn25ooz5J5/fWBylaaXkuotBDGnMnDP1Uv5DLAN/45qfnf3JDYyJv/ytGHQaziHUdyzaAg==",
+      "cpu": [
+        "ppc64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-riscv64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-riscv64/-/linux-riscv64-0.20.2.tgz",
+      "integrity": "sha512-snwmBKacKmwTMmhLlz/3aH1Q9T8v45bKYGE3j26TsaOVtjIag4wLfWSiZykXzXuE1kbCE+zJRmwp+ZbIHinnVg==",
+      "cpu": [
+        "riscv64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-s390x": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-s390x/-/linux-s390x-0.20.2.tgz",
+      "integrity": "sha512-wcWISOobRWNm3cezm5HOZcYz1sKoHLd8VL1dl309DiixxVFoFe/o8HnwuIwn6sXre88Nwj+VwZUvJf4AFxkyrQ==",
+      "cpu": [
+        "s390x"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/linux-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.20.2.tgz",
+      "integrity": "sha512-1MdwI6OOTsfQfek8sLwgyjOXAu+wKhLEoaOLTjbijk6E2WONYpH9ZU2mNtR+lZ2B4uwr+usqGuVfFT9tMtGvGw==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/netbsd-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/netbsd-x64/-/netbsd-x64-0.20.2.tgz",
+      "integrity": "sha512-K8/DhBxcVQkzYc43yJXDSyjlFeHQJBiowJ0uVL6Tor3jGQfSGHNNJcWxNbOI8v5k82prYqzPuwkzHt3J1T1iZQ==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "netbsd"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/openbsd-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/openbsd-x64/-/openbsd-x64-0.20.2.tgz",
+      "integrity": "sha512-eMpKlV0SThJmmJgiVyN9jTPJ2VBPquf6Kt/nAoo6DgHAoN57K15ZghiHaMvqjCye/uU4X5u3YSMgVBI1h3vKrQ==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "openbsd"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/sunos-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/sunos-x64/-/sunos-x64-0.20.2.tgz",
+      "integrity": "sha512-2UyFtRC6cXLyejf/YEld4Hajo7UHILetzE1vsRcGL3earZEW77JxrFjH4Ez2qaTiEfMgAXxfAZCm1fvM/G/o8w==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "sunos"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/win32-arm64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-arm64/-/win32-arm64-0.20.2.tgz",
+      "integrity": "sha512-GRibxoawM9ZCnDxnP3usoUDO9vUkpAxIIZ6GQI+IlVmr5kP3zUq+l17xELTHMWTWzjxa2guPNyrpq1GWmPvcGQ==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/win32-ia32": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-ia32/-/win32-ia32-0.20.2.tgz",
+      "integrity": "sha512-HfLOfn9YWmkSKRQqovpnITazdtquEW8/SoHW7pWpuEeguaZI4QnCRW6b+oZTztdBnZOS2hqJ6im/D5cPzBTTlQ==",
+      "cpu": [
+        "ia32"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@esbuild/win32-x64": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.20.2.tgz",
+      "integrity": "sha512-N49X4lJX27+l9jbLKSqZ6bKNjzQvHaT8IIFUy+YIqmXQdjYCToGWwOItDrfby14c78aDd5NHQl29xingXfCdLQ==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">=12"
+      }
+    },
+    "node_modules/@mendable/firecrawl-js": {
+      "version": "0.0.21",
+      "resolved": "https://registry.npmjs.org/@mendable/firecrawl-js/-/firecrawl-js-0.0.21.tgz",
+      "integrity": "sha512-0geMb1CilorUowVugcVWZeM2a4PCH/iAxCbqPDpt66tEQ40r9217r7U1g3BRHnF/KDA6NvHM7wNIw/HqtUc6uw==",
+      "dependencies": {
+        "axios": "^1.6.8",
+        "zod": "^3.23.8",
+        "zod-to-json-schema": "^3.23.0"
+      }
+    },
+    "node_modules/@types/node": {
+      "version": "20.12.12",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-20.12.12.tgz",
+      "integrity": "sha512-eWLDGF/FOSPtAvEqeRAQ4C8LSA7M1I7i0ky1I8U7kD1J5ITyW3AsRhQrKVoWf5pFKZ2kILsEGJhsI9r93PYnOw==",
+      "dependencies": {
+        "undici-types": "~5.26.4"
+      }
+    },
+    "node_modules/@types/node-fetch": {
+      "version": "2.6.11",
+      "resolved": "https://registry.npmjs.org/@types/node-fetch/-/node-fetch-2.6.11.tgz",
+      "integrity": "sha512-24xFj9R5+rfQJLRyM56qh+wnVSYhyXC2tkoBndtY0U+vubqNsYXGjufB2nn8Q6gt0LrARwL6UBtMCSVCwl4B1g==",
+      "dependencies": {
+        "@types/node": "*",
+        "form-data": "^4.0.0"
+      }
+    },
+    "node_modules/abort-controller": {
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/abort-controller/-/abort-controller-3.0.0.tgz",
+      "integrity": "sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==",
+      "dependencies": {
+        "event-target-shim": "^5.0.0"
+      },
+      "engines": {
+        "node": ">=6.5"
+      }
+    },
+    "node_modules/agentkeepalive": {
+      "version": "4.5.0",
+      "resolved": "https://registry.npmjs.org/agentkeepalive/-/agentkeepalive-4.5.0.tgz",
+      "integrity": "sha512-5GG/5IbQQpC9FpkRGsSvZI5QYeSCzlJHdpBQntCsuTOxhKD8lqKhrleg2Yi7yvMIf82Ycmmqln9U8V9qwEiJew==",
+      "dependencies": {
+        "humanize-ms": "^1.2.1"
+      },
+      "engines": {
+        "node": ">= 8.0.0"
+      }
+    },
+    "node_modules/asynckit": {
+      "version": "0.4.0",
+      "resolved": "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz",
+      "integrity": "sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q=="
+    },
+    "node_modules/axios": {
+      "version": "1.7.1",
+      "resolved": "https://registry.npmjs.org/axios/-/axios-1.7.1.tgz",
+      "integrity": "sha512-+LV37nQcd1EpFalkXksWNBiA17NZ5m5/WspmHGmZmdx1qBOg/VNq/c4eRJiA9VQQHBOs+N0ZhhdU10h2TyNK7Q==",
+      "dependencies": {
+        "follow-redirects": "^1.15.6",
+        "form-data": "^4.0.0",
+        "proxy-from-env": "^1.1.0"
+      }
+    },
+    "node_modules/base64-js": {
+      "version": "1.5.1",
+      "resolved": "https://registry.npmjs.org/base64-js/-/base64-js-1.5.1.tgz",
+      "integrity": "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==",
+      "funding": [
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/feross"
+        },
+        {
+          "type": "patreon",
+          "url": "https://www.patreon.com/feross"
+        },
+        {
+          "type": "consulting",
+          "url": "https://feross.org/support"
+        }
+      ]
+    },
+    "node_modules/buffer": {
+      "version": "6.0.3",
+      "resolved": "https://registry.npmjs.org/buffer/-/buffer-6.0.3.tgz",
+      "integrity": "sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==",
+      "funding": [
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/feross"
+        },
+        {
+          "type": "patreon",
+          "url": "https://www.patreon.com/feross"
+        },
+        {
+          "type": "consulting",
+          "url": "https://feross.org/support"
+        }
+      ],
+      "dependencies": {
+        "base64-js": "^1.3.1",
+        "ieee754": "^1.2.1"
+      }
+    },
+    "node_modules/bufferutil": {
+      "version": "4.0.8",
+      "resolved": "https://registry.npmjs.org/bufferutil/-/bufferutil-4.0.8.tgz",
+      "integrity": "sha512-4T53u4PdgsXqKaIctwF8ifXlRTTmEPJ8iEPWFdGZvcf7sbwYo6FKFEX9eNNAnzFZ7EzJAQ3CJeOtCRA4rDp7Pw==",
+      "hasInstallScript": true,
+      "optional": true,
+      "dependencies": {
+        "node-gyp-build": "^4.3.0"
+      },
+      "engines": {
+        "node": ">=6.14.2"
+      }
+    },
+    "node_modules/combined-stream": {
+      "version": "1.0.8",
+      "resolved": "https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz",
+      "integrity": "sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==",
+      "dependencies": {
+        "delayed-stream": "~1.0.0"
+      },
+      "engines": {
+        "node": ">= 0.8"
+      }
+    },
+    "node_modules/delayed-stream": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/delayed-stream/-/delayed-stream-1.0.0.tgz",
+      "integrity": "sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==",
+      "engines": {
+        "node": ">=0.4.0"
+      }
+    },
+    "node_modules/dotenv": {
+      "version": "16.4.5",
+      "resolved": "https://registry.npmjs.org/dotenv/-/dotenv-16.4.5.tgz",
+      "integrity": "sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==",
+      "engines": {
+        "node": ">=12"
+      },
+      "funding": {
+        "url": "https://dotenvx.com"
+      }
+    },
+    "node_modules/e2b": {
+      "version": "0.13.2",
+      "resolved": "https://registry.npmjs.org/e2b/-/e2b-0.13.2.tgz",
+      "integrity": "sha512-j7odssVvVCmLGWQ4gxP5EeoKyDUSA/AMUHdOJZvUNV2ziNr7LYsdUlVRgV021841PyaeZuBOMzsV3SW5bujH7Q==",
+      "dependencies": {
+        "isomorphic-ws": "^5.0.0",
+        "normalize-path": "^3.0.0",
+        "openapi-typescript-fetch": "^1.1.3",
+        "path-browserify": "^1.0.1",
+        "platform": "^1.3.6",
+        "ws": "^8.15.1"
+      },
+      "engines": {
+        "node": ">=18"
+      },
+      "optionalDependencies": {
+        "bufferutil": "^4.0.8",
+        "utf-8-validate": "^6.0.3"
+      },
+      "peerDependencies": {
+        "openai": "^4.17.4"
+      }
+    },
+    "node_modules/esbuild": {
+      "version": "0.20.2",
+      "resolved": "https://registry.npmjs.org/esbuild/-/esbuild-0.20.2.tgz",
+      "integrity": "sha512-WdOOppmUNU+IbZ0PaDiTst80zjnrOkyJNHoKupIcVyU8Lvla3Ugx94VzkQ32Ijqd7UhHJy75gNWDMUekcrSJ6g==",
+      "dev": true,
+      "hasInstallScript": true,
+      "bin": {
+        "esbuild": "bin/esbuild"
+      },
+      "engines": {
+        "node": ">=12"
+      },
+      "optionalDependencies": {
+        "@esbuild/aix-ppc64": "0.20.2",
+        "@esbuild/android-arm": "0.20.2",
+        "@esbuild/android-arm64": "0.20.2",
+        "@esbuild/android-x64": "0.20.2",
+        "@esbuild/darwin-arm64": "0.20.2",
+        "@esbuild/darwin-x64": "0.20.2",
+        "@esbuild/freebsd-arm64": "0.20.2",
+        "@esbuild/freebsd-x64": "0.20.2",
+        "@esbuild/linux-arm": "0.20.2",
+        "@esbuild/linux-arm64": "0.20.2",
+        "@esbuild/linux-ia32": "0.20.2",
+        "@esbuild/linux-loong64": "0.20.2",
+        "@esbuild/linux-mips64el": "0.20.2",
+        "@esbuild/linux-ppc64": "0.20.2",
+        "@esbuild/linux-riscv64": "0.20.2",
+        "@esbuild/linux-s390x": "0.20.2",
+        "@esbuild/linux-x64": "0.20.2",
+        "@esbuild/netbsd-x64": "0.20.2",
+        "@esbuild/openbsd-x64": "0.20.2",
+        "@esbuild/sunos-x64": "0.20.2",
+        "@esbuild/win32-arm64": "0.20.2",
+        "@esbuild/win32-ia32": "0.20.2",
+        "@esbuild/win32-x64": "0.20.2"
+      }
+    },
+    "node_modules/event-target-shim": {
+      "version": "5.0.1",
+      "resolved": "https://registry.npmjs.org/event-target-shim/-/event-target-shim-5.0.1.tgz",
+      "integrity": "sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==",
+      "engines": {
+        "node": ">=6"
+      }
+    },
+    "node_modules/follow-redirects": {
+      "version": "1.15.6",
+      "resolved": "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.6.tgz",
+      "integrity": "sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==",
+      "funding": [
+        {
+          "type": "individual",
+          "url": "https://github.com/sponsors/RubenVerborgh"
+        }
+      ],
+      "engines": {
+        "node": ">=4.0"
+      },
+      "peerDependenciesMeta": {
+        "debug": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/form-data": {
+      "version": "4.0.0",
+      "resolved": "https://registry.npmjs.org/form-data/-/form-data-4.0.0.tgz",
+      "integrity": "sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==",
+      "dependencies": {
+        "asynckit": "^0.4.0",
+        "combined-stream": "^1.0.8",
+        "mime-types": "^2.1.12"
+      },
+      "engines": {
+        "node": ">= 6"
+      }
+    },
+    "node_modules/form-data-encoder": {
+      "version": "1.7.2",
+      "resolved": "https://registry.npmjs.org/form-data-encoder/-/form-data-encoder-1.7.2.tgz",
+      "integrity": "sha512-qfqtYan3rxrnCk1VYaA4H+Ms9xdpPqvLZa6xmMgFvhO32x7/3J/ExcTd6qpxM0vH2GdMI+poehyBZvqfMTto8A=="
+    },
+    "node_modules/formdata-node": {
+      "version": "4.4.1",
+      "resolved": "https://registry.npmjs.org/formdata-node/-/formdata-node-4.4.1.tgz",
+      "integrity": "sha512-0iirZp3uVDjVGt9p49aTaqjk84TrglENEDuqfdlZQ1roC9CWlPk6Avf8EEnZNcAqPonwkG35x4n3ww/1THYAeQ==",
+      "dependencies": {
+        "node-domexception": "1.0.0",
+        "web-streams-polyfill": "4.0.0-beta.3"
+      },
+      "engines": {
+        "node": ">= 12.20"
+      }
+    },
+    "node_modules/formdata-node/node_modules/web-streams-polyfill": {
+      "version": "4.0.0-beta.3",
+      "resolved": "https://registry.npmjs.org/web-streams-polyfill/-/web-streams-polyfill-4.0.0-beta.3.tgz",
+      "integrity": "sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug==",
+      "engines": {
+        "node": ">= 14"
+      }
+    },
+    "node_modules/fsevents": {
+      "version": "2.3.3",
+      "resolved": "https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz",
+      "integrity": "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==",
+      "dev": true,
+      "hasInstallScript": true,
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": "^8.16.0 || ^10.6.0 || >=11.0.0"
+      }
+    },
+    "node_modules/get-tsconfig": {
+      "version": "4.7.5",
+      "resolved": "https://registry.npmjs.org/get-tsconfig/-/get-tsconfig-4.7.5.tgz",
+      "integrity": "sha512-ZCuZCnlqNzjb4QprAzXKdpp/gh6KTxSJuw3IBsPnV/7fV4NxC9ckB+vPTt8w7fJA0TaSD7c55BR47JD6MEDyDw==",
+      "dev": true,
+      "dependencies": {
+        "resolve-pkg-maps": "^1.0.0"
+      },
+      "funding": {
+        "url": "https://github.com/privatenumber/get-tsconfig?sponsor=1"
+      }
+    },
+    "node_modules/humanize-ms": {
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/humanize-ms/-/humanize-ms-1.2.1.tgz",
+      "integrity": "sha512-Fl70vYtsAFb/C06PTS9dZBo7ihau+Tu/DNCk/OyHhea07S+aeMWpFFkUaXRa8fI+ScZbEI8dfSxwY7gxZ9SAVQ==",
+      "dependencies": {
+        "ms": "^2.0.0"
+      }
+    },
+    "node_modules/ieee754": {
+      "version": "1.2.1",
+      "resolved": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz",
+      "integrity": "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==",
+      "funding": [
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/feross"
+        },
+        {
+          "type": "patreon",
+          "url": "https://www.patreon.com/feross"
+        },
+        {
+          "type": "consulting",
+          "url": "https://feross.org/support"
+        }
+      ]
+    },
+    "node_modules/isomorphic-ws": {
+      "version": "5.0.0",
+      "resolved": "https://registry.npmjs.org/isomorphic-ws/-/isomorphic-ws-5.0.0.tgz",
+      "integrity": "sha512-muId7Zzn9ywDsyXgTIafTry2sV3nySZeUDe6YedVd1Hvuuep5AsIlqK+XefWpYTyJG5e503F2xIuT2lcU6rCSw==",
+      "peerDependencies": {
+        "ws": "*"
+      }
+    },
+    "node_modules/mime-db": {
+      "version": "1.52.0",
+      "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz",
+      "integrity": "sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==",
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/mime-types": {
+      "version": "2.1.35",
+      "resolved": "https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz",
+      "integrity": "sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==",
+      "dependencies": {
+        "mime-db": "1.52.0"
+      },
+      "engines": {
+        "node": ">= 0.6"
+      }
+    },
+    "node_modules/ms": {
+      "version": "2.1.3",
+      "resolved": "https://registry.npmjs.org/ms/-/ms-2.1.3.tgz",
+      "integrity": "sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA=="
+    },
+    "node_modules/node-domexception": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/node-domexception/-/node-domexception-1.0.0.tgz",
+      "integrity": "sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==",
+      "funding": [
+        {
+          "type": "github",
+          "url": "https://github.com/sponsors/jimmywarting"
+        },
+        {
+          "type": "github",
+          "url": "https://paypal.me/jimmywarting"
+        }
+      ],
+      "engines": {
+        "node": ">=10.5.0"
+      }
+    },
+    "node_modules/node-fetch": {
+      "version": "2.7.0",
+      "resolved": "https://registry.npmjs.org/node-fetch/-/node-fetch-2.7.0.tgz",
+      "integrity": "sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==",
+      "dependencies": {
+        "whatwg-url": "^5.0.0"
+      },
+      "engines": {
+        "node": "4.x || >=6.0.0"
+      },
+      "peerDependencies": {
+        "encoding": "^0.1.0"
+      },
+      "peerDependenciesMeta": {
+        "encoding": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/node-gyp-build": {
+      "version": "4.8.1",
+      "resolved": "https://registry.npmjs.org/node-gyp-build/-/node-gyp-build-4.8.1.tgz",
+      "integrity": "sha512-OSs33Z9yWr148JZcbZd5WiAXhh/n9z8TxQcdMhIOlpN9AhWpLfvVFO73+m77bBABQMaY9XSvIa+qk0jlI7Gcaw==",
+      "optional": true,
+      "bin": {
+        "node-gyp-build": "bin.js",
+        "node-gyp-build-optional": "optional.js",
+        "node-gyp-build-test": "build-test.js"
+      }
+    },
+    "node_modules/normalize-path": {
+      "version": "3.0.0",
+      "resolved": "https://registry.npmjs.org/normalize-path/-/normalize-path-3.0.0.tgz",
+      "integrity": "sha512-6eZs5Ls3WtCisHWp9S2GUy8dqkpGi4BVSz3GaqiE6ezub0512ESztXUwUB6C6IKbQkY2Pnb/mD4WYojCRwcwLA==",
+      "engines": {
+        "node": ">=0.10.0"
+      }
+    },
+    "node_modules/openai": {
+      "version": "4.47.1",
+      "resolved": "https://registry.npmjs.org/openai/-/openai-4.47.1.tgz",
+      "integrity": "sha512-WWSxhC/69ZhYWxH/OBsLEirIjUcfpQ5+ihkXKp06hmeYXgBBIUCa9IptMzYx6NdkiOCsSGYCnTIsxaic3AjRCQ==",
+      "peer": true,
+      "dependencies": {
+        "@types/node": "^18.11.18",
+        "@types/node-fetch": "^2.6.4",
+        "abort-controller": "^3.0.0",
+        "agentkeepalive": "^4.2.1",
+        "form-data-encoder": "1.7.2",
+        "formdata-node": "^4.3.2",
+        "node-fetch": "^2.6.7",
+        "web-streams-polyfill": "^3.2.1"
+      },
+      "bin": {
+        "openai": "bin/cli"
+      }
+    },
+    "node_modules/openai/node_modules/@types/node": {
+      "version": "18.19.33",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-18.19.33.tgz",
+      "integrity": "sha512-NR9+KrpSajr2qBVp/Yt5TU/rp+b5Mayi3+OlMlcg2cVCfRmcG5PWZ7S4+MG9PZ5gWBoc9Pd0BKSRViuBCRPu0A==",
+      "peer": true,
+      "dependencies": {
+        "undici-types": "~5.26.4"
+      }
+    },
+    "node_modules/openapi-typescript-fetch": {
+      "version": "1.1.3",
+      "resolved": "https://registry.npmjs.org/openapi-typescript-fetch/-/openapi-typescript-fetch-1.1.3.tgz",
+      "integrity": "sha512-smLZPck4OkKMNExcw8jMgrMOGgVGx2N/s6DbKL2ftNl77g5HfoGpZGFy79RBzU/EkaO0OZpwBnslfdBfh7ZcWg==",
+      "engines": {
+        "node": ">= 12.0.0",
+        "npm": ">= 7.0.0"
+      }
+    },
+    "node_modules/path-browserify": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/path-browserify/-/path-browserify-1.0.1.tgz",
+      "integrity": "sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g=="
+    },
+    "node_modules/platform": {
+      "version": "1.3.6",
+      "resolved": "https://registry.npmjs.org/platform/-/platform-1.3.6.tgz",
+      "integrity": "sha512-fnWVljUchTro6RiCFvCXBbNhJc2NijN7oIQxbwsyL0buWJPG85v81ehlHI9fXrJsMNgTofEoWIQeClKpgxFLrg=="
+    },
+    "node_modules/prettier": {
+      "version": "3.2.5",
+      "resolved": "https://registry.npmjs.org/prettier/-/prettier-3.2.5.tgz",
+      "integrity": "sha512-3/GWa9aOC0YeD7LUfvOG2NiDyhOWRvt1k+rcKhOuYnMY24iiCphgneUfJDyFXd6rZCAnuLBv6UeAULtrhT/F4A==",
+      "dev": true,
+      "bin": {
+        "prettier": "bin/prettier.cjs"
+      },
+      "engines": {
+        "node": ">=14"
+      },
+      "funding": {
+        "url": "https://github.com/prettier/prettier?sponsor=1"
+      }
+    },
+    "node_modules/proxy-from-env": {
+      "version": "1.1.0",
+      "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz",
+      "integrity": "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg=="
+    },
+    "node_modules/resolve-pkg-maps": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/resolve-pkg-maps/-/resolve-pkg-maps-1.0.0.tgz",
+      "integrity": "sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==",
+      "dev": true,
+      "funding": {
+        "url": "https://github.com/privatenumber/resolve-pkg-maps?sponsor=1"
+      }
+    },
+    "node_modules/tr46": {
+      "version": "0.0.3",
+      "resolved": "https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz",
+      "integrity": "sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw=="
+    },
+    "node_modules/tsx": {
+      "version": "4.10.5",
+      "resolved": "https://registry.npmjs.org/tsx/-/tsx-4.10.5.tgz",
+      "integrity": "sha512-twDSbf7Gtea4I2copqovUiNTEDrT8XNFXsuHpfGbdpW/z9ZW4fTghzzhAG0WfrCuJmJiOEY1nLIjq4u3oujRWQ==",
+      "dev": true,
+      "dependencies": {
+        "esbuild": "~0.20.2",
+        "get-tsconfig": "^4.7.5"
+      },
+      "bin": {
+        "tsx": "dist/cli.mjs"
+      },
+      "engines": {
+        "node": ">=18.0.0"
+      },
+      "optionalDependencies": {
+        "fsevents": "~2.3.3"
+      }
+    },
+    "node_modules/typescript": {
+      "version": "5.4.5",
+      "resolved": "https://registry.npmjs.org/typescript/-/typescript-5.4.5.tgz",
+      "integrity": "sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==",
+      "dev": true,
+      "bin": {
+        "tsc": "bin/tsc",
+        "tsserver": "bin/tsserver"
+      },
+      "engines": {
+        "node": ">=14.17"
+      }
+    },
+    "node_modules/undici-types": {
+      "version": "5.26.5",
+      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-5.26.5.tgz",
+      "integrity": "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA=="
+    },
+    "node_modules/utf-8-validate": {
+      "version": "6.0.4",
+      "resolved": "https://registry.npmjs.org/utf-8-validate/-/utf-8-validate-6.0.4.tgz",
+      "integrity": "sha512-xu9GQDeFp+eZ6LnCywXN/zBancWvOpUMzgjLPSjy4BRHSmTelvn2E0DG0o1sTiw5hkCKBHo8rwSKncfRfv2EEQ==",
+      "hasInstallScript": true,
+      "optional": true,
+      "dependencies": {
+        "node-gyp-build": "^4.3.0"
+      },
+      "engines": {
+        "node": ">=6.14.2"
+      }
+    },
+    "node_modules/web-streams-polyfill": {
+      "version": "3.3.3",
+      "resolved": "https://registry.npmjs.org/web-streams-polyfill/-/web-streams-polyfill-3.3.3.tgz",
+      "integrity": "sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==",
+      "engines": {
+        "node": ">= 8"
+      }
+    },
+    "node_modules/webidl-conversions": {
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/webidl-conversions/-/webidl-conversions-3.0.1.tgz",
+      "integrity": "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="
+    },
+    "node_modules/whatwg-url": {
+      "version": "5.0.0",
+      "resolved": "https://registry.npmjs.org/whatwg-url/-/whatwg-url-5.0.0.tgz",
+      "integrity": "sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==",
+      "dependencies": {
+        "tr46": "~0.0.3",
+        "webidl-conversions": "^3.0.0"
+      }
+    },
+    "node_modules/ws": {
+      "version": "8.17.0",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-8.17.0.tgz",
+      "integrity": "sha512-uJq6108EgZMAl20KagGkzCKfMEjxmKvZHG7Tlq0Z6nOky7YF7aq4mOx6xK8TJ/i1LeK4Qus7INktacctDgY8Ow==",
+      "engines": {
+        "node": ">=10.0.0"
+      },
+      "peerDependencies": {
+        "bufferutil": "^4.0.1",
+        "utf-8-validate": ">=5.0.2"
+      },
+      "peerDependenciesMeta": {
+        "bufferutil": {
+          "optional": true
+        },
+        "utf-8-validate": {
+          "optional": true
+        }
+      }
+    },
+    "node_modules/zod": {
+      "version": "3.23.8",
+      "resolved": "https://registry.npmjs.org/zod/-/zod-3.23.8.tgz",
+      "integrity": "sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==",
+      "funding": {
+        "url": "https://github.com/sponsors/colinhacks"
+      }
+    },
+    "node_modules/zod-to-json-schema": {
+      "version": "3.23.0",
+      "resolved": "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.23.0.tgz",
+      "integrity": "sha512-az0uJ243PxsRIa2x1WmNE/pnuA05gUq/JB8Lwe1EDCCL/Fz9MgjYQ0fPlyc2Tcv6aF2ZA7WM5TWaRZVEFaAIag==",
+      "peerDependencies": {
+        "zod": "^3.23.3"
+      }
+    }
+  }
+}
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/package-lock.json>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/package.json>
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "prettier": "3.2.5",
+    "tsx": "^4.7.3",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.7",
+    "@e2b/code-interpreter": "^0.0.2",
+    "@mendable/firecrawl-js": "^0.0.21",
+    "buffer": "^6.0.3",
+    "dotenv": "^16.4.5"
+  }
+}
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/package.json>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/prettier.config.mjs>
+// prettier.config.js, .prettierrc.js, prettier.config.mjs, or .prettierrc.mjs
+
+/** @type {import("prettier").Config} */
+const config = {
+  trailingComma: 'es5',
+  tabWidth: 2,
+  semi: false,
+  singleQuote: true,
+}
+
+export default config
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/prettier.config.mjs>
+<fpath_examples/scrape_and_analyze_airbnb_data_e2b/scraping.ts>
+//@ts-ignore
+import * as fs from 'fs'
+import FirecrawlApp from '@mendable/firecrawl-js'
+import 'dotenv/config'
+import { config } from 'dotenv'
+import { z } from 'zod'
+
+config()
+
+export async function scrapeAirbnb() {
+  try {
+    // Initialize the FirecrawlApp with your API key
+    const app = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY })
+
+    // Define the URL to crawl
+    const listingsUrl =
+      'https://www.airbnb.com/s/San-Francisco--CA--United-States/homes'
+
+    const baseUrl = 'https://www.airbnb.com'
+    // Define schema to extract pagination links
+    const paginationSchema = z.object({
+      page_links: z
+        .array(
+          z.object({
+            link: z.string(),
+          })
+        )
+        .describe('Pagination links in the bottom of the page.'),
+    })
+
+    const params2 = {
+      pageOptions: {
+        onlyMainContent: false,
+      },
+      extractorOptions: { extractionSchema: paginationSchema },
+      timeout: 50000, // if needed, sometimes airbnb stalls...
+    }
+
+    // Start crawling to get pagination links
+    const linksData = await app.scrapeUrl(listingsUrl, params2)
+    console.log(linksData.data['llm_extraction'])
+
+    let paginationLinks = linksData.data['llm_extraction'].page_links.map(
+      (link) => baseUrl + link.link
+    )
+
+    // Just in case is not able to get the pagination links
+    if (paginationLinks.length === 0) {
+      paginationLinks = [listingsUrl]
+    }
+
+    // Define schema to extract listings
+    const schema = z.object({
+      listings: z
+        .array(
+          z.object({
+            title: z.string(),
+            price_per_night: z.number(),
+            location: z.string(),
+            rating: z.number().optional(),
+            reviews: z.number().optional(),
+          })
+        )
+        .describe('Airbnb listings in San Francisco'),
+    })
+
+    const params = {
+      pageOptions: {
+        onlyMainContent: false,
+      },
+      extractorOptions: { extractionSchema: schema },
+    }
+
+    // Function to scrape a single URL
+    const scrapeListings = async (url) => {
+      const result = await app.scrapeUrl(url, params)
+      return result.data['llm_extraction'].listings
+    }
+
+    // Scrape all pagination links in parallel
+    const listingsPromises = paginationLinks.map((link) => scrapeListings(link))
+    const listingsResults = await Promise.all(listingsPromises)
+
+    // Flatten the results
+    const allListings = listingsResults.flat()
+
+    // Save the listings to a file
+    fs.writeFileSync(
+      'airbnb_listings.json',
+      JSON.stringify(allListings, null, 2)
+    )
+    // Read the listings from the file
+    const listingsData = fs.readFileSync('airbnb_listings.json', 'utf8')
+    return listingsData
+  } catch (error) {
+    console.error('An error occurred:', error.message)
+  }
+}
+
+</fpath_examples/scrape_and_analyze_airbnb_data_e2b/scraping.ts>
 </files>
 </example_3>
 
 <example_4>
 <files>
-<fpath_app.py>import {product_name} as ai
-from rich.console import Console
+<fpath_automated_price_tracking/.env.example>
+FIRECRAWL_API_KEY=
+POSTGRES_URL=
+</fpath_automated_price_tracking/.env.example>
+<fpath_automated_price_tracking/.github/workflows/check_prices.yml>
+name: Price Check
 
-console = Console()
+on:
+  schedule:
+    # Runs every 6 hours
+    - cron: "0 0,6,12,18 * * *"
+  workflow_dispatch: # Allows manual triggering
 
-def chat_with_colors():
-    # Initialize AI with colorful output
-    assistant = ai.Assistant(
-        style="creative",
-        output_format="markdown"
+jobs:
+  check-prices:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run price checker
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python check_prices.py
+
+</fpath_automated_price_tracking/.github/workflows/check_prices.yml>
+<fpath_automated_price_tracking/.gitignore>
+.venv
+.env
+
+</fpath_automated_price_tracking/.gitignore>
+<fpath_automated_price_tracking/README.md>
+# Automated Price Tracking System
+
+A robust price tracking system that monitors product prices across e-commerce websites and notifies users of price changes through Discord.
+
+## Features
+
+- Automated price checking every 6 hours
+- Support for multiple e-commerce platforms through Firecrawl API
+- Discord notifications for price changes
+- Historical price data storage in PostgreSQL database
+- Interactive price history visualization with Streamlit
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Configure environment variables:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then edit `.env` with your:
+   - Discord webhook URL
+   - Database credentials
+   - Firecrawl API key
+
+</fpath_automated_price_tracking/README.md>
+<fpath_automated_price_tracking/check_prices.py>
+import os
+import asyncio
+from database import Database
+from dotenv import load_dotenv
+from firecrawl import FirecrawlApp
+from scraper import scrape_product
+from notifications import send_price_alert
+
+load_dotenv()
+
+db = Database(os.getenv("POSTGRES_URL"))
+app = FirecrawlApp()
+
+# Threshold percentage for price drop alerts (e.g., 5% = 0.05)
+PRICE_DROP_THRESHOLD = 0.05
+
+
+async def check_prices():
+    products = db.get_all_products()
+    product_urls = set(product.url for product in products)
+
+    for product_url in product_urls:
+        # Get the price history
+        price_history = db.get_price_history(product_url)
+        if not price_history:
+            continue
+
+        # Get the earliest recorded price
+        earliest_price = price_history[-1].price
+
+        # Retrieve updated product data
+        updated_product = scrape_product(product_url)
+        current_price = updated_product["price"]
+
+        # Add the price to the database
+        db.add_price(updated_product)
+        print(f"Added new price entry for {updated_product['name']}")
+
+        # Check if price dropped below threshold
+        if earliest_price > 0:  # Avoid division by zero
+            price_drop = (earliest_price - current_price) / earliest_price
+            if price_drop >= PRICE_DROP_THRESHOLD:
+                await send_price_alert(
+                    updated_product["name"], earliest_price, current_price, product_url
+                )
+
+
+if __name__ == "__main__":
+    asyncio.run(check_prices())
+
+</fpath_automated_price_tracking/check_prices.py>
+<fpath_automated_price_tracking/database.py>
+from sqlalchemy import create_engine, Column, String, Float, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, relationship, declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    url = Column(String, primary_key=True)
+    prices = relationship(
+        "PriceHistory", back_populates="product", cascade="all, delete-orphan"
     )
-    
-    console.print("[bold green]Ask me anything![/bold green]")
-    
-    while True:
-        user_input = input("> ")
-        if user_input.lower() == "exit":
-            break
-            
-        response = assistant.generate(
-            prompt=user_input,
-            max_tokens=100
+
+
+class PriceHistory(Base):
+    __tablename__ = "price_histories"
+
+    id = Column(String, primary_key=True)
+    product_url = Column(String, ForeignKey("products.url"))
+    name = Column(String, nullable=False)
+    price = Column(Float, nullable=False)
+    currency = Column(String, nullable=False)
+    main_image_url = Column(String)
+    timestamp = Column(DateTime, nullable=False)
+    product = relationship("Product", back_populates="prices")
+
+
+class Database:
+    def __init__(self, connection_string):
+        self.engine = create_engine(connection_string)
+        Base.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+
+    def add_product(self, url):
+        session = self.Session()
+        try:
+            # Create the product entry
+            product = Product(url=url)
+            session.merge(product)  # merge will update if exists, insert if not
+            session.commit()
+        finally:
+            session.close()
+
+    def product_exists(self, url):
+        session = self.Session()
+        try:
+            return session.query(Product).filter(Product.url == url).first() is not None
+        finally:
+            session.close()
+
+    def add_price(self, product_data):
+        session = self.Session()
+        try:
+            # First ensure the product exists
+            if not self.product_exists(product_data["url"]):
+                # Create the product if it doesn't exist
+                product = Product(url=product_data["url"])
+                session.add(product)
+                session.flush()  # Flush to ensure the product is created before adding price
+
+            # Convert timestamp string to datetime if it's a string
+            timestamp = product_data["timestamp"]
+            if isinstance(timestamp, str):
+                timestamp = datetime.strptime(timestamp, "%Y-%m-%d %H-%M")
+
+            price_history = PriceHistory(
+                id=f"{product_data['url']}_{timestamp.strftime('%Y%m%d%H%M%S')}",
+                product_url=product_data["url"],
+                name=product_data["name"],
+                price=product_data["price"],
+                currency=product_data["currency"],
+                main_image_url=product_data["main_image_url"],
+                timestamp=timestamp,
+            )
+            session.add(price_history)
+            session.commit()
+        finally:
+            session.close()
+
+    def get_all_products(self):
+        session = self.Session()
+        try:
+            return session.query(Product).all()
+        finally:
+            session.close()
+
+    def get_price_history(self, url):
+        """Get price history for a product"""
+        session = self.Session()
+        try:
+            return (
+                session.query(PriceHistory)
+                .filter(PriceHistory.product_url == url)
+                .order_by(PriceHistory.timestamp.desc())
+                .all()
+            )
+        finally:
+            session.close()
+
+    def remove_all_products(self):
+        session = self.Session()
+        try:
+            # First delete all price histories
+            session.query(PriceHistory).delete()
+            # Then delete all products
+            session.query(Product).delete()
+            session.commit()
+        finally:
+            session.close()
+
+    # def remove_product(self, url):
+    #     """Remove a product and its price history"""
+    #     session = self.Session()
+    #     try:
+    #         product = session.query(Product).filter(Product.url == url).first()
+    #         if product:
+    #             session.delete(
+    #                 product
+    #             )  # This will also delete associated price history due to cascade
+    #             session.commit()
+    #     finally:
+    #         session.close()
+
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    import os
+
+    load_dotenv()
+
+    db = Database(os.getenv("POSTGRES_URL"))
+    db.remove_all_products()
+
+</fpath_automated_price_tracking/database.py>
+<fpath_automated_price_tracking/notifications.py>
+from dotenv import load_dotenv
+import os
+import aiohttp
+import asyncio
+
+load_dotenv()
+
+
+async def send_price_alert(
+    product_name: str, old_price: float, new_price: float, url: str
+):
+    """Send a price drop alert to Discord"""
+    drop_percentage = ((old_price - new_price) / old_price) * 100
+
+    message = {
+        "embeds": [
+            {
+                "title": "Price Drop Alert! 🎉",
+                "description": f"**{product_name}**\nPrice dropped by {drop_percentage:.1f}%!\n"
+                f"Old price: ${old_price:.2f}\n"
+                f"New price: ${new_price:.2f}\n"
+                f"[View Product]({url})",
+                "color": 3066993,
+            }
+        ]
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            await session.post(os.getenv("DISCORD_WEBHOOK_URL"), json=message)
+    except Exception as e:
+        print(f"Error sending Discord notification: {e}")
+
+
+if __name__ == "__main__":
+    asyncio.run(send_price_alert("Test Product", 100, 90, "https://www.google.com"))
+
+</fpath_automated_price_tracking/notifications.py>
+<fpath_automated_price_tracking/requirements.txt>
+streamlit
+firecrawl-py
+pydantic
+psycopg2-binary
+python-dotenv
+sqlalchemy==2.0.35
+pandas
+plotly
+aiohttp
+</fpath_automated_price_tracking/requirements.txt>
+<fpath_automated_price_tracking/scraper.py>
+from firecrawl import FirecrawlApp
+from pydantic import BaseModel, Field
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+app = FirecrawlApp()
+
+
+class Product(BaseModel):
+    """Schema for creating a new product"""
+
+    url: str = Field(description="The URL of the product")
+    name: str = Field(description="The product name/title")
+    price: float = Field(description="The current price of the product")
+    currency: str = Field(description="Currency code (USD, EUR, etc)")
+    main_image_url: str = Field(description="The URL of the main image of the product")
+
+
+def scrape_product(url: str):
+    extracted_data = app.scrape_url(
+        url,
+        params={
+            "formats": ["extract"],
+            "extract": {"schema": Product.model_json_schema()},
+        },
+    )
+
+    # Add the scraping date to the extracted data
+    extracted_data["extract"]["timestamp"] = datetime.utcnow()
+
+    return extracted_data["extract"]
+
+
+if __name__ == "__main__":
+    product = "https://www.amazon.com/gp/product/B002U21ZZK/"
+
+    print(scrape_product(product))
+
+</fpath_automated_price_tracking/scraper.py>
+<fpath_automated_price_tracking/ui.py>
+import os
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+from utils import is_valid_url
+from database import Database
+from dotenv import load_dotenv
+from scraper import scrape_product
+
+load_dotenv()
+
+st.set_page_config(page_title="Price Tracker", page_icon="📊", layout="wide")
+
+with st.spinner("Loading database..."):
+    db = Database(os.getenv("POSTGRES_URL"))
+
+
+# Set up sidebar
+with st.sidebar:
+    st.title("Add New Product")
+    product_url = st.text_input("Product URL")
+    add_button = st.button("Add Product")
+
+    if add_button:
+        if not product_url:
+            st.error("Please enter a product URL")
+        elif not is_valid_url(product_url):
+            st.error("Please enter a valid URL")
+        else:
+            db.add_product(product_url)
+            with st.spinner("Added product to database. Scraping product data..."):
+                product_data = scrape_product(product_url)
+                db.add_price(product_data)
+            st.success("Product is now being tracked!")
+
+# Main content
+st.title("Price Tracker Dashboard")
+st.markdown("## Tracked Products")
+
+# Get all products and their price histories
+products = db.get_all_products()
+
+# Create a card for each product
+for product in products:
+    price_history = db.get_price_history(product.url)
+    if price_history:
+        # Create DataFrame for plotting
+        df = pd.DataFrame(
+            [
+                {"timestamp": ph.timestamp, "price": ph.price, "name": ph.name}
+                for ph in price_history
+            ]
         )
-        
-        console.print(f"[blue]{response}[/blue]")
-</fpath_app.py>
 
-<fpath_README.md># Colorful CLI Chat Example
+        # Create a card-like container for each product
+        with st.expander(df["name"][0], expanded=False):
+            st.markdown("---")
+            col1, col2 = st.columns([1, 3])
 
-A simple CLI chat application using {product_name} with colorful output.
+            with col1:
+                if price_history[0].main_image_url:
+                    st.image(price_history[0].main_image_url, width=200)
+                st.metric(
+                    label="Current Price",
+                    value=f"{price_history[0].price} {price_history[0].currency}",
+                )
 
-## Installation
-```bash
-pip install -r requirements.txt
-```
+            with col2:
+                # Create price history plot
+                fig = px.line(
+                    df,
+                    x="timestamp",
+                    y="price",
+                    title=None,
+                )
+                fig.update_layout(
+                    xaxis_title=None,
+                    yaxis_title="Price ($)",
+                    showlegend=False,
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    height=300,
+                )
+                fig.update_xaxes(tickformat="%Y-%m-%d %H:%M", tickangle=45)
+                fig.update_yaxes(tickprefix="$", tickformat=".2f")
+                st.plotly_chart(fig, use_container_width=True)
 
-## Usage
-```bash
-python app.py
-```
+</fpath_automated_price_tracking/ui.py>
+<fpath_automated_price_tracking/utils.py>
+from urllib.parse import urlparse
+import re
 
-Type 'exit' to quit the application.
 
-The python version at the time of this example being created is 3.12.1</fpath_README.md>
+def is_valid_url(url: str) -> bool:
+    try:
+        # Parse the URL
+        result = urlparse(url)
 
-<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
-rich==13.7.0</fpath_requirements.txt>
+        # Check if scheme and netloc are present
+        if not all([result.scheme, result.netloc]):
+            return False
+
+        # Check if scheme is http or https
+        if result.scheme not in ["http", "https"]:
+            return False
+
+        # Basic regex pattern for domain validation
+        domain_pattern = (
+            r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z]{2,})+$"
+        )
+        if not re.match(domain_pattern, result.netloc):
+            return False
+
+        return True
+
+    except Exception:
+        return False
+
+</fpath_automated_price_tracking/utils.py>
 </files>
 </example_4>
-
-<example_5>
-<files>
-<fpath_app.ts>import { Assistant } from '{product_name}';
-import chalk from 'chalk';
-import * as readline from 'readline';
-
-// Create readline interface for CLI input/output
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-async function chatWithColors() {
-    // Initialize AI with colorful output
-    const assistant = new Assistant({
-        style: 'creative',
-        outputFormat: 'markdown'
-    });
-
-    console.log(chalk.green.bold('Ask me anything!'));
-
-    // Create recursive prompt function
-    const askQuestion = async () => {
-        rl.question('> ', async (userInput: string) => {
-            if (userInput.toLowerCase() === 'exit') {
-                rl.close();
-                return;
-            }
-
-            try {
-                const response = await assistant.generate({
-                    prompt: userInput,
-                    maxTokens: 100
-                });
-                
-                console.log(chalk.blue(response));
-                askQuestion(); // Continue the conversation
-            } catch (error) {
-                console.error(chalk.red('Error:', error));
-                askQuestion();
-            }
-        });
-    };
-
-    await askQuestion();
-}
-
-chatWithColors().catch(console.error);</fpath_app.ts>
-
-<fpath_package.json>{
-    "name": "colorful-cli-chat",
-    "version": "1.0.0",
-    "description": "A simple CLI chat application using {product_name} with colorful output",
-    "main": "dist/app.js",
-    "scripts": {
-        "build": "tsc",
-        "start": "node dist/app.js",
-        "dev": "ts-node app.ts"
-    },
-    "dependencies": {
-        "{product_name}": "^0.0.1",
-        "chalk": "^4.1.2"
-    },
-    "devDependencies": {
-        "@types/node": "^20.11.0",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.3.3"
-    }
-}</fpath_package.json>
-
-<fpath_tsconfig.json>{
-    "compilerOptions": {
-        "target": "ES2020",
-        "module": "commonjs",
-        "outDir": "./dist",
-        "rootDir": "./",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
-    },
-    "include": ["*.ts"],
-    "exclude": ["node_modules", "dist"]
-}</fpath_tsconfig.json>
-
-<fpath_README.md># Colorful CLI Chat Example (TypeScript)
-
-A simple CLI chat application using {product_name} with colorful output, written in TypeScript.
-
-## Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
-
-## Installation
-
-```bash
-npm install
-```
-
-## Usage
-
-```bash
-npm run dev
-```
-
-Type 'exit' to quit the application.
-
-The python version at the time of this example being created is 3.12.1</fpath_README.md> 
-</files>
-</example_5>
-
-</examples>

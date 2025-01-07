@@ -7,6 +7,7 @@ from include.constants import (
     EXAMPLE_CREATOR_MODIFICATION_TOOLS,
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
 )
+import random
 import anthropic
 from include.utils import format_prompt
 from src.model.news import News
@@ -172,8 +173,10 @@ class NewStreamActionHandler(BaseActionHandler):
                 preamble=preamble,
             )
 
+        news_values = list(news_stream.values())
+        random.shuffle(news_values)
         news_string = "\n".join(
-            [news.model_dump_json() for news in news_stream.values()]
+            [news.model_dump_json() for news in news_values]
         )
         step_size = len(news_string) // 2
         cur_prompt = self.action_classifier_prompt
