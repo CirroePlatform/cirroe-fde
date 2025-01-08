@@ -88,10 +88,17 @@ class NewStreamActionHandler(BaseActionHandler):
         """
         with open("include/prompts/example_builder/pr_title_and_desc.txt", "r") as f:
             pr_title_and_desc_prompt = f.read()
+            # Filter messages to only include code_files and action tags
+            filtered_messages = [
+                msg for msg in messages 
+                if any(tag in msg.get("content", "") 
+                      for tag in ["<code_files>", "</code_files>", "<action>", "</action>"])
+            ]
+            
             pr_title_and_desc_prompt = format_prompt(
                 pr_title_and_desc_prompt,
                 preamble=self.preamble,
-                messages=json.dumps(messages),
+                messages=json.dumps(filtered_messages),
                 product_name=self.product_name,
             )
 

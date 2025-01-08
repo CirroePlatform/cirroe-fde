@@ -12,7 +12,7 @@ import base64
 
 load_dotenv()
 
-def get_latest_version(package_name: str) -> str:
+def get_latest_version(package_name: str) -> Tuple[List[str], str]:
     """
     Fetches the latest version of a given pip dependency from PyPI.
     
@@ -28,15 +28,15 @@ def get_latest_version(package_name: str) -> str:
         response = requests.get(url)
         response.raise_for_status()  # Raise an error for bad responses (4xx or 5xx)
         data = response.json()
-        return data['info']['version']
+        return [], data['info']['version']
     except requests.exceptions.HTTPError as http_err:
-        return f"HTTP error occurred: {http_err}"
+        return [], f"HTTP error occurred: {http_err}"
     except requests.exceptions.RequestException as req_err:
-        return f"Request error occurred: {req_err}"
+        return [], f"Request error occurred: {req_err}"
     except KeyError:
-        return "Unexpected response format from PyPI."
+        return [], "Unexpected response format from PyPI."
     except Exception as err:
-        return f"An error occurred: {err}"
+        return [], f"An error occurred: {err}"
 
 
 def format_prompt(prompt: str, **kwargs) -> str:

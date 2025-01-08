@@ -29,32 +29,27 @@ class WebKnowledgeBase(BaseKnowledgeBase):
             query (str): The query to search for.
         """
 
+        # "includeDomains": ["example.com", "sample.net"],
+        # "excludeDomains": ["excludedomain.com", "excludeme.net"],
+        # "startCrawlDate": "2023-01-01T00:00:00.000Z",
+        # "endCrawlDate": "2023-12-31T00:00:00.000Z",
+        # "startPublishedDate": "2023-01-01T00:00:00.000Z",
+        # "endPublishedDate": "2023-12-31T00:00:00.000Z",
+        # "includeText": ["electron", "positron"],
+        # "excludeText": ["neutron", "elon"],
         payload = {
             "query": query,
             "useAutoprompt": True,
-            "type": "<string>",
             "category": "company",
             "numResults": 10,
-            # "includeDomains": ["example.com", "sample.net"],
-            # "excludeDomains": ["excludedomain.com", "excludeme.net"],
-            # "startCrawlDate": "2023-01-01T00:00:00.000Z",
-            # "endCrawlDate": "2023-12-31T00:00:00.000Z",
-            # "startPublishedDate": "2023-01-01T00:00:00.000Z",
-            # "endPublishedDate": "2023-12-31T00:00:00.000Z",
-            # "includeText": ["electron", "positron"],
-            # "excludeText": ["neutron", "elon"],
             "contents": {
                 "text": {
-                    # "maxCharacters": 123,
                     "includeHtmlTags": True
                 },
                 "highlights": {
-                    # "numSentences": 123,
-                    # "highlightsPerUrl": 123,
                     "query": "<string>"
                 },
-                # "summary": {"query": "<string>"}
-            },
+            }
         }
 
         response = requests.post(EXA_SEARCH_URL, headers=self.headers, json=payload)
