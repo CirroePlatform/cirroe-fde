@@ -186,7 +186,7 @@ class NewStreamActionHandler(BaseActionHandler):
         news_string = "\n".join(
             [news.model_dump_json() for news in news_values]
         )
-        step_size = len(news_string) // 2
+        step_size = len(news_string) // 3
         cur_prompt = self.action_classifier_prompt
         self.tools = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
 
@@ -228,27 +228,47 @@ class NewStreamActionHandler(BaseActionHandler):
                     step_messages
                 )
             elif action == "none":
-                time.sleep(60) # Just so we don't overload the anthropic API
+                # time.sleep(60) # Just so we don't overload the anthropic API
                 continue
 
-            step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
-            last_message = step_response["response"]
-            if ("<files>" in last_message):
-                title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
-                    step_messages
-                )
-                self.sandbox.create_github_pr(
-                    last_message,
-                    # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
-                    "Cirr0e/firecrawl-examples",
-                    title,
-                    description,
-                    commit_msg,
-                    branch_name,
-                )
+            if step_messages[-1]["role"] != "user":
+                step_messages += [
+                    {
+                        "role": "user", 
+                        "content": f"We've identified a need to perform the '{action}' action, now let's continue to develop the example based on all previous information."
+                    }
+                ]
 
-                logging.info("PR created successfully")
+            while max_tool_calls > 0:
+                time.sleep(60)
 
-            time.sleep(60) # Just so we don't overload the anthropic API
+                step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
+                last_message = step_response["response"]
+                if ("<files>" in last_message):
+                    title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
+                        step_messages
+                    )
+                    self.sandbox.create_github_pr(
+                        last_message,
+                        # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
+                        "Cirr0e/firecrawl-examples",
+                        title,
+                        description,
+                        commit_msg,
+                        branch_name,
+                    )
 
-        return {"content": "Completed news stream processing"}
+                    return {"content": "Completed news stream processing"}
+                elif step_messages[-1]["role"] != "user":
+                    logging.info("PR was not created because last message was not a user message. appending a continue message")
+                    step_messages += [
+                        {
+                            "role": "user", 
+                            "content": f"Given the previous messages, continue to develop the example based on all previous information."
+                        }
+                    ]
+                else:
+                    logging.info("PR was not created even though last message was not a user message.")
+                    return {"content": "Completed news stream processing. PR was not created."}
+            
+            return {"content": "Completed news stream processing after reaching max tool calls. PR was not created."}

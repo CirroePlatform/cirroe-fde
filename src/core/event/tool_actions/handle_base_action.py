@@ -100,7 +100,6 @@ class BaseActionHandler:
 
         # Initialize response tracking
         kb_responses = []
-        tool_calls_made = 0
         final_response = None
 
         response = self.client.messages.create(
@@ -112,7 +111,7 @@ class BaseActionHandler:
             messages=messages,
         )
 
-        while tool_calls_made < max_tool_calls:
+        while max_tool_calls > 0:
             try:
                 if not response.content:
                     break
@@ -160,7 +159,7 @@ class BaseActionHandler:
                                 tool_name, function_response, messages
                             )
 
-                        tool_calls_made += 1
+                        max_tool_calls -= 1
 
                 if response.stop_reason != "tool_use":
                     # Generate final response before breaking
