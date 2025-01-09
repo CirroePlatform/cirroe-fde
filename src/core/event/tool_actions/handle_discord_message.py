@@ -12,7 +12,7 @@ from src.model.issue import DiscordMessage
 from src.integrations.kbs.github_kb import Repository
 from include.constants import (
     DEBUG_DISCORD_FILE,
-    DEBUG_TOOLS,
+    EXAMPLE_CREATOR_BASE_TOOLS,
     MODEL_HEAVY,
     ORG_NAME,
     REPO_NAME,
@@ -42,7 +42,7 @@ class DiscordMessageHandler(BaseActionHandler):
         super().__init__(
             anthropic.Anthropic(api_key=ANTHROPIC_API_KEY),
             DEBUG_DISCORD_FILE,
-            DEBUG_TOOLS,
+            EXAMPLE_CREATOR_BASE_TOOLS,
             self.tools_map,
             MODEL_HEAVY,
         )

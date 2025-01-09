@@ -5,6 +5,7 @@ import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import (
     EXAMPLE_CREATOR_CREATION_TOOLS,
+    EXAMPLE_CREATOR_DEBUGGER_TOOLS,
     EXAMPLE_CREATOR_MODIFICATION_TOOLS,
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
 )
@@ -146,6 +147,29 @@ class NewStreamActionHandler(BaseActionHandler):
             ]
         return cur_prompt
 
+    def __debug_example(self, code_files: str) -> Dict[str, Any]:
+        """
+        Helper function to debug the example
+
+        Args:
+            code_files (str): The code files to debug
+
+        Returns:
+            Dict[str, Any]: The response from the debugger
+        """
+        with open("include/prompts/example_builder/example_debugger.txt", "r") as f:
+            debugger_prompt = f.read()
+            debugger_prompt = format_prompt(debugger_prompt, product_name=self.product_name, preamble=self.preamble, code_files=code_files)
+
+        # set tools to the debugger tools
+        self.tools = EXAMPLE_CREATOR_DEBUGGER_TOOLS
+
+        return super().handle_action(
+            [{"role": "user", "content": debugger_prompt}],
+            max_tool_calls=10,
+            system_prompt=debugger_prompt
+        )
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
@@ -245,6 +269,19 @@ class NewStreamActionHandler(BaseActionHandler):
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
                 last_message = step_response["response"]
                 if ("<files>" in last_message):
+                    
+                    # Append the final message with the files to the step messages.
+                    step_messages += last_message
+                    code_files = last_message.split("<files>")[1].split("</files>")[0].strip()
+
+                    # Debug the example and ensure clean execution
+                    debug_response = self.__debug_example(code_files)
+
+                    # If the debug response is false, then the debugger didn't modify the code, and we can keep the last message as the final message.
+                    if debug_response["response"].split("<code_files>")[1].split("</code_files>")[0].strip() != "false":
+                        last_message = debug_response["response"]
+                        step_messages += last_message
+
                     title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
                         step_messages
                     )
