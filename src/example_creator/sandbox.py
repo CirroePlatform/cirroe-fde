@@ -161,7 +161,7 @@ class Sandbox:
         return "\n".join(output)
 
     def run_code_e2b(
-        self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None
+        self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None, timeout: int = 60
     ) -> CommandResult:
         """
         Executes code in E2B sandbox environment
@@ -178,7 +178,7 @@ class Sandbox:
         try:
             # Create E2B session
             sandbox = e2b_sandbox(
-                timeout=60,
+                timeout=timeout,
                 api_key=self.e2b_api_key,
             )
 

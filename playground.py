@@ -212,4 +212,4 @@ def get_example_contents_llm_readable(repo: str):
             f.write(codefile_str)
 
 if __name__ == "__main__":
-    get_example_contents_llm_readable("firecrawl-app-examples")
+    pass

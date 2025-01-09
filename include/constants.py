@@ -64,7 +64,7 @@ MODEL_LIGHT = "claude-3-5-haiku-latest"
 MODEL_HEAVY = "claude-3-5-sonnet-latest"
 
 # Tool constants
-DEBUG_TOOLS = [
+EXAMPLE_CREATOR_BASE_TOOLS = [
     {
         "name": "execute_search",
         "description": "A function to search the various knowledge bases for the organization of the example creator for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
@@ -84,8 +84,7 @@ DEBUG_TOOLS = [
                     "enum": [
                         KnowledgeBaseType.CODEBASE,
                         KnowledgeBaseType.ISSUES,
-                        KnowledgeBaseType.DOCUMENTATION,
-                        KnowledgeBaseType.WEB,
+                        KnowledgeBaseType.DOCUMENTATION
                     ],
                     "description": "The knowledge base to use for the search. If the knowledgebase is the web, the results will be from the web, if the search is for code, the results will be from code snippets in the codebase, if the search is for issues, the results will be from the previously solved issues, and if the search is for documentation, the results will be from the org's documentation.",
                 },
@@ -106,8 +105,6 @@ DEBUG_TOOLS = [
         },
     }
 ]
-
-EXAMPLE_CREATOR_BASE_TOOLS = DEBUG_TOOLS
 
 # Feel like we should only include this for complete failure cases.
 EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
@@ -277,6 +274,10 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
                     "type": "string",
                     "description": "The command to build the code, install any dependencies, or set up the environment in any other way",
                 },
+                "timeout": {
+                    "type": "integer",
+                    "description": "The timeout for the code execution in seconds. Default is 60 seconds.",
+                },
             },
             "required": ["code_files", "execution_command"],
         },
@@ -302,6 +303,7 @@ EXAMPLE_CREATOR_MODIFICATION_TOOLS = (
 EXAMPLE_CREATOR_CREATION_TOOLS = (
     EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 )
+EXAMPLE_CREATOR_DEBUGGER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL # + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
 
 # Embedding models
 NVIDIA_EMBED = "nvidia/NV-Embed-v2"

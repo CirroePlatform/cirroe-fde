@@ -67,17 +67,7 @@ To create an effective example application, follow these steps:
    <!-- Add other files as needed -->
    </files>
 
-7. Test and debug:
-   <analysis>
-   After generating the files, consider how you would test them to ensure they work as expected. Think about potential errors or issues that might arise, and propose fixes. Iterate on this process until you're confident the example would run smoothly.
-   
-   - List any potential errors that might occur, providing a specific example for each
-   - For each error, propose a fix with a code snippet or specific action
-   - Note any changes that would need to be made for successful execution, explaining how each change improves the example
-   - Propose 2-3 specific test cases with expected outputs to verify the example's functionality
-   </analysis>
-
-8. Final review:
+7. Final review:
    <analysis>
    Review the entire example to ensure it meets the following criteria:
    - Demonstrates the new technology effectively
@@ -95,7 +85,7 @@ To create an effective example application, follow these steps:
 
 After completing these steps, present your final example files using the format shown in step 6. Ensure that your README.md file includes clear instructions for setup, usage, and any customization options.
 
-Remember, the key is to create an example that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation.
+Remember, the key is to create an example that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation, but also ensure that the example is functional and produces a visible output for the user.
 
 Important requirements:
 1. You must include at least one successful execution of the sandbox tool. This tool takes code and an execution command, runs the code in a virtual sandbox, and returns the stderr + stdout. Use this to verify that your example works correctly.

@@ -20,7 +20,7 @@ from src.storage.supa import SupaClient
 from src.core.tools import SearchTools
 from include.constants import (
     DEBUG_ISSUE_FILE,
-    DEBUG_TOOLS,
+    EXAMPLE_CREATOR_BASE_TOOLS,
     DEBUG_ISSUE_FINAL_PROMPT,
     MODEL_HEAVY,
     ORG_NAME,
@@ -48,7 +48,7 @@ class HandleIssue(BaseActionHandler):
         super().__init__(
             anthropic.Anthropic(api_key=ANTHROPIC_API_KEY),
             DEBUG_ISSUE_FILE,
-            DEBUG_TOOLS,
+            EXAMPLE_CREATOR_BASE_TOOLS,
             self.tools_map,
             MODEL_HEAVY,
         )
