@@ -211,13 +211,18 @@ class Sandbox:
                 if ts_files:
                     sandbox.commands.run("tsc " + " ".join(ts_files))
 
+            logging.info("Setup successful. Executing commands now...")
             setup_success = True
             # Execute the provided command
             if build_command:
+                logging.info(f"Building code with command: {build_command}")
                 result = sandbox.commands.run(build_command)
                 build_success = result.exit_code == 0
+                logging.info(f"Build command success: {build_success}")
 
+            logging.info(f"Executing code with command: {execution_command}")
             result = sandbox.commands.run(execution_command)
+            logging.info(f"Execution command successful")
 
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
