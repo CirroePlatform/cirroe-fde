@@ -59,13 +59,13 @@ To create an effective example application, follow these steps:
 6. Generate the files:
    Based on your analysis, create the necessary files. Use the following format to present each file:
 
-   <files>
+   <code_files>
    <fpath_examples/example_app/[filename]>
    # Content of [filename]
    </fpath_examples/example_app/[filename]>
 
    <!-- Add other files as needed -->
-   </files>
+   </code_files>
 
 7. Final review:
    <analysis>
@@ -85,12 +85,12 @@ To create an effective example application, follow these steps:
 
 After completing these steps, present your final example files using the format shown in step 6. Ensure that your README.md file includes clear instructions for setup, usage, and any customization options.
 
-Remember, the key is to create an example that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation, but also ensure that the example is functional and produces a visible output for the user.
+Remember, the key is to create an example with code files that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation, but also ensure that the example is functional and produces a visible output for the user.
 
 Important requirements:
-1. You must include at least one successful execution of the sandbox tool. This tool takes code and an execution command, runs the code in a virtual sandbox, and returns the stderr + stdout. Use this to verify that your example works correctly.
-2. Provide a way to automatically set up the environment. This can be through requirements.txt, package.json, or any other appropriate method, as long as it allows for easy configuration and execution.
-3. Include a README.md file with detailed setup instructions.
+1. Provide a way to automatically set up the environment. This can be through requirements.txt, package.json, or any other appropriate method, as long as it allows for easy configuration and execution.
+2. Include a README.md file with detailed setup instructions.
+3. You MUST provide a set of code files wrapped in <code_files> tags, at all costs.
 
 Your final output should be a set of files that form a complete, runnable example of how to use the product with the new technology. Make sure to think through each step carefully and provide a comprehensive solution.
 
@@ -99,7 +99,7 @@ Examples for reference:
 <examples>
 
 <example_1>
-<files>
+<code_files>
 <fpath_examples/kubernetes/cluster-install/README.md>
 # Install Firecrawl on a Kubernetes Cluster (Simple Version)
 # Before installing
@@ -392,11 +392,11 @@ spec:
           #    name: firecrawl-secret
 
 </fpath_examples/kubernetes/cluster-install/worker.yaml>
-</files>
+</code_files>
 </example_1>
 
 <example_2>
-<files>
+<code_files>
 <fpath_examples/openai_swarm_firecrawl/.env.example>
 OPENAI_API_KEY=
 FIRECRAWL_API_KEY=
@@ -554,11 +554,11 @@ if __name__ == "__main__":
 firecrawl-py
 openai
 </fpath_examples/openai_swarm_firecrawl/requirements.txt>
-</files>
+</code_files>
 </example_2>
 
 <example_3>
-<files>
+<code_files>
 <fpath_examples/scrape_and_analyze_airbnb_data_e2b/.env.template>
 # TODO: Get your E2B API key from https://e2b.dev/docs
 E2B_API_KEY=""
@@ -2434,11 +2434,11 @@ export async function scrapeAirbnb() {
 }
 
 </fpath_examples/scrape_and_analyze_airbnb_data_e2b/scraping.ts>
-</files>
+</code_files>
 </example_3>
 
 <example_4>
-<files>
+<code_files>
 <fpath_automated_price_tracking/.env.example>
 FIRECRAWL_API_KEY=
 POSTGRES_URL=
@@ -2918,6 +2918,6 @@ def is_valid_url(url: str) -> bool:
         return False
 
 </fpath_automated_price_tracking/utils.py>
-</files>
+</code_files>
 </example_4>
 

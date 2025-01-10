@@ -160,6 +160,22 @@ class Sandbox:
 
         return "\n".join(output)
 
+    def load_agent_env(self) -> Dict[str, str]:
+        """
+        Loads the agent env file. For now, this just loads my env file.
+
+        Returns:
+            Dict[str, str]: Dictionary of env variables
+        """
+        env = {}
+        with open(self.sanbox_env_file, "r") as f:
+            for line in f:
+                # Skip empty lines or lines without =
+                if line.strip() and '=' in line and re.match(r'^\s*[\w\-\.]+\s*=\s*.+\s*$', line):
+                    key, value = line.strip().split("=")
+                    env[key] = value
+        return env
+
     def run_code_e2b(
         self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None, timeout: int = 60
     ) -> CommandResult:
@@ -180,6 +196,7 @@ class Sandbox:
             sandbox = e2b_sandbox(
                 timeout=timeout,
                 api_key=self.e2b_api_key,
+                envs=self.load_agent_env()
             )
 
             # Create project directory structure and write files
@@ -261,7 +278,7 @@ class Sandbox:
             # Parse files from code string
             files = self.parse_example_files(code_string)
             if not files:
-                return "Error: No valid files found in code string"
+                raise Exception("Error: No valid files found in code string")
 
             # Get default branch
             url = f"{GITHUB_API_BASE}/repos/{repo_name}"

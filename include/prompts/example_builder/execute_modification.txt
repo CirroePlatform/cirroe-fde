@@ -171,9 +171,9 @@ Multi-Turn Conversations: Enable dynamic, interactive dialogues.
 </{new_technology}>
 </inputs>
 
-<files>
+<code_files>
 <updated_example>
-<main.py>import numpy as np
+<fpath_main.py>import numpy as np
 from langchain.callbacks import HumanApprovalCallbackHandler
 from {product_name} import interact_with, interrupt
 
@@ -197,11 +197,11 @@ if response.lower() == 'yes':
 else:
     print("Operation cancelled by user")</main.py>
 
-<requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
+<fpath_requirements.txt>{product_name}==0.0.1 # all libraries are most up to date as of 2025-01-01
 numpy==2.2.1
-langchain==0.42.1</requirements.txt>
+langchain==0.42.1</fpath_requirements.txt>
 
-<README.md># Numpy Guide with Human-in-the-Loop
+<fpath_README.md># Numpy Guide with Human-in-the-Loop
 
 This example shows how to use numpy to create an array and properly link it to {product_name}, with added human approval steps.
 
@@ -217,9 +217,9 @@ python main.py
 
 The example will now pause for human approval before completing the array transformation.
 
-The python version at the time of this example being created is 3.12.1</README.md>
+The python version at the time of this example being created is 3.12.1</fpath_README.md>
 </updated_example>
-</files>
+</code_files>
 
 </example_1>
 
