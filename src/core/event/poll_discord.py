@@ -24,6 +24,7 @@ class CirroeDiscordBot(commands.Bot):
         self.discord_msg_handler = DiscordMessageHandler(org_id)
         self.processing_threads: Dict[int, asyncio.Event] = {}  # Track threads being processed
         self.pending_messages: Dict[int, List[discord.Message]] = {}  # Store pending messages per thread
+        self.processed_messages: Set[int] = set()  # Track processed message IDs
 
     async def setup_hook(self):
         """Set up any background tasks or initial configurations"""
@@ -54,12 +55,14 @@ class CirroeDiscordBot(commands.Bot):
 
         # Use async for to properly iterate over the async iterator
         async for message in thread.history(limit=100, oldest_first=True):
-            messages.append(f"{message.author.display_name}: {message.content}")
+            if message.id not in self.processed_messages:
+                messages.append(f"{message.author.display_name}: {message.content}")
 
-        # Add any pending messages for this thread
+        # Add any pending messages for this thread that haven't been processed
         if thread.id in self.pending_messages:
             for msg in self.pending_messages[thread.id]:
-                messages.append(f"{msg.author.display_name}: {msg.content}")
+                if msg.id not in self.processed_messages:
+                    messages.append(f"{msg.author.display_name}: {msg.content}")
 
         return "\n".join(messages)  # Join messages with newlines for better readability
 
@@ -67,13 +70,18 @@ class CirroeDiscordBot(commands.Bot):
         """Handle responses in a thread"""
         thread_id = thread.id
 
+        # If message was already processed, ignore it
+        if message.id in self.processed_messages:
+            return
+
         # Check if thread is already being processed
         if thread_id in self.processing_threads:
-            # Add message to pending messages
+            # Add message to pending messages if not already processed
             if thread_id not in self.pending_messages:
                 self.pending_messages[thread_id] = []
-            self.pending_messages[thread_id].append(message)
-            logging.info(f"Added message to pending queue for thread {thread_id}")
+            if message.id not in self.processed_messages:
+                self.pending_messages[thread_id].append(message)
+                logging.info(f"Added message to pending queue for thread {thread_id}")
             return
 
         # Create processing lock for this thread
@@ -83,6 +91,10 @@ class CirroeDiscordBot(commands.Bot):
             # Start typing indicator
             async with thread.typing():
                 messages = await self.__construct_thread_messages(thread)
+                
+                # If no unprocessed messages, return
+                if not messages.strip():
+                    return
 
                 # Generate AI response
                 response = await self.generate_ai_response(
@@ -96,6 +108,12 @@ class CirroeDiscordBot(commands.Bot):
 
                 # Send response in the thread
                 await thread.send(response)
+
+                # Mark all pending messages as processed
+                if thread_id in self.pending_messages:
+                    for msg in self.pending_messages[thread_id]:
+                        self.processed_messages.add(msg.id)
+                self.processed_messages.add(message.id)
 
         except Exception as e:
             traceback.print_exc()
