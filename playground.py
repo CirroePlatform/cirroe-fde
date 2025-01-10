@@ -42,8 +42,8 @@ def evaluate(
     orchestrator.evaluate()
 
 
-def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
-    asyncio.run(setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url))
+async def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
+    await setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url)
 
 
 def handle_discord_message(inbound_message: str, org_id: UUID):
