@@ -34,9 +34,13 @@ Paste the visible output or result produced by the example.
 </output>
 
 <code_files>
-Paste the modified code files. If there were no changes, add a single boolean value "false"
+Paste the modified code files. If there were no changes, add a single boolean value "false". Each file should be wrapped in <fpath_[file_path]> tags.
 </code_files>
 
 </debug_report>
+
+IMPORTANT:
+- You MUST provide a set of code files wrapped in <code_files> tags, at all costs.
+- Each file should be wrapped in <fpath_[file_path]> tags.
 
 Remember to focus on ensuring the example produces a tangible, visible result for the user. Your goal is to make the example functional and demonstrative of {product_name}'s capabilities.

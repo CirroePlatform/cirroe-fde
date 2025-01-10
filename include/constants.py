@@ -117,16 +117,16 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                 "query": {
                     "type": "string",
                     "description": "The query string",
-                    "required": True,
+                    "required": "true"
                 },
                 "useAutoprompt": {
                     "type": "boolean",
-                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only.",
+                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only."
                 },
                 "type": {
                     "type": "string",
                     "enum": ["keyword", "neural", "auto"],
-                    "description": "The type of search. Default auto, which automatically decides between keyword and neural.",
+                    "description": "The type of search. Default auto, which automatically decides between keyword and neural."
                 },
                 "category": {
                     "type": "string",
@@ -139,49 +139,49 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                         "tweet",
                         "personal site",
                         "linkedin profile",
-                        "financial report",
+                        "financial report"
                     ],
-                    "description": "A data category to focus on.",
+                    "description": "A data category to focus on."
                 },
                 "numResults": {
                     "type": "integer",
-                    "description": "Number of search results to return. Default and Max is 10.",
+                    "description": "Number of search results to return. Default and Max is 10."
                 },
                 "includeDomains": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of domains to include in the search. If specified, results will only come from these domains.",
+                    "description": "List of domains to include in the search. If specified, results will only come from these domains."
                 },
                 "excludeDomains": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of domains to exclude in the search. If specified, results will not include any from these domains.",
+                    "description": "List of domains to exclude in the search. If specified, results will not include any from these domains."
                 },
                 "startCrawlDate": {
                     "type": "string",
-                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format.",
+                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format."
                 },
                 "endCrawlDate": {
                     "type": "string",
-                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format.",
+                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format."
                 },
                 "startPublishedDate": {
                     "type": "string",
-                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format.",
+                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format."
                 },
                 "endPublishedDate": {
                     "type": "string",
-                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format.",
+                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format."
                 },
                 "includeText": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of strings that must be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words.",
+                    "description": "List of strings that must be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
                 },
                 "excludeText": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of strings that must not be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words.",
+                    "description": "List of strings that must not be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
                 },
                 "contents": {
                     "type": "object",
@@ -189,36 +189,39 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                         "text": {
                             "type": "object",
                             "description": "Parsed contents of the page.",
+                            "properties": {}
                         },
                         "highlights": {
                             "type": "object",
                             "description": "Relevant extract(s) from the webpage.",
+                            "properties": {}
                         },
                         "summary": {
                             "type": "object",
                             "description": "Summary of the webpage",
+                            "properties": {}
                         },
                         "livecrawl": {
                             "type": "string",
                             "enum": ["never", "fallback", "always"],
-                            "description": 'Options for livecrawling contents. Default is "never" for neural/auto search, "fallback" for keyword search.',
+                            "description": "Options for livecrawling contents. Default is \"never\" for neural/auto search, \"fallback\" for keyword search."
                         },
                         "livecrawlTimeout": {
                             "type": "integer",
-                            "description": "The timeout for livecrawling in milliseconds. Max and default is 10000.",
+                            "description": "The timeout for livecrawling in milliseconds. Max and default is 10000."
                         },
                         "subpages": {
                             "type": "integer",
-                            "description": "The number of subpages to crawl.",
+                            "description": "The number of subpages to crawl."
                         },
                         "subpageTarget": {
                             "type": "string",
-                            "description": "The target subpage or subpages. Can be a single string or an array of strings.",
-                        },
-                    },
-                },
-            },
-        },
+                            "description": "The target subpage or subpages. Can be a single string or an array of strings."
+                        }
+                    }
+                }
+            }
+        }
     }
 ]
 
@@ -253,6 +256,22 @@ EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
             "required": ["repository"],
         },
     },
+] # + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
+
+GET_LATEST_VERSION_TOOL = [
+    {
+        "name": "get_latest_version",
+        "description": "A function to get the latest version of a given pip dependency from PyPI",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "package_name": {
+                    "type": "string",
+                    "description": "The name of the pip dependency",
+                }
+            },
+        },
+    }
 ]
 
 EXAMPLE_CREATOR_RUN_CODE_TOOL = [
@@ -282,26 +301,13 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
             "required": ["code_files", "execution_command"],
         },
     },
-    {
-        "name": "get_latest_version",
-        "description": "A function to get the latest version of a given pip dependency from PyPI",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "package_name": {
-                    "type": "string",
-                    "description": "The name of the pip dependency",
-                }
-            },
-        },
-    },
-]
+] + GET_LATEST_VERSION_TOOL
 
 EXAMPLE_CREATOR_MODIFICATION_TOOLS = (
-    EXAMPLE_CREATOR_CLASSIFIER_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+    EXAMPLE_CREATOR_CLASSIFIER_TOOLS + GET_LATEST_VERSION_TOOL
 )
 EXAMPLE_CREATOR_CREATION_TOOLS = (
-    EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+    EXAMPLE_CREATOR_BASE_TOOLS + GET_LATEST_VERSION_TOOL
 )
 EXAMPLE_CREATOR_DEBUGGER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL # + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
 

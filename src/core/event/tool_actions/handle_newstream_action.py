@@ -268,11 +268,10 @@ class NewStreamActionHandler(BaseActionHandler):
 
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
                 last_message = step_response["response"]
-                if ("<files>" in last_message):
-                    
+                if ("<code_files>" in last_message):
+
                     # Append the final message with the files to the step messages.
-                    step_messages += last_message
-                    code_files = last_message.split("<files>")[1].split("</files>")[0].strip()
+                    code_files = last_message.split("<code_files>")[1].split("</code_files>")[0].strip()
 
                     # Debug the example and ensure clean execution
                     debug_response = self.__debug_example(code_files)
@@ -280,12 +279,12 @@ class NewStreamActionHandler(BaseActionHandler):
                     # If the debug response is false, then the debugger didn't modify the code, and we can keep the last message as the final message.
                     if debug_response["response"].split("<code_files>")[1].split("</code_files>")[0].strip() != "false":
                         last_message = debug_response["response"]
-                        step_messages += last_message
+                        step_messages += [{"role": "user", "content": last_message}]
 
                     title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
                         step_messages
                     )
-                    self.sandbox.create_github_pr(
+                    response = self.sandbox.create_github_pr(
                         last_message,
                         # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
                         "Cirr0e/firecrawl-examples",
@@ -295,13 +294,14 @@ class NewStreamActionHandler(BaseActionHandler):
                         branch_name,
                     )
 
-                    return {"content": "Completed news stream processing"}
+                    return {"content": response}
+
                 elif step_messages[-1]["role"] != "user":
                     logging.info("PR was not created because last message was not a user message. appending a continue message")
                     step_messages += [
                         {
                             "role": "user", 
-                            "content": f"Given the previous messages, continue to develop the example based on all previous information."
+                            "content": f"Given the previous messages, continue to develop the example based on all previous information. Make sure to wrap the code files in <code_files> tags."
                         }
                     ]
                 else:
