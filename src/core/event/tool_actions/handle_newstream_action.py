@@ -170,6 +170,15 @@ class NewStreamActionHandler(BaseActionHandler):
             system_prompt=debugger_prompt
         )
 
+    def handle_pr_feedback(self, feedback_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle feedback on a PR.
+
+        Args:
+            feedback_payload: The feedback payload from the PR. See below for an example.
+        """
+        logging.info(f"Feedback payload processing reached")
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:

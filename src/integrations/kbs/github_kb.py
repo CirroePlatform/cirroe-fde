@@ -408,32 +408,39 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             logging.error(traceback.format_exc())
             return []
 
-    def get_files_from_pr(self, repository: str, pull_number: int) -> List[CodePage]:
+    def get_pr_feedback(self, repository: str, pull_number: int) -> List[Dict[str, Any]]:
         """
-        Get a list of all the files in a pull request.
-        
-        example output from response json:
+        Get a list of all the files in a pull request, and the comments on each file.
+
+        Example output from response json:
         [
             {
-                "filename": "src/app.js",
-                "status": "modified",
-                "additions": 10,
-                "deletions": 5,
-                "changes": 15,
-                "patch": "@@ -1,5 +1,10 @@\n function example() {\n+  console.log('Added line');\n   return true;\n }\n"
+                "id": 12345678,
+                "diff_hunk": "@@ -1,5 +1,10 @@\n function example() {\n+  console.log('Added line');\n   return true;\n }\n",
+                "path": "src/app.js",
+                "position": 4,
+                "original_position": 4,
+                "commit_id": "abc123def456",
+                "user": {
+                    "login": "reviewer1"
+                },
+                "body": "Consider removing this log statement before merging."
             },
             {
-                "filename": "src/utils.js",
-                "status": "added",
-                "additions": 20,
-                "deletions": 0,
-                "changes": 20,
-                "patch": "@@ -0,0 +1,20 @@\n+export function util() {\n+  return 'new util';\n+}"
+                "id": 87654321,
+                "diff_hunk": "@@ -0,0 +1,20 @@\n+export function util() {\n+  return 'new util';\n+}",
+                "path": "src/utils.js",
+                "position": 1,
+                "original_position": 1,
+                "commit_id": "def456abc789",
+                "user": {
+                    "login": "reviewer2"
+                },
+                "body": "Should we add a test for this function?"
             }
-            ]
-
+        ]
         """
-        url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/pulls/{pull_number}/files"
+        url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/pulls/{pull_number}/comments"
         response = requests.get(url, headers=self.github_headers)
         response.raise_for_status()
 

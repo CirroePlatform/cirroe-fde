@@ -2,20 +2,20 @@
 This file is used to test the example creator tools by executing code examples in a sandbox.
 """
 
-import traceback
+from include.constants import GITHUB_API_BASE
+from e2b import Sandbox as e2b_sandbox
+from typing import Tuple, Dict
+from e2b import CommandResult
+from enum import Enum
 import subprocess
+import traceback
+import requests
+import asyncio
+import logging
 import sys
 import json
 import os
-from typing import Tuple, Dict
-from enum import Enum
-from e2b import Sandbox as e2b_sandbox
-from e2b import CommandResult
 import re
-import asyncio
-import logging
-from include.constants import GITHUB_API_BASE
-import requests
 
 
 class Language(Enum):
