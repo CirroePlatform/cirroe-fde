@@ -177,7 +177,7 @@ class Sandbox:
         return env
 
     def run_code_e2b(
-        self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None, timeout: int = 60
+        self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None, timeout: int = 300
     ) -> CommandResult:
         """
         Executes code in E2B sandbox environment
@@ -233,12 +233,12 @@ class Sandbox:
             # Execute the provided command
             if build_command:
                 logging.info(f"Building code with command: {build_command}")
-                result = sandbox.commands.run(build_command)
+                result = sandbox.commands.run(build_command, timeout=timeout)
                 build_success = result.exit_code == 0
                 logging.info(f"Build command success: {build_success}")
 
             logging.info(f"Executing code with command: {execution_command}")
-            result = sandbox.commands.run(execution_command)
+            result = sandbox.commands.run(execution_command, timeout=timeout)
             logging.info(f"Execution command successful")
 
         except Exception as e:
