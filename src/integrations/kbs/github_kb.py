@@ -408,6 +408,37 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             logging.error(traceback.format_exc())
             return []
 
+    def get_files_from_pr(self, repository: str, pull_number: int) -> List[CodePage]:
+        """
+        Get a list of all the files in a pull request.
+        
+        example output from response json:
+        [
+            {
+                "filename": "src/app.js",
+                "status": "modified",
+                "additions": 10,
+                "deletions": 5,
+                "changes": 15,
+                "patch": "@@ -1,5 +1,10 @@\n function example() {\n+  console.log('Added line');\n   return true;\n }\n"
+            },
+            {
+                "filename": "src/utils.js",
+                "status": "added",
+                "additions": 20,
+                "deletions": 0,
+                "changes": 20,
+                "patch": "@@ -0,0 +1,20 @@\n+export function util() {\n+  return 'new util';\n+}"
+            }
+            ]
+
+        """
+        url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/pulls/{pull_number}/files"
+        response = requests.get(url, headers=self.github_headers)
+        response.raise_for_status()
+
+        return response.json()
+
     def fetch_contents(
         self, repository: str, code_pages: List[CodePage] = [], path: str = "", include_dirs: bool = False
     ):
