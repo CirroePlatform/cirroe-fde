@@ -408,7 +408,7 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             logging.error(traceback.format_exc())
             return []
 
-    def get_pr_feedback(self, repository: str, pull_number: int) -> List[Dict[str, Any]]:
+    def get_pr_codefiles(self, repository: str, pull_number: int) -> List[Dict[str, Any]]:
         """
         Get a list of all the files in a pull request, and the comments on each file.
 

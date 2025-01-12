@@ -1,15 +1,15 @@
 from fastapi import FastAPI, Request, HTTPException
+from scripts.firecrawl_demo import get_handler
 from scripts.firecrawl_demo import main
 from pydantic import BaseModel
 import logging
 import hashlib
 import uvicorn
+import json
 import hmac
-from scripts.firecrawl_demo import get_handler
 
 app = FastAPI()
-secret = "your_github_webhook_secret"
-handler = get_handler()
+secret = "example-builder"
 
 class GitHubWebhookPayload(BaseModel):
     """
@@ -41,22 +41,27 @@ async def handle_pr_changes_webhook(request: Request):
     request_body = await request.body()
     verify_signature(request_body, signature)
 
-    payload = GitHubWebhookPayload.model_validate_json(request_body)
+    try:
+        # Decode bytes to string and parse JSON
+        body_str = request_body.decode('utf-8')
+        payload = json.loads(body_str)
 
-    print(payload)
-    if payload.action == "created" and "pull_request" in payload.comment:
-        line_number = payload.comment.get("position")
-        file_path = payload.comment.get("path")
-        comment_body = payload.comment.get("body")
-        line_diff = payload.comment.get("diff_hunk")
+        if payload['action'] == "created" and "pull_request" in payload:
+            # logging.info(f"Comment on line {line_number} in file {file_path}: {comment_body}. Line diff: {line_diff}")
 
-        logging.info(f"Comment on line {line_number} in file {file_path}: {comment_body}. Line diff: {line_diff}")
+            # Add logic to handle comments on specific spots
+            handler = get_handler()
+            handler.handle_pr_feedback(payload)
 
-        # Add logic to handle comments on specific spots
-        handler.handle_pr_feedback(payload)
-
-    return {"status": "success"}
+        return {"status": "success"}
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse webhook payload: {e}")
+        logging.error(f"Raw payload: {request_body}")
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    except Exception as e:
+        logging.error(f"Error processing webhook: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    main("create")  # TODO remove this for the demo
-    # uvicorn.run(app, host="0.0.0.0", port=8000)
+    # main("create")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
