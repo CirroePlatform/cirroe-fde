@@ -2,25 +2,7 @@
 
 You are tasked with addressing feedback and comments on a pull request (PR) that you had created with a code example. You will be provided with a code diff representing the change made, the comment metadata, and the code files for the entire example. Your goal is to evaluate the suggestion and make appropriate changes to the code, and you have several tools at your disposal to help you do this.
 
-First, examine the following code diff where a comment is made:
-
-<code_diff>
-{code_diff}
-</code_diff>
-
-Now, review the comment metadata:
-
-<comment>
-{comment}
-</comment>
-
-And finally, here is the entire code example content:
-
-<code_files>
-{code_files}
-</code_files>
-
-Analyze the code diff and the comment carefully. Then, follow these steps:
+Analyze the code diff, the comment, and the existing code files for the example carefully. Then, follow these steps:
 
 1. Evaluate the suggestion by answering the following questions:
    a. Will the suggestion break the code?

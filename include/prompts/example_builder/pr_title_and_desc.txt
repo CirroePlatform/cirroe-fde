@@ -30,9 +30,7 @@ Please follow these steps to create the PR title and description:
    - Explanation of the key features or concepts of {product_name} that are showcased.
    - Any significant changes if this is an update to an existing example.
    - Important implementation details or design decisions, referencing the messages from the tools calling chain.
-   - Dependencies or setup requirements, if applicable.
-   - A brief usage example or highlighting of a key code snippet.
-   - Notes on trending technologies integrated, explaining the reasoning and potential benefits.
+   - A section on trending technologies integrated, explaining the reasoning for why that specific technology was chosen.
    - Discussion of any challenges or trade-offs encountered in the implementation.
 
 4. Present your final PR title, description, commit message, and branch name using the following format:

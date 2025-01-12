@@ -1,4 +1,5 @@
-from typing import Dict, List, Any, Tuple, Optional
+from typing import Dict, List, Any, Tuple, Optional, Union
+from typeguard import typechecked
 import anthropic
 import logging
 import traceback
@@ -66,11 +67,12 @@ class BaseActionHandler:
 
         return base_prompt, examples
 
+    @typechecked
     def handle_action(
         self,
         messages: List[Dict],
         max_tool_calls: int = 5,
-        system_prompt: Optional[str] = None,
+        system_prompt: Optional[Union[str, List[Dict]]] = None,
     ) -> Dict[str, Any]:
         """
         Handle a user action through chain-of-thought reasoning and tool usage
@@ -84,19 +86,21 @@ class BaseActionHandler:
             Dict containing final response and collected knowledge base responses
         """
         # Load system prompt
-        if system_prompt:
-            raw_sysprompt = system_prompt
-        else:
-            with open(self.system_prompt_file, "r", encoding="utf8") as fp:
-                raw_sysprompt = fp.read()
+        system_messages = system_prompt if system_prompt and isinstance(system_prompt, List) else None
+        if system_messages is None:
+            if system_prompt:
+                raw_sysprompt = system_prompt
+            else:
+                with open(self.system_prompt_file, "r", encoding="utf8") as fp:
+                    raw_sysprompt = fp.read()
 
-        # Extract base prompt and examples
-        base_prompt, examples = self._extract_examples(raw_sysprompt)
+            # Extract base prompt and examples
+            base_prompt, examples = self._extract_examples(raw_sysprompt)
 
-        # Create system messages with caching
-        system_messages = [
-            {"type": "text", "text": base_prompt}
-        ] + examples
+            # Create system messages with caching
+            system_messages = [
+                {"type": "text", "text": base_prompt}
+            ] + examples
 
         # Initialize response tracking
         kb_responses = []

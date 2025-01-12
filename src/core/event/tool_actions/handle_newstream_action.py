@@ -1,5 +1,8 @@
 from typing import Dict, List, Any, Tuple
+from src.model.issue import Issue, Comment
+import asyncio
 import json
+from src.core.event.poll import comment_on_pr
 import os
 import time
 import logging
@@ -9,8 +12,10 @@ from include.constants import (
     EXAMPLE_CREATOR_DEBUGGER_TOOLS,
     EXAMPLE_CREATOR_MODIFICATION_TOOLS,
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
+    EXAMPLE_CREATOR_PR_TOOLS,
 )
 import random
+import re
 import anthropic
 from include.utils import format_prompt
 from src.model.news import News
@@ -209,6 +214,78 @@ class NewStreamActionHandler(BaseActionHandler):
             logging.error(f"Failed to read cached code files: {str(e)}")
             return {}
 
+    def _handle_pr_suggestions_output(self, response: Dict[str, Any], pr_webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle the output of the PR suggestions tool. This should do the following:
+            if the changed code is not false, then we need to cache the code files, and submit a revision to the PR.
+
+            if the comment response is not false, then we need to respond to the PR with the comment response.
+
+        sample response input:
+        <changed_code>
+        [The modified code diff, or just a single boolean false if no changes were made]
+        </changed_code>
+
+        <comment_response>
+        [A comment response to the reviewer if necessary, or just a single boolean false if no changes were made]
+        </comment_response>
+        
+        
+        Args:
+            response: Dictionary containing response data including messages and final response
+            
+        Returns:
+            Dict containing the processed response data
+        """
+        if not response or "response" not in response:
+            return response
+            
+        final_response = response["response"]
+        
+        # Extract changed code and comment response using regex
+        changed_code_pattern = r"<changed_code>\s*(.*?)\s*</changed_code>"
+        comment_pattern = r"<comment_response>\s*(.*?)\s*</comment_response>"
+
+        changed_code_match = re.search(changed_code_pattern, final_response, re.DOTALL)
+        comment_match = re.search(comment_pattern, final_response, re.DOTALL)
+
+        changed_code = changed_code_match.group(1).strip() if changed_code_match else None
+        comment_response = comment_match.group(1).strip() if comment_match else None
+
+        # Handle changed code if not false
+        if changed_code and changed_code.lower() != "false":
+            # Cache the code files
+            self._cache_code_files({"changed_code": changed_code})
+
+            # Submit the revision
+            pr_number = pr_webhook_payload.get("number")
+            title = pr_webhook_payload.get("title")
+            description = pr_webhook_payload.get("body")
+            commit_msg = pr_webhook_payload.get("head", {}).get("sha")
+            branch_name = pr_webhook_payload.get("head", {}).get("ref")
+            self.sandbox.create_github_pr(changed_code, "Cirr0e/firecrawl-examples", title, description, commit_msg, branch_name, pr_number)
+
+            response["changed_code"] = changed_code
+            
+        # Handle comment response if not false    
+        if comment_response and comment_response.lower() != "false":
+            
+            # Submit the comment after crafting the parameters correctly
+            initial_comment = pr_webhook_payload.get("comment", {}).get("body")
+            initial_comment_author = pr_webhook_payload.get("comment", {}).get("user", {}).get("login")
+            issue = Issue(
+                primary_key=str(pr_number),
+                org_id=self.org_id,
+                description=initial_comment,
+                comments=[Comment(requestor_name=initial_comment_author, comment=initial_comment)],
+                ticket_number=str(pr_number)
+            )
+
+            asyncio.run(comment_on_pr("Cirr0e", "firecrawl-examples", pr_number, comment_response))
+            response["comment_response"] = comment_response
+
+        return response
+
     def handle_pr_feedback(self, feedback_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle feedback on a PR.
@@ -223,14 +300,40 @@ class NewStreamActionHandler(BaseActionHandler):
             comment = feedback_payload.get("comment", "")
             code_files = self._get_cached_code_files()
 
-            handle_pr_suggestions_prompt = format_prompt(handle_pr_suggestions_prompt, 
-                                                         preamble=self.preamble, 
-                                                         code_diff=code_diff, 
-                                                         comment=comment, 
-                                                         code_files=code_files)
+            handle_pr_suggestions_prompt = format_prompt(handle_pr_suggestions_prompt, preamble=self.preamble)
+            first_message = f"""First, examine the following code diff where a comment is made:
+                <code_diff>
+                {code_diff}
+                </code_diff>
 
-        self.preamble
-        logging.info(f"Feedback payload processing reached")
+                Now, review the comment metadata:
+
+                <comment>
+                {comment}
+                </comment>
+
+                And finally, here is the entire code example content:
+
+                <code_files>
+                {code_files}
+                </code_files>
+            """
+
+            handle_pr_suggestions_prompt_msg = [{
+                "type": "text",
+                "text": handle_pr_suggestions_prompt,
+                "cache_control": {"type": "ephemeral"}
+            }]
+
+            self.tools = EXAMPLE_CREATOR_PR_TOOLS
+
+            response = super().handle_action(
+                [{"role": "user", "content": first_message}],
+                max_tool_calls=10,
+                system_prompt=handle_pr_suggestions_prompt_msg
+            )
+
+            return self._handle_pr_suggestions_output(response, feedback_payload)
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15

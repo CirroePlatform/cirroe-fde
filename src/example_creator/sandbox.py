@@ -260,6 +260,7 @@ class Sandbox:
         body: str,
         commit_msg: str,
         branch_name: str,
+        pr_number: int | None = None
     ) -> str:
         """
         Creates a PR on GitHub with example code
@@ -271,6 +272,7 @@ class Sandbox:
             body: Body of the PR
             commit_msg: Commit message for the PR
             branch_name: Name of the branch to create the PR on
+            pr_number: The number of the PR to update, if updating an existing PR
         Returns:
             PR URL if successful, error message if not
         """
@@ -348,25 +350,48 @@ class Sandbox:
             ref_response = requests.patch(url, headers=self.github_headers, json=ref_payload)
             ref_response.raise_for_status()
 
-            # Create PR
-            url = f"{GITHUB_API_BASE}/repos/{repo_name}/pulls"
-            payload = {
-                "title": title,
-                "body": body,
-                "head": branch_name,
-                "base": base_branch,
-            }
-            response = requests.post(url, headers=self.github_headers, json=payload)
-            response.raise_for_status()
-            pr_data = response.json()
+            html_url = self.raise_pr(repo_name, title, body, branch_name, base_branch, pr_number)
 
-            return pr_data["html_url"]
+            return html_url
 
         except Exception as e:
             traceback.print_exc()
             logging.error(f"GitHub PR creation error: {e}")
             return f"Error creating PR: {str(e)}"
 
+    def raise_pr(self, repo_name: str, title: str, body: str, branch_name: str, base_branch: str, pr_number: int | None = None) -> str:
+        """
+        Makes an API call to create a PR on GitHub
+
+        Args:
+            repo_name (str): The name of the repository to create the PR on
+            title (str): The title of the PR
+            body (str): The body of the PR
+            branch_name (str): The name of the branch to create the PR on
+            base_branch (str): The base branch to create the PR on
+            pr_number (int | None): The number of the PR to update, if updating an existing PR
+        Returns:
+            str: The URL of the PR if successful, otherwise an error message
+        """
+        # Create PR
+        url = f"{GITHUB_API_BASE}/repos/{repo_name}/pulls"
+        payload = {
+            "title": title,
+            "body": body,
+            "head": branch_name,
+            "base": base_branch,
+        }
+
+        if pr_number:
+            response = requests.patch(url, headers=self.github_headers, params={"number": pr_number}, json=payload)
+        else:
+            response = requests.post(url, headers=self.github_headers, json=payload)
+
+        response.raise_for_status()
+        pr_data = response.json()
+
+        return pr_data["html_url"]
+    
     def parse_example_files(self, code_string: str) -> Dict[str, str]:
         """
         Parses example files from code string format
