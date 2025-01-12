@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, Tuple
 import json
+import os
 import time
 import logging
 from .handle_base_action import BaseActionHandler
@@ -170,6 +171,44 @@ class NewStreamActionHandler(BaseActionHandler):
             system_prompt=debugger_prompt
         )
 
+    def _cache_code_files(self, code_files: Dict[str, Any]) -> None:
+        """
+        Cache the code files dictionary to disk.
+
+        Args:
+            code_files: Dictionary containing the code files and their contents
+        """
+
+        cache_dir = "include/cache"
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        cache_file = f"{cache_dir}/code_files_cache.json"
+        
+        try:
+            with open(cache_file, "w") as f:
+                json.dump(code_files, f)
+        except Exception as e:
+            logging.error(f"Failed to cache code files: {str(e)}")
+
+    def _get_cached_code_files(self) -> Dict[str, Any]:
+        """
+        Read the cached code files from disk.
+
+        Returns:
+            Dict containing the cached code files, or empty dict if no cache exists
+        """
+        cache_file = "include/cache/code_files_cache.json"
+        
+        if not os.path.exists(cache_file):
+            return {}
+            
+        try:
+            with open(cache_file, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logging.error(f"Failed to read cached code files: {str(e)}")
+            return {}
+
     def handle_pr_feedback(self, feedback_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle feedback on a PR.
@@ -177,6 +216,20 @@ class NewStreamActionHandler(BaseActionHandler):
         Args:
             feedback_payload: The feedback payload from the PR. See below for an example.
         """
+        with open("include/prompts/example_builder/handle_pr_suggestions.txt", "r") as f:
+            handle_pr_suggestions_prompt = f.read()
+
+            code_diff = feedback_payload.get("comment", {}).get("diff_hunk")
+            comment = feedback_payload.get("comment", "")
+            code_files = self._get_cached_code_files()
+
+            handle_pr_suggestions_prompt = format_prompt(handle_pr_suggestions_prompt, 
+                                                         preamble=self.preamble, 
+                                                         code_diff=code_diff, 
+                                                         comment=comment, 
+                                                         code_files=code_files)
+
+        self.preamble
         logging.info(f"Feedback payload processing reached")
 
     def handle_action(
@@ -302,6 +355,10 @@ class NewStreamActionHandler(BaseActionHandler):
                         commit_msg,
                         branch_name,
                     )
+
+                    # cache the code files for later...
+                    codefiles = self.sandbox.parse_example_files(last_message)
+                    self._cache_code_files(codefiles)
 
                     return {"content": response}
 

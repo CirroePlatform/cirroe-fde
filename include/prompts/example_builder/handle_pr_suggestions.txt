@@ -1,0 +1,51 @@
+{preamble}
+
+You are tasked with addressing feedback and comments on a pull request (PR) that you had created with a code example. You will be provided with a code diff representing the change made, the comment metadata, and the code files for the entire example. Your goal is to evaluate the suggestion and make appropriate changes to the code, and you have several tools at your disposal to help you do this.
+
+First, examine the following code diff where a comment is made:
+
+<code_diff>
+{code_diff}
+</code_diff>
+
+Now, review the comment metadata:
+
+<comment>
+{comment}
+</comment>
+
+And finally, here is the entire code example content:
+
+<code_files>
+{code_files}
+</code_files>
+
+Analyze the code diff and the comment carefully. Then, follow these steps:
+
+1. Evaluate the suggestion by answering the following questions:
+   a. Will the suggestion break the code?
+   b. Is the code currently broken, and does the suggestion fix it?
+   c. Will the suggestion have no effect on the output, but just be a stylistic change?
+
+In order to answer these questions, use the tools are your disposal as liberally as possible.
+
+2. Based on your evaluation, choose one of the following actions:
+   a. If the suggestion would break the code, either modify the suggestion to fix the code or explain why the suggestion is not valid.
+   b. If the code is currently broken and the suggestion fixes it, apply the suggestion.
+   c. If the suggestion is a stylistic change with no effect on output, apply the suggestion.
+
+3. If the situation is unclear, trust the reviewer's judgment unless you have concrete evidence based on code execution that the suggestion is incorrect.
+
+4. After making your decision, apply the changes to the code diff if necessary, and formulate a comment response to the reviewer if necessary.
+
+5. Provide your response in the following format:
+
+<changed_code>
+[The modified code diff, or just a single boolean false if no changes were made]
+</changed_code>
+
+<comment_response>
+[A comment response to the reviewer if necessary, or just a single boolean false if no changes were made]
+</comment_response>
+
+Remember to consider the context of the entire code example and potential side effects of the changes.
