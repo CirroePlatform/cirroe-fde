@@ -408,44 +408,6 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             logging.error(traceback.format_exc())
             return []
 
-    def get_pr_codefiles(self, repository: str, pull_number: int) -> List[Dict[str, Any]]:
-        """
-        Get a list of all the files in a pull request, and the comments on each file.
-
-        Example output from response json:
-        [
-            {
-                "id": 12345678,
-                "diff_hunk": "@@ -1,5 +1,10 @@\n function example() {\n+  console.log('Added line');\n   return true;\n }\n",
-                "path": "src/app.js",
-                "position": 4,
-                "original_position": 4,
-                "commit_id": "abc123def456",
-                "user": {
-                    "login": "reviewer1"
-                },
-                "body": "Consider removing this log statement before merging."
-            },
-            {
-                "id": 87654321,
-                "diff_hunk": "@@ -0,0 +1,20 @@\n+export function util() {\n+  return 'new util';\n+}",
-                "path": "src/utils.js",
-                "position": 1,
-                "original_position": 1,
-                "commit_id": "def456abc789",
-                "user": {
-                    "login": "reviewer2"
-                },
-                "body": "Should we add a test for this function?"
-            }
-        ]
-        """
-        url = f"{GITHUB_API_BASE}/repos/{self.org_name}/{repository}/pulls/{pull_number}/comments"
-        response = requests.get(url, headers=self.github_headers)
-        response.raise_for_status()
-
-        return response.json()
-
     def fetch_contents(
         self, repository: str, code_pages: List[CodePage] = [], path: str = "", include_dirs: bool = False
     ):

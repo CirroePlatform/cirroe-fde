@@ -11,6 +11,8 @@ import hmac
 app = FastAPI()
 secret = "example-builder"
 
+ACTIONS = set(["created", "edited"])
+
 class GitHubWebhookPayload(BaseModel):
     """
     GitHub webhook payload
@@ -46,12 +48,13 @@ async def handle_pr_changes_webhook(request: Request):
         body_str = request_body.decode('utf-8')
         payload = json.loads(body_str)
 
-        if payload['action'] == "created" and "pull_request" in payload:
+        if payload['action'] in ACTIONS and "pull_request" in payload:
             # logging.info(f"Comment on line {line_number} in file {file_path}: {comment_body}. Line diff: {line_diff}")
 
             # Add logic to handle comments on specific spots
             handler = get_handler()
-            handler.handle_pr_feedback(payload)
+            response = handler.handle_pr_feedback(payload)
+            
 
         return {"status": "success"}
     except json.JSONDecodeError as e:

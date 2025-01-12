@@ -1,4 +1,6 @@
+from src.integrations.kbs.github_kb import GithubKnowledgeBase
 from scripts.solve_oss_ghub_issues import setup_all_kbs_with_repo
+from fastapi import Request
 import os
 import logging
 from scripts.oss_ghub_issue_analysis import (
@@ -181,8 +183,27 @@ def collect_data_for_links():
 
 def test_sandbox():
     sandbox = Sandbox()
+    # Get the repository files
+    github_kb = GithubKnowledgeBase(UUID('00000000-0000-0000-0000-000000000000'), "Cirr0e")
+    code_pages = github_kb.get_files("firecrawl-examples")
+    
+    # Filter for files in the research_trend_ai_agent directory
+    agent_files = [
+        page for page in code_pages 
+        if page.primary_key.startswith("research_trend_ai_agent/") 
+        and page.page_type == CodePageType.CODE
+    ]
+    
+    # Create code_files dictionary
+    code_files = {
+        page.primary_key.split("/")[-1]: page.content 
+        for page in agent_files
+    }
+    
+    print(code_files)
+    
     print(sandbox.run_code_e2b(
-        {"main.py": "print('Hello, world!')"}, "python main.py"
+        code_files, "python research_agent.py --topic 'Generative Agents in 2025'", "pip install -r requirements.txt", timeout=300
     ))
 
 def get_example_contents_llm_readable(repo: str):
@@ -215,7 +236,41 @@ def get_example_contents_llm_readable(repo: str):
         with open(output_file, "w") as f:
             f.write(codefile_str)
 
+async def test_webhook():
+    # Read the webhook payload from file
+    with open("test_webhook.txt", "r") as f:
+        payload = f.read()
+        if payload.startswith("b'"):
+            payload = payload[2:-1]  # Remove b' from start and ' from end
+
+    # Create mock request with proper headers and body
+    headers = {
+        "host": "localhost:8000",
+        "content-type": "application/json",
+        "user-agent": "GitHub-Hookshot/123abc",
+        "x-github-delivery": "123abc",
+        "x-github-event": "pull_request_review_comment",
+    }
+
+    # Create a mock request with the payload
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/pr_changes",
+        "headers": [(k.encode(), v.encode()) for k, v in headers.items()]
+    }
+    
+    request = Request(scope=scope)
+    # Set the request body
+    request._body = payload.encode()
+
+    # Import and call the webhook handler
+    from main import handle_pr_changes_webhook
+    response = await handle_pr_changes_webhook(request)
+    print(f"Webhook response: {response}")
+
 if __name__ == "__main__":
     # poll_wrapper()
     # discord_wrapper()
     test_sandbox()
+    # asyncio.run(test_webhook())
