@@ -20,10 +20,18 @@ In order to answer these questions, use the tools are your disposal as liberally
 
 4. After making your decision, apply the changes to the code diff if necessary, and formulate a comment response to the reviewer if necessary.
 
-5. Provide your response in the following format:
+5. Provide your response in the following format. You should output in tags ONLY the diff of the code you added or removed, and NOTHING ELSE. Follow the git diff format.
 
 <changed_code>
-[The modified code diff, or just a single boolean false if no changes were made]
+<fpath_to_file_1>
+[the unified diff header for your code diff changes]
+[the code diff that you would like to apply to the code file, or just a single boolean false if no changes were made]
+</fpath_to_file_1>
+<fpath_to_file_2>
+[the unified diff header for your code diff changes]
+[another code diff that you would like to apply to a different code file]
+</fpath_to_file_2>
+...
 </changed_code>
 
 <comment_response>

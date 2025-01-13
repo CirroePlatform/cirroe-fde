@@ -54,7 +54,7 @@ async def handle_pr_changes_webhook(request: Request):
             # Add logic to handle comments on specific spots
             handler = get_handler()
             response = handler.handle_pr_feedback(payload)
-            
+            logging.info(f"Response: {response}")
 
         return {"status": "success"}
     except json.JSONDecodeError as e:
