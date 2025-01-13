@@ -244,8 +244,9 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
 
-async def comment_on_pr(org_name: str, repo: str, pr_number: int, response: str):
-    url = f"https://api.github.com/repos/{org_name}/{repo}/pulls/comments/{pr_number}/replies"
+def comment_on_pr(org_name: str, repo: str, comment_id: int, response: str):
+    url = f"https://api.github.com/repos/{org_name}/{repo}/issues/comments/{comment_id}/replies"
+
     headers = {
         "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
         "Accept": "application/vnd.github+json",

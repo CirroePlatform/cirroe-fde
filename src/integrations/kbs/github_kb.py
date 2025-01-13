@@ -672,3 +672,39 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         except Exception as e:
             logging.error(f"Failed to get README for {repo_name}: {str(e)}")
             return ""
+
+    def apply_diff(self, original_code: str, diff_text: str) -> str:
+        """Apply a git-style diff to original code."""
+        result = original_code.split('\n')
+        current_line = 0
+
+        # Parse diff header
+        for line in diff_text.split('\n'):
+            if line.startswith('@@'):
+                # Parse diff location
+                _, old_range, new_range, *_ = line.split()
+                old_start = int(old_range.split(',')[0].lstrip('-'))
+                new_start = int(new_range.split(',')[0].lstrip('+'))
+                current_line = new_start - 1
+                continue
+
+            # Apply changes
+            if line.startswith('+'):
+                result.insert(current_line, line[1:])
+                current_line += 1
+            elif line.startswith('-'):
+                if current_line < len(result):
+                    result.pop(current_line)
+            else:
+                current_line += 1
+
+        return '\n'.join(result)
+
+# # Usage example
+# original = ""  # Empty string for new file
+# diff = """@@ -0,0 +1,96 @@
+# +import os
+# +import streamlit as st
+# ...rest of diff..."""
+
+# new_code = apply_diff(original, diff)

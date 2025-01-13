@@ -269,8 +269,47 @@ async def test_webhook():
     response = await handle_pr_changes_webhook(request)
     print(f"Webhook response: {response}")
 
+def test_diff():
+    github_kb = GithubKnowledgeBase(UUID('00000000-0000-0000-0000-000000000000'), "Cirr0e")
+    diff = """@@ -0,0 +1,96 @@
++import os
++import streamlit as st
++import pandas as pd
++import plotly.express as px
++from firecrawl import FirecrawlApp
++from dotenv import load_dotenv
++
++# Load environment variables
++load_dotenv()
++
++class JobMarketIntelligenceAgent:
++    def __init__(self):
++        # Initialize Firecrawl App
++        self.firecrawl = FirecrawlApp(api_key=os.getenv(\'FIRECRAWL_API_KEY\'))
++
++    def scrape_job_listings(self, job_title, locations):
++        \"\"\"
++        Scrape job listings using Firecrawl
++        \"\"\"
++        results = []
++        for location in locations:
++            query = f"{job_title} jobs in {location}"
++            # Construct a Google search URL by:
++            # 1. Replacing spaces with \'+\' to create a valid URL query parameter
++            # 2. Targeting Google search for job listings in a specific location
++            scraped_data = self.firecrawl.crawl(
++                urls=[f"https://www.google.com/search?q={query.replace(\' \', \'+\')}"],"""
+    
+    original = "import os\nimport streamlit as st\nimport pandas as pd\nimport plotly.express as px\nfrom firecrawl import FirecrawlApp\nfrom dotenv import load_dotenv\n\n# Load environment variables\nload_dotenv()\n\nclass JobMarketIntelligenceAgent:\n    def __init__(self):\n        # Initialize Firecrawl App\n        self.firecrawl = FirecrawlApp(api_key=os.getenv('FIRECRAWL_API_KEY'))\n\n    def scrape_job_listings(self, job_title, locations):\n        \"\"\"\n        Scrape job listings using Firecrawl\n        \"\"\"\n        results = []\n        for location in locations:\n            query = f\"{job_title} jobs in {location}\"\n            scraped_data = self.firecrawl.crawl(\n                urls=[f\"https://www.google.com/search?q={query.replace(' ', '+')}\"],\n                params={\n                    \"extractors\": {\n                        \"mode\": \"job_listings\"\n                    }\n                }\n            )\n            results.extend(scraped_data.get('data', []))\n        \n        return results\n\n    def analyze_job_market(self, job_title, locations):\n        \"\"\"\n        Analyze job market data\n        \"\"\"\n        job_listings = self.scrape_job_listings(job_title, locations)\n        \n        # Convert to DataFrame\n        df = pd.DataFrame(job_listings)\n        \n        # Basic analysis\n        salary_data = df[df['salary'].notna()]['salary']\n        \n        return {\n            'total_listings': len(job_listings),\n            'avg_salary': salary_data.mean() if not salary_data.empty else None,\n            'salary_distribution': salary_data.describe(),\n            'job_listings': job_listings\n        }\n\ndef main():\n    st.title(\"Job Market Intelligence Agent \ud83d\udd75\ufe0f\u200d\u2642\ufe0f\ud83d\udcca\")\n    \n    # Sidebar inputs\n    st.sidebar.header(\"Job Market Search\")\n    job_title = st.sidebar.text_input(\"Job Title\", \"Data Scientist\")\n    locations = st.sidebar.multiselect(\n        \"Locations\", \n        [\"New York\", \"San Francisco\", \"Austin\", \"Seattle\", \"Boston\"],\n        default=[\"New York\", \"San Francisco\"]\n    )\n    \n    if st.sidebar.button(\"Analyze Job Market\"):\n        agent = JobMarketIntelligenceAgent()\n        \n        try:\n            market_data = agent.analyze_job_market(job_title, locations)\n            \n            # Display results\n            st.subheader(f\"Job Market Analysis for {job_title}\")\n            \n            col1, col2 = st.columns(2)\n            with col1:\n                st.metric(\"Total Job Listings\", market_data['total_listings'])\n            with col2:\n                st.metric(\"Average Salary\", \n                    f\"${market_data['avg_salary']:,.2f}\" if market_data['avg_salary'] else \"N/A\"\n                )\n            \n            # Salary Distribution\n            if market_data['salary_distribution'] is not None:\n                st.subheader(\"Salary Distribution\")\n                st.write(market_data['salary_distribution'])\n            \n            # Job Listings Table\n            st.subheader(\"Job Listings\")\n            st.dataframe(market_data['job_listings'])\n        \n        except Exception as e:\n            st.error(f\"Error analyzing job market: {e}\")\n\nif __name__ == \"__main__\":\n    main()"
+    
+    original = str(original.encode('utf-8', errors='ignore'))
+    diff = str(diff.encode('utf-8', errors='ignore'))
+    
+    print(github_kb.apply_diff(original, diff))
+
 if __name__ == "__main__":
     # poll_wrapper()
     # discord_wrapper()
     test_sandbox()
     # asyncio.run(test_webhook())
+    # test_diff()
