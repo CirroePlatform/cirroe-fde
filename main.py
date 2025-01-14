@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from scripts.firecrawl_demo import get_handler
 from scripts.firecrawl_demo import main
 from pydantic import BaseModel
+import traceback
 import logging
 import hashlib
 import uvicorn
@@ -49,7 +50,6 @@ async def handle_pr_changes_webhook(request: Request):
         payload = json.loads(body_str)
 
         if payload['action'] in ACTIONS and "pull_request" in payload:
-            # logging.info(f"Comment on line {line_number} in file {file_path}: {comment_body}. Line diff: {line_diff}")
 
             # Add logic to handle comments on specific spots
             handler = get_handler()
@@ -57,14 +57,16 @@ async def handle_pr_changes_webhook(request: Request):
             logging.info(f"Response: {response}")
 
         return {"status": "success"}
+
     except json.JSONDecodeError as e:
         logging.error(f"Failed to parse webhook payload: {e}")
         logging.error(f"Raw payload: {request_body}")
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
     except Exception as e:
+        traceback.print_exc()
         logging.error(f"Error processing webhook: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    # main("create")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    main("create")
+    # uvicorn.run(app, host="0.0.0.0", port=8000)

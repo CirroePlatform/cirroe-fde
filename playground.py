@@ -307,6 +307,16 @@ def test_diff():
     
     print(github_kb.apply_diff(original, diff))
 
+def test_debugger():
+    from scripts.firecrawl_demo import get_handler
+    handler = get_handler()
+    
+    with open("include/cache/code_files_cache.json", "r") as f:
+        import json
+        code_files = json.load(f)
+
+    handler.debug_example(json.dumps(code_files))
+
 if __name__ == "__main__":
     # poll_wrapper()
     # discord_wrapper()
