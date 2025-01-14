@@ -254,7 +254,7 @@ class Sandbox:
 
     def create_github_pr(
         self,
-        code_string: str,
+        code_files: str | dict,
         repo_name: str,
         title: str,
         body: str,
@@ -278,7 +278,10 @@ class Sandbox:
         """
         try:
             # Parse files from code string
-            files = self.parse_example_files(code_string)
+            files = code_files
+            if isinstance(code_files, str):
+                files = self.parse_example_files(code_files)
+
             if not files:
                 raise Exception("Error: No valid files found in code string")
 
@@ -295,11 +298,20 @@ class Sandbox:
             response.raise_for_status()
             base_sha = response.json()["object"]["sha"]
 
-            # Create new branch
+            # Try to create new branch, handle case where it may already exist
             url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs"
             payload = {"ref": f"refs/heads/{branch_name}", "sha": base_sha}
-            response = requests.post(url, headers=self.github_headers, json=payload)
-            response.raise_for_status()
+            try:
+                response = requests.post(url, headers=self.github_headers, json=payload)
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 422:  # Branch already exists
+                    # Update existing branch to point to base_sha
+                    url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
+                    response = requests.patch(url, headers=self.github_headers, json={"sha": base_sha, "force": True})
+                    response.raise_for_status()
+                else:
+                    raise
 
             # Create/update files in new branch
             # Create a tree with all file changes
@@ -333,24 +345,50 @@ class Sandbox:
             tree_response.raise_for_status()
             new_tree_sha = tree_response.json()["sha"]
 
-            # Create a commit with the new tree
-            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits"
-            commit_payload = {
-                "message": commit_msg,
-                "tree": new_tree_sha,
-                "parents": [base_sha]
-            }
-            commit_response = requests.post(url, headers=self.github_headers, json=commit_payload)
-            commit_response.raise_for_status()
-            new_commit_sha = commit_response.json()["sha"]
+            # Check if commit with same message exists
+            url = f"{GITHUB_API_BASE}/repos/{repo_name}/commits"
+            params = {"sha": branch_name}
+            commits_response = requests.get(url, headers=self.github_headers, params=params)
+            commits_response.raise_for_status()
+            commits = commits_response.json()
+            
+            existing_commit = None
+            for commit in commits:
+                if commit["commit"]["message"] == commit_msg:
+                    existing_commit = commit["sha"]
+                    break
+                    
+            if existing_commit:
+                # Update existing commit with new tree
+                url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits/{existing_commit}"
+                commit_payload = {
+                    "message": commit_msg,
+                    "tree": new_tree_sha,
+                    "parents": [base_sha]
+                }
+                commit_response = requests.patch(url, headers=self.github_headers, json=commit_payload)
+                commit_response.raise_for_status()
+                new_commit_sha = commit_response.json()["sha"]
+            else:
+                # Create new commit
+                url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits"
+                commit_payload = {
+                    "message": commit_msg, 
+                    "tree": new_tree_sha,
+                    "parents": [base_sha]
+                }
+                commit_response = requests.post(url, headers=self.github_headers, json=commit_payload)
+                commit_response.raise_for_status()
+                new_commit_sha = commit_response.json()["sha"]
 
-            # Update branch reference to point to new commit
-            url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
-            ref_payload = {"sha": new_commit_sha}
-            ref_response = requests.patch(url, headers=self.github_headers, json=ref_payload)
-            ref_response.raise_for_status()
+                # Update branch reference to point to new commit
+                url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
+                ref_payload = {"sha": new_commit_sha}
+                ref_response = requests.patch(url, headers=self.github_headers, json=ref_payload)
+                ref_response.raise_for_status()
 
-            html_url = self.raise_pr(repo_name, title, body, branch_name, base_branch, pr_number)
+            if pr_number is None:
+                html_url = self.raise_pr(repo_name, title, body, branch_name, base_branch)
 
             return html_url
 

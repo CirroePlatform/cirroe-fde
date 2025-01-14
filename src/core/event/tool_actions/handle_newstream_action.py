@@ -17,7 +17,7 @@ from include.constants import (
 import random
 import re
 import anthropic
-from include.utils import format_prompt
+from include.utils import format_prompt, get_content_between_tags
 from src.model.news import News
 from src.integrations.kbs.github_kb import GithubKnowledgeBase
 from src.example_creator.sandbox import Sandbox
@@ -153,7 +153,7 @@ class NewStreamActionHandler(BaseActionHandler):
             ]
         return cur_prompt
 
-    def __debug_example(self, code_files: str) -> Dict[str, Any]:
+    def debug_example(self, code_files: str) -> Dict[str, Any]:
         """
         Helper function to debug the example
 
@@ -165,16 +165,33 @@ class NewStreamActionHandler(BaseActionHandler):
         """
         with open("include/prompts/example_builder/example_debugger.txt", "r") as f:
             debugger_prompt = f.read()
-            debugger_prompt = format_prompt(debugger_prompt, product_name=self.product_name, preamble=self.preamble, code_files=code_files)
+            debugger_prompt_msgs = [
+                {
+                    "type": "text",
+                    "text": format_prompt(debugger_prompt, product_name=self.product_name, preamble=self.preamble),
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ]
 
         # set tools to the debugger tools
         self.tools = EXAMPLE_CREATOR_DEBUGGER_TOOLS
 
-        return super().handle_action(
-            [{"role": "user", "content": debugger_prompt}],
-            max_tool_calls=10,
-            system_prompt=debugger_prompt
+        # Running the code sandbox once to enforce it.
+        messages = [{"role": "user", "content": f"Here are the code files you need to work with:\n<code_files>{code_files}</code_files>"}]
+        response = super().handle_action(
+            messages,
+            max_txt_completions=1,
+            system_prompt=debugger_prompt_msgs,
+            tool_choice={"type": "tool", "name": "run_code_e2b"}
         )
+
+        response = super().handle_action(
+            messages,
+            max_txt_completions=10,
+            system_prompt=debugger_prompt_msgs
+        )
+
+        return response
 
     def _cache_code_files(self, code_files: Dict[str, Any], title: str, description: str, commit_msg: str, branch_name: str) -> None:
         """
@@ -281,7 +298,8 @@ class NewStreamActionHandler(BaseActionHandler):
             # Cache the code files
             cached_code_files = self._get_cached_code_files()
             for file_path, file_diff in changed_code.items():
-                cached_code_files["code_files"][file_path] = self.github_kb.apply_diff(cached_code_files["code_files"][file_path], file_diff)
+                original = cached_code_files["code_files"][file_path] if file_path in cached_code_files["code_files"] else ""
+                cached_code_files["code_files"][file_path] = self.github_kb.apply_diff(original, file_diff)
 
             self._cache_code_files(cached_code_files, cached_code_files["title"], cached_code_files["description"], cached_code_files["commit_msg"], cached_code_files["branch_name"])
 
@@ -291,7 +309,7 @@ class NewStreamActionHandler(BaseActionHandler):
             description = cached_code_files["description"]
             commit_msg = cached_code_files["commit_msg"]
             branch_name = cached_code_files["branch_name"]
-            self.sandbox.create_github_pr(json.dumps(changed_code), "Cirr0e/firecrawl-examples", title, description, commit_msg, branch_name, pr_number)
+            self.sandbox.create_github_pr(changed_code, "Cirr0e/firecrawl-examples", title, description, commit_msg, branch_name, pr_number)
 
             response["changed_code"] = changed_code
             
@@ -304,6 +322,7 @@ class NewStreamActionHandler(BaseActionHandler):
             response["comment_response"] = comment_response
 
         return response
+
     def handle_pr_feedback(self, feedback_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle feedback on a PR.
@@ -348,11 +367,44 @@ class NewStreamActionHandler(BaseActionHandler):
 
             response = super().handle_action(
                 [{"role": "user", "content": first_message}],
-                max_tool_calls=10,
+                max_txt_completions=10,
                 system_prompt=handle_pr_suggestions_prompt_msg
             )
 
             return self._handle_pr_suggestions_output(response, feedback_payload)
+
+    def handle_readme_generation(self, code_files: str, step_messages: List[Dict[str, Any]]) -> Dict[str, str] | None:
+        """
+        Handle the generation of a README.md file based on the code files. 
+        
+        Returns the readme {path: content} dict, or None if the readme was not generated/couldn't be parsed.
+        """
+        readme_response = self.client.messages.create(
+            model=self.model,
+            max_tokens=8192,
+            messages=step_messages + [{"role": "user", "content": f"Based on these code files, and previous messages, generate a README.md file:\n{code_files}"}],
+        )
+
+        # Extract README content between fpath tags
+        readme_content = readme_response.content[0].text
+
+        # Find any README.md file path tag
+        readme_tag_start = None
+        readme_tag_end = None
+        for tag in readme_content.split("<fpath_"):
+            if "README.md>" in tag:
+                readme_tag_start = f"<fpath_{tag.split('>')[0]}>"
+                readme_tag_end = f"</fpath_{tag.split('>')[0]}>"
+                break
+
+        if readme_tag_start and readme_tag_end:
+            readme_section = get_content_between_tags(readme_content, readme_tag_start, readme_tag_end)
+            readme_section = {
+                readme_tag_start.split('fpath_')[1].split('>')[0]: readme_section
+            }
+            return readme_section
+
+        return None
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
@@ -453,20 +505,26 @@ class NewStreamActionHandler(BaseActionHandler):
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
                 last_message = step_response["response"]
                 if ("<code_files>" in last_message):
-
                     # Append the final message with the files to the step messages.
-                    code_files = last_message.split("<code_files>")[1].split("</code_files>")[0].strip()
+                    code_files = get_content_between_tags(last_message, "<code_files>", "</code_files>")
 
-                    # Debug the example and ensure clean execution
-                    debug_response = self.__debug_example(code_files)
+                    # Debug the example and ensure clean execution. If the debug response is false, then the debugger didn't 
+                    # modify the code, and we can keep the last message as the final message.
+                    # debug_response = self.debug_example(code_files)
+                    # if "<code_files>" in debug_response["response"]:
+                    #     code_files_new = get_content_between_tags(debug_response["response"], "<code_files>", "</code_files>")
+                    #     if code_files_new != "false":
+                    #         code_files = code_files_new
 
-                    # If the debug response is false, then the debugger didn't modify the code, and we can keep the last message as the final message.
-                    if debug_response["response"].split("<code_files>")[1].split("</code_files>")[0].strip() != "false":
-                        last_message = debug_response["response"]
-                        step_messages += [{"role": "user", "content": last_message}]
+                    # Enforce the creation of a README.md file
+                    if "README.md" not in code_files:
+                        readme_section = self.handle_readme_generation(code_files, step_messages)
+                        if readme_section:
+                            code_files.update(readme_section)
 
+                    # Craft the PR title and body
                     title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
-                        step_messages
+                        step_messages,
                     )
                     response = self.sandbox.create_github_pr(
                         last_message,

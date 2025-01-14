@@ -12,6 +12,20 @@ import base64
 
 load_dotenv()
 
+def get_content_between_tags(content: str, start_tag: str, end_tag: str) -> str:
+    """
+    Get the content between two tags.
+
+    Args:
+        content (str): The content to extract the content between the tags from.
+        start_tag (str): The start tag to extract the content between.
+        end_tag (str): The end tag to extract the content between.
+
+    Returns:
+        str: The content between the two tags.
+    """
+    return content.split(start_tag)[1].split(end_tag)[0]
+
 def get_latest_version(package_name: str) -> Tuple[List[str], str]:
     """
     Fetches the latest version of a given pip dependency from PyPI.

@@ -121,7 +121,7 @@ class DiscordMessageHandler(BaseActionHandler):
         messages = self.construct_initial_messages(message)
 
         # Use the base class's handle_action method to process the message
-        response = self.handle_action(messages, max_tool_calls=max_tool_calls)
+        response = self.handle_action(messages, max_txt_completions=max_tool_calls)
 
         if response["response"]:
             return response

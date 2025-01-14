@@ -71,8 +71,9 @@ class BaseActionHandler:
     def handle_action(
         self,
         messages: List[Dict],
-        max_tool_calls: int = 5,
+        max_txt_completions: int = 5,
         system_prompt: Optional[Union[str, List[Dict]]] = None,
+        tool_choice: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Handle a user action through chain-of-thought reasoning and tool usage
@@ -106,16 +107,18 @@ class BaseActionHandler:
         kb_responses = []
         final_response = None
 
+        tool_choice = tool_choice if tool_choice else {"type": "auto"}
         response = self.client.messages.create(
             model=self.model,
             system=system_messages,
             max_tokens=8192,
             tools=self.tools,
-            tool_choice={"type": "auto"},
+            tool_choice=tool_choice,
             messages=messages,
         )
+        max_txt_completions -= 1
 
-        while max_tool_calls > 0:
+        while max_txt_completions > 0:
             try:
                 if not response.content:
                     break
@@ -163,8 +166,6 @@ class BaseActionHandler:
                                 tool_name, function_response, messages
                             )
 
-                        max_tool_calls -= 1
-
                 if response.stop_reason != "tool_use":
                     # Generate final response before breaking
                     final_response = self.generate_final_response(response)
@@ -175,9 +176,10 @@ class BaseActionHandler:
                     system=system_messages,
                     max_tokens=8192,
                     tools=self.tools,
-                    tool_choice={"type": "auto"},
+                    tool_choice=tool_choice,
                     messages=messages,
                 )
+                max_txt_completions -= 1
 
             except Exception as e:
                 logger.error("Error in main loop: %s", str(e))
