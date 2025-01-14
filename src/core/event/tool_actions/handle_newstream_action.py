@@ -516,7 +516,7 @@ class NewStreamActionHandler(BaseActionHandler):
                     #     if code_files_new != "false":
                     #         code_files = code_files_new
 
-                    # Enforce the creation of a README.md file
+                    # Enforce the creation of a README.md file (only an issue with using the debugger)
                     if "README.md" not in code_files:
                         readme_section = self.handle_readme_generation(code_files, step_messages)
                         if readme_section:
