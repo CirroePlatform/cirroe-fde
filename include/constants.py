@@ -74,8 +74,7 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The query string",
-                    "required": "true"
+                    "description": "A natural language query to search the web with, can be a keyword or a question, or larger set of text/keywords",
                 },
                 "useAutoprompt": {
                     "type": "boolean",
@@ -101,28 +100,6 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                     ],
                     "description": "A data category to focus on."
                 },
-                "numResults": {
-                    "type": "integer",
-                    "description": "Number of search results to return. Default and Max is 10."
-                },
-                "includeDomains": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of domains to include in the search. If specified, results will only come from these domains."
-                },
-                "excludeDomains": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of domains to exclude in the search. If specified, results will not include any from these domains."
-                },
-                "startCrawlDate": {
-                    "type": "string",
-                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled after this date. Must be specified in ISO 8601 format."
-                },
-                "endCrawlDate": {
-                    "type": "string",
-                    "description": "Crawl date refers to the date that Exa discovered a link. Results will include links that were crawled before this date. Must be specified in ISO 8601 format."
-                },
                 "startPublishedDate": {
                     "type": "string",
                     "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format."
@@ -131,100 +108,64 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                     "type": "string",
                     "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format."
                 },
-                "includeText": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of strings that must be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
-                },
-                "excludeText": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of strings that must not be present in webpage text of results. Currently, only 1 string is supported, of up to 5 words."
-                },
-                "contents": {
-                    "type": "object",
-                    "properties": {
-                        "text": {
-                            "type": "object",
-                            "description": "Parsed contents of the page.",
-                            "properties": {}
-                        },
-                        "highlights": {
-                            "type": "object",
-                            "description": "Relevant extract(s) from the webpage.",
-                            "properties": {}
-                        },
-                        "summary": {
-                            "type": "object",
-                            "description": "Summary of the webpage",
-                            "properties": {}
-                        },
-                        "livecrawl": {
-                            "type": "string",
-                            "enum": ["never", "fallback", "always"],
-                            "description": "Options for livecrawling contents. Default is \"never\" for neural/auto search, \"fallback\" for keyword search."
-                        },
-                        "livecrawlTimeout": {
-                            "type": "integer",
-                            "description": "The timeout for livecrawling in milliseconds. Max and default is 10000."
-                        },
-                        "subpages": {
-                            "type": "integer",
-                            "description": "The number of subpages to crawl."
-                        },
-                        "subpageTarget": {
-                            "type": "string",
-                            "description": "The target subpage or subpages. Can be a single string or an array of strings."
-                        }
-                    }
-                }
-            }
-        }
+            },
+            "required": ["query"],
+        },
     }
 ]
+        # "cache_control": {"type": "ephemeral"}
 
-EXAMPLE_CREATOR_BASE_TOOLS = [
+DOCUMENTATION_TOOL = [
     {
-        "name": "execute_search",
-        "description": "A function to search the various knowledge bases for the organization of the example creator for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
+        "name": "search_documentation",
+        "description": "A function to search the documentation for the organization of the example creator for relevant information.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets, This should be created from the issue description, and can be several sentences long",
+                    "description": "A natural language query to search the documentation for relevant information.",
                 },
                 "limit": {
                     "type": "integer",
-                    "description": "The number of chunks to retrieve from the codebase",
+                    "description": "The number of chunks to retrieve from the documentation.",
                 },
-                "knowledge_base": {
+            },
+            "required": ["query", "limit"],
+        }
+    }
+]
+
+CODE_TOOL = [
+    {
+        "name": "search_code",
+        "description": "A function to search the codebase for the organization of the example creator for relevant information.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
                     "type": "string",
-                    "enum": [
-                        KnowledgeBaseType.CODEBASE,
-                        KnowledgeBaseType.ISSUES,
-                        KnowledgeBaseType.DOCUMENTATION,
-                        KnowledgeBaseType.WEB
-                    ],
-                    "description": "The knowledge base to use for the search. If the knowledgebase is the web, the results will be from the web, if the search is for code, the results will be from code snippets in the codebase, if the search is for issues, the results will be from the previously solved issues, and if the search is for documentation, the results will be from the org's documentation.",
+                    "description": "A natural language query to search the codebase against for relevant code snippets",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "The number of chunks to retrieve from the codebase.",
                 },
                 "traceback": {
                     "type": "string",
                     "description": "A traceback from the user containing error details that can be used to augment the search for relevant code snippets",
                 },
-                "user_provided_code": {
+                "setup_details": {
                     "type": "string",
-                    "description": "A code snippet from the user that is relevant to the issue",
-                },
-                "user_setup_details": {
-                    "type": "string",
-                    "description": "A description of the user's setup details, including environment variables, OS, pacakge versions, etc.",
+                    "description": "A description of setup details of the example creator that can be used to augment the search for relevant code snippets, including environment variables, OS, package versions, etc.",
                 },
             },
-            "required": ["query", "limit", "knowledge_base"],
-        },
+            "required": ["query", "limit"],
+        }
     }
 ]
+
+EXAMPLE_CREATOR_BASE_TOOLS = DOCUMENTATION_TOOL + CODE_TOOL + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
 
 GET_LATEST_VERSION_TOOL = [
     {
@@ -304,9 +245,7 @@ EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
     },
 ] + EXAMPLE_CREATOR_RUN_CODE_TOOL
 
-EXAMPLE_CREATOR_MODIFICATION_TOOLS = (
-    EXAMPLE_CREATOR_CLASSIFIER_TOOLS + GET_LATEST_VERSION_TOOL
-)
+EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
 EXAMPLE_CREATOR_CREATION_TOOLS = (
     EXAMPLE_CREATOR_BASE_TOOLS + GET_LATEST_VERSION_TOOL
 )
@@ -344,3 +283,7 @@ CHANNEL = "cirroe-support"
 # Crawl constants
 NEWSCHECK_INTERVAL_HOURS = 1
 SUBREDDIT_LIST = ["singularity", "aiagents", "LLMDevs", "LLM"]
+
+# keyworks that would find in code
+TS_KEYWORDS = ["ts", "js", "async", "function", "await", "promise", "import", "export", "class", "interface", "type", "enum", "const", "let", "var", "if", "else", "switch", "case", "default", "break", "continue", "return", "throw", "try", "catch", "finally", "while", "for", "do", "while", "of", "in", "from", "as", "async", "await", "yield", "async", "await", "yield", "async", "await", "yield"]
+PYTHON_KEYWORDS = ["import", "export", "class", "interface", "type", "enum", "const", "let", "var", "if", "elif", "else:", "default", "break", "continue", "return", "throw", "try", "catch", "finally", "while", "for", "do", "while", "of", "in", "from", "as", "async", "await", "yield", "async", "await", "yield", "async", "await", "yield"]
