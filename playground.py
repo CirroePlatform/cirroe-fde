@@ -29,6 +29,7 @@ from include.constants import (
     ARROYO_ORG_ID,
     PREDIBASE_ORG_ID,
     CHROMA_ORG_ID,
+    DAGSTER_ORG_ID,
     FIRECRAWL_ORG_ID,
 )
 
@@ -80,8 +81,8 @@ def poll_wrapper():
         # MEM0AI_ORG_ID: [2079],
         # CHROMA_ORG_ID: [2571],
         # ARROYO_ORG_ID: [3265, 3292],
-        # QDRANT_ORG_ID: [],
-        FIRECRAWL_ORG_ID: [2571],
+        DAGSTER_ORG_ID: [2571],
+        # FIRECRAWL_ORG_ID: [2571],
     }
 
     for org in orgs_to_tickets:

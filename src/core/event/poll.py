@@ -19,15 +19,12 @@ from src.storage.supa import SupaClient
 from cerebras.cloud.sdk import Cerebras
 from typing import List, Optional
 from uuid import UUID
-import humanlayer
 import requests
 import logging
 import asyncio
 import json
 import time
 import os
-
-hl = humanlayer.HumanLayer()
 
 cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 disc_token = os.getenv("DISCORD_TOKEN")

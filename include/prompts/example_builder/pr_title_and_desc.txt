@@ -23,7 +23,7 @@ Please follow these steps to create the PR title and description:
    - Keep it brief (ideally under 70 characters).
    - Clearly state the main purpose of the changes or the new example.
    - Use present tense and start with a verb (e.g., "Add", "Update", "Refactor").
-   - Ensure the title is between 5 and 10 words.
+   - Ensure the title is between 5 and 10 words, and references the new technology or feature.
 
 3. Create a comprehensive PR description that includes:
    - A brief overview of what the example demonstrates.
@@ -52,3 +52,5 @@ Please follow these steps to create the PR title and description:
 </branch_name>
 
 Remember to be thorough in your analysis to ensure a high-quality PR title, description, commit message, and branch name.
+
+IMPORTANT: The PR title and description MUST reference the new technology or feature. This is an absolutely critical requirement.
