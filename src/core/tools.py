@@ -41,7 +41,7 @@ class SearchTools:
         knowledge_base: str | KnowledgeBaseType,
         traceback: Optional[str] = None,
         user_provided_code: Optional[str] = None,
-        user_setup_details: Optional[str] = None,
+        setup_details: Optional[str] = None,
         git_repo: Optional[str] = None,
     ) -> Tuple[List[KnowledgeBaseResponse], str]:
         """
@@ -65,7 +65,7 @@ class SearchTools:
                 limit,
                 traceback,
                 user_provided_code=user_provided_code,
-                user_setup_details=user_setup_details,
+                user_setup_details=setup_details,
                 git_repo=git_repo,
             )
         elif knowledge_base == KnowledgeBaseType.ISSUES:
@@ -74,7 +74,7 @@ class SearchTools:
                 limit,
                 traceback,
                 user_provided_code=user_provided_code,
-                user_setup_details=user_setup_details,
+                user_setup_details=setup_details,
             )
         elif knowledge_base == KnowledgeBaseType.DOCUMENTATION:
             return self.documentation_kb.query(
@@ -82,7 +82,7 @@ class SearchTools:
                 limit,
                 traceback,
                 user_provided_code=user_provided_code,
-                user_setup_details=user_setup_details,
+                user_setup_details=setup_details,
             )
         elif knowledge_base == KnowledgeBaseType.WEB:
             return self.web_kb.query(

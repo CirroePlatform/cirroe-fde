@@ -68,5 +68,5 @@ async def handle_pr_changes_webhook(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    main("create")
+    main()
     # uvicorn.run(app, host="0.0.0.0", port=8000)

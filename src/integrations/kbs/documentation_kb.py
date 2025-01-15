@@ -22,7 +22,6 @@ import tqdm
 
 class DocumentationKnowledgeBase(BaseKnowledgeBase):
     def __init__(self, org_id: UUID):
-        logging.info(f"Initializing DocumentationKnowledgeBase for org_id: {org_id}")
         self.vector_db = VectorDB(org_id)
         self.html_cleaner = HTMLCleaner()
         self.client = Anthropic()

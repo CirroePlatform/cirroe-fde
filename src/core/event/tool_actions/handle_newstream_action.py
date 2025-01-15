@@ -13,6 +13,8 @@ from include.constants import (
     EXAMPLE_CREATOR_MODIFICATION_TOOLS,
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
     EXAMPLE_CREATOR_PR_TOOLS,
+    TS_KEYWORDS,
+    PYTHON_KEYWORDS
 )
 import random
 import re
@@ -406,6 +408,53 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return None
 
+    def handle_debugging(self, last_message: str, step_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Handle debugging the example and ensuring clean execution.
+
+        Args:
+            last_message (str): The last message from the tool calling chain
+
+        Returns:
+            Dict[str, Any]: The response from the debugger
+        """
+        # Debug the example and ensure clean execution. If the debug response is false, then the debugger didn't 
+        # modify the code, and we can keep the last message as the final message.
+        code_files = get_content_between_tags(last_message, "<code_files>", "</code_files>")
+        debug_response = self.debug_example(code_files)
+        if "<code_files>" in debug_response["response"]:
+            code_files_new = get_content_between_tags(debug_response["response"], "<code_files>", "</code_files>")
+            if code_files_new != "false":
+                code_files = code_files_new
+
+        # Enforce the creation of a README.md file (only an issue with using the debugger)
+        if "README.md" not in code_files:
+            readme_section = self.handle_readme_generation(code_files, step_messages)
+            if readme_section:
+                code_files.update(readme_section)
+
+        return debug_response
+
+    def hallucination_check(self, last_message: str, step_messages: List[Dict[str, Any]]) -> str | None:
+        """
+        If the last message has some code keywords but no tags, we need to enforce the tag creation.
+        """
+        if PYTHON_KEYWORDS or TS_KEYWORDS in last_message:
+            step_messages += [
+                {
+                    "role": "user", 
+                    "content": f"Looks like your message contains code, but I don't see the <code_files> tag or the <fpath_[actual file path]> tags anywhere, can you wrap your codefiles in those tags if you haven't already? If there are no codefiles, that's ok JUST return false and NOTHING ELSE."
+                }
+            ]
+            
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=8192,
+                messages=step_messages
+            )
+
+            return response.content[0].text.lower() if "false" in response.content[0].text.lower() else None
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
@@ -474,6 +523,7 @@ class NewStreamActionHandler(BaseActionHandler):
                 )
 
             if action == "create":
+                logging.info("Creating new example...")
                 cur_prompt = self._handle_action_case(
                     "create",
                     self.execute_creation_prompt,
@@ -481,6 +531,7 @@ class NewStreamActionHandler(BaseActionHandler):
                     step_messages
                 )
             elif action == "modify":
+                logging.info("Modifying existing example...")
                 cur_prompt = self._handle_action_case(
                     "modify", 
                     self.execute_modification_prompt,
@@ -488,7 +539,7 @@ class NewStreamActionHandler(BaseActionHandler):
                     step_messages
                 )
             elif action == "none":
-                # time.sleep(60) # Just so we don't overload the anthropic API
+                logging.info("No action found, continuing...")
                 continue
 
             if step_messages[-1]["role"] != "user":
@@ -500,26 +551,9 @@ class NewStreamActionHandler(BaseActionHandler):
                 ]
 
             while max_tool_calls > 0:
-                time.sleep(60)
-
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
                 last_message = step_response["response"]
                 if ("<code_files>" in last_message):
-                    # Debug the example and ensure clean execution. If the debug response is false, then the debugger didn't 
-                    # modify the code, and we can keep the last message as the final message.
-                    # code_files = get_content_between_tags(last_message, "<code_files>", "</code_files>")
-                    # debug_response = self.debug_example(code_files)
-                    # if "<code_files>" in debug_response["response"]:
-                    #     code_files_new = get_content_between_tags(debug_response["response"], "<code_files>", "</code_files>")
-                    #     if code_files_new != "false":
-                    #         code_files = code_files_new
-
-                    # Enforce the creation of a README.md file (only an issue with using the debugger)
-                    # if "README.md" not in code_files:
-                    #     readme_section = self.handle_readme_generation(code_files, step_messages)
-                    #     if readme_section:
-                    #         code_files.update(readme_section)
-
                     # Craft the PR title and body
                     title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
                         step_messages,
@@ -539,17 +573,13 @@ class NewStreamActionHandler(BaseActionHandler):
                     self._cache_code_files(codefiles, title, description, commit_msg, branch_name)
 
                     return {"content": response}
-
-                elif step_messages[-1]["role"] != "user":
-                    logging.info("PR was not created because last message was not a user message. appending a continue message")
-                    step_messages += [
-                        {
-                            "role": "user", 
-                            "content": f"Given the previous messages, continue to develop the example based on all previous information. Make sure to wrap the code files in <code_files> tags."
-                        }
-                    ]
+                elif PYTHON_KEYWORDS or TS_KEYWORDS in last_message: # Hallucination check
+                    hallucination_response = self.hallucination_check(last_message, step_messages)
+                    if hallucination_response:
+                        last_message = hallucination_response
+                    break
                 else:
-                    logging.info("PR was not created even though last message was not a user message.")
-                    return {"content": "Completed news stream processing. PR was not created."}
-            
+                    logging.info(f"PR was not created, here's the last message: {last_message}")
+                    break
+
             return {"content": "Completed news stream processing after reaching max tool calls. PR was not created."}

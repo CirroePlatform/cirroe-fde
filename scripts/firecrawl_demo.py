@@ -55,10 +55,11 @@ def get_handler() -> NewStreamActionHandler:
     sandbox = Sandbox()
 
     tools_map = {
-        "execute_search": search_tools.execute_search,
+        "search_web": search_tools.web_kb.query,
+        "search_code": search_tools.github.query,
+        "search_documentation": search_tools.documentation_kb.query,
         "get_existing_examples": get_firecrawl_existing_examples,
         "get_example_contents": search_tools.github.fetch_contents,
-        "search_web": search_tools.web_kb.query,
         "run_code_e2b": sandbox.run_code_e2b,
         "get_latest_version": get_latest_version,
     }
@@ -98,15 +99,10 @@ def get_crawler(debug: bool = False) -> Crawl:
     return crawler
 
 
-def main(action: str):
+def main():
     """CLI interface for creating or modifying examples"""
     handler = get_handler()
     crawler = get_crawler(debug=True)
 
-    if action == "create":
-        click.echo("Creating new example...")
-        response = handler.handle_action(crawler.news_cache)
-        click.echo(f"Creation response: {response}")
-    elif action == "thread":
-        click.echo("Beginning Cirroe daemon...")
-        # TODO: have the agent decide what to do.
+    response = handler.handle_action(crawler.news_cache)
+    logging.info(f"Creation response: {response}")
