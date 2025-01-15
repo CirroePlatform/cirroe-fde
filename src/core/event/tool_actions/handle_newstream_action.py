@@ -505,11 +505,9 @@ class NewStreamActionHandler(BaseActionHandler):
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
                 last_message = step_response["response"]
                 if ("<code_files>" in last_message):
-                    # Append the final message with the files to the step messages.
-                    code_files = get_content_between_tags(last_message, "<code_files>", "</code_files>")
-
                     # Debug the example and ensure clean execution. If the debug response is false, then the debugger didn't 
                     # modify the code, and we can keep the last message as the final message.
+                    # code_files = get_content_between_tags(last_message, "<code_files>", "</code_files>")
                     # debug_response = self.debug_example(code_files)
                     # if "<code_files>" in debug_response["response"]:
                     #     code_files_new = get_content_between_tags(debug_response["response"], "<code_files>", "</code_files>")
@@ -517,10 +515,10 @@ class NewStreamActionHandler(BaseActionHandler):
                     #         code_files = code_files_new
 
                     # Enforce the creation of a README.md file (only an issue with using the debugger)
-                    if "README.md" not in code_files:
-                        readme_section = self.handle_readme_generation(code_files, step_messages)
-                        if readme_section:
-                            code_files.update(readme_section)
+                    # if "README.md" not in code_files:
+                    #     readme_section = self.handle_readme_generation(code_files, step_messages)
+                    #     if readme_section:
+                    #         code_files.update(readme_section)
 
                     # Craft the PR title and body
                     title, description, commit_msg, branch_name = self.craft_pr_title_and_body(

@@ -381,13 +381,14 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
         code_pages = []
 
         # 1. Get all the files in the repo from cache if already exists
-        if os.path.exists(f"{GITFILES_CACHE_DIR}/{repository}"):
-            with open(f"{GITFILES_CACHE_DIR}/{repository}", "r") as f:
-                code_json = json.load(f)
-                code_pages = [
-                    CodePage(**code_page) for code_page in code_json["code_pages"]
-                ]
-            return code_pages
+        # TODO get and cache the current sha so you can track changes
+        # if os.path.exists(f"{GITFILES_CACHE_DIR}/{repository}"):
+        #     with open(f"{GITFILES_CACHE_DIR}/{repository}", "r") as f:
+        #         code_json = json.load(f)
+        #         code_pages = [
+        #             CodePage(**code_page) for code_page in code_json["code_pages"]
+        #         ]
+        #     return code_pages
         logging.info(f"Fetching and indexing contents for {repository}")
 
         try:

@@ -49,11 +49,14 @@ To create an effective example application, follow these steps:
 5. Configure the environment:
    <analysis>
    Determine the necessary steps for users to set up and run the example. Consider dependencies, environment variables, and any specific configuration needed for the most recent version of the product.
+   Then, using the tools at your disposal, get the latest version of the product and configure the environment properly. You do not need to write all the code for the project, just some preliminary code to get the environment set up.
    
    List the setup steps, providing specific commands or actions for each:
    1. [Step 1]: [Specific command or action]
    2. [Step 2]: [Specific command or action]
    ...
+
+   Once you have the environment set up and building properly, you can continue to the next step.
    </analysis>
 
 6. Generate the files:
@@ -67,6 +70,11 @@ To create an effective example application, follow these steps:
    <!-- Add other files as needed -->
    </code_files>
 
+   IMPORTANT NOTE: Make sure to always provide the fpath_* prefix for each file path in the tags, as this is how the example files will be parsed.
+
+   ANOTHER IMPORTANT NOTE: YOU MUST TEST YOUR CODE STEP BY STEP. The best way to generate this code will be to write a little, then run it, then write a little more, then run it, etc. Imagine that you are slowly, 
+   step by step building this code and using the tools at your disposal to test it throughout the process.
+
 7. Final review:
    <analysis>
    Review the entire example to ensure it meets the following criteria:
@@ -76,7 +84,8 @@ To create an effective example application, follow these steps:
    - Can be easily cloned and run by users with minimal steps
    - Uses the most recent version of the product
    - Optimizes for ease of understanding and use
-   
+   - Is functional and produces a visible output for the user
+
    For each criterion, rate the example on a scale of 1-5 and provide a brief justification:
    1. [Criterion]: [Rating] - [Justification with specific example]
    2. [Criterion]: [Rating] - [Justification with specific example]
@@ -88,10 +97,12 @@ After completing these steps, present your final example files using the format 
 Remember, the key is to create an example with code files that is both informative and easy to use. Prioritize clarity and simplicity in both the code and documentation, but also ensure that the example is functional and produces a visible output for the user.
 
 Important requirements:
+1. Build an example that is very creative and showcases specific niche integrations from both {product_name} and whatever new technology you are using.
 1. Provide a way to automatically set up the environment. This can be through requirements.txt, package.json, or any other appropriate method, as long as it allows for easy configuration and execution.
 2. Include a README.md file with detailed setup instructions.
 3. You MUST provide a set of code files wrapped in <code_files> tags, at all costs.
 4. The code files you provide will be placed in a github repo directly, so make sure they are formatted correctly and have no syntax errors.
+5. You MUST test your code step by step, as described in the prompt. FAILURE TO DO SO WILL RESULT IN A CATASTROPHIC FAILURE.
 
 Your final output should be a set of files that form a complete, runnable example of how to use the product with the new technology. Make sure to think through each step carefully and provide a comprehensive solution.
 

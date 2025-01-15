@@ -64,48 +64,6 @@ MODEL_LIGHT = "claude-3-5-haiku-latest"
 MODEL_HEAVY = "claude-3-5-sonnet-latest"
 
 # Tool constants
-EXAMPLE_CREATOR_BASE_TOOLS = [
-    {
-        "name": "execute_search",
-        "description": "A function to search the various knowledge bases for the organization of the example creator for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets, This should be created from the issue description, and can be several sentences long",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "The number of chunks to retrieve from the codebase",
-                },
-                "knowledge_base": {
-                    "type": "string",
-                    "enum": [
-                        KnowledgeBaseType.CODEBASE,
-                        KnowledgeBaseType.ISSUES,
-                        KnowledgeBaseType.DOCUMENTATION
-                    ],
-                    "description": "The knowledge base to use for the search. If the knowledgebase is the web, the results will be from the web, if the search is for code, the results will be from code snippets in the codebase, if the search is for issues, the results will be from the previously solved issues, and if the search is for documentation, the results will be from the org's documentation.",
-                },
-                "traceback": {
-                    "type": "string",
-                    "description": "A traceback from the user containing error details that can be used to augment the search for relevant code snippets",
-                },
-                "user_provided_code": {
-                    "type": "string",
-                    "description": "A code snippet from the user that is relevant to the issue",
-                },
-                "user_setup_details": {
-                    "type": "string",
-                    "description": "A description of the user's setup details, including environment variables, OS, pacakge versions, etc.",
-                },
-            },
-            "required": ["query", "limit", "knowledge_base"],
-        },
-    }
-]
-
 # Feel like we should only include this for complete failure cases.
 EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
     {
@@ -225,38 +183,48 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
     }
 ]
 
-EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
+EXAMPLE_CREATOR_BASE_TOOLS = [
     {
-        "name": "get_existing_examples",
-        "description": "A function to get list of example filenames from the firecrawl/examples directory on GitHub",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        },
-    },
-    {
-        "name": "get_example_contents",
-        "description": "A function to recursively fetch contents of a repository from GitHub API",
+        "name": "execute_search",
+        "description": "A function to search the various knowledge bases for the organization of the example creator for relevant information. This will return the top k chunks of data, depending on the knowledge base, that's relevant to the provided search information.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "repository": {
+                "query": {
                     "type": "string",
-                    "description": "Repository name to fetch contents from",
+                    "description": "A description of the issue from the user which is used to search the codebase for relevant code snippets, This should be created from the issue description, and can be several sentences long",
                 },
-                "code_pages": {
-                    "type": "array",
-                    "description": "List to append CodePage objects to",
+                "limit": {
+                    "type": "integer",
+                    "description": "The number of chunks to retrieve from the codebase",
                 },
-                "path": {
+                "knowledge_base": {
                     "type": "string",
-                    "description": "Current path being fetched in the repository",
+                    "enum": [
+                        KnowledgeBaseType.CODEBASE,
+                        KnowledgeBaseType.ISSUES,
+                        KnowledgeBaseType.DOCUMENTATION,
+                        KnowledgeBaseType.WEB
+                    ],
+                    "description": "The knowledge base to use for the search. If the knowledgebase is the web, the results will be from the web, if the search is for code, the results will be from code snippets in the codebase, if the search is for issues, the results will be from the previously solved issues, and if the search is for documentation, the results will be from the org's documentation.",
+                },
+                "traceback": {
+                    "type": "string",
+                    "description": "A traceback from the user containing error details that can be used to augment the search for relevant code snippets",
+                },
+                "user_provided_code": {
+                    "type": "string",
+                    "description": "A code snippet from the user that is relevant to the issue",
+                },
+                "user_setup_details": {
+                    "type": "string",
+                    "description": "A description of the user's setup details, including environment variables, OS, pacakge versions, etc.",
                 },
             },
-            "required": ["repository"],
+            "required": ["query", "limit", "knowledge_base"],
         },
-    },
-] # + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
+    }
+]
 
 GET_LATEST_VERSION_TOOL = [
     {
@@ -303,13 +271,46 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
     },
 ] + GET_LATEST_VERSION_TOOL
 
+EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
+    {
+        "name": "get_existing_examples",
+        "description": "A function to get list of example filenames from the firecrawl/examples directory on GitHub",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
+        "name": "get_example_contents",
+        "description": "A function to recursively fetch contents of a repository from GitHub API",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "repository": {
+                    "type": "string",
+                    "description": "Repository name to fetch contents from",
+                },
+                "code_pages": {
+                    "type": "array",
+                    "description": "List to append CodePage objects to",
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Current path being fetched in the repository",
+                },
+            },
+            "required": ["repository"],
+        },
+    },
+] + EXAMPLE_CREATOR_RUN_CODE_TOOL
+
 EXAMPLE_CREATOR_MODIFICATION_TOOLS = (
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS + GET_LATEST_VERSION_TOOL
 )
 EXAMPLE_CREATOR_CREATION_TOOLS = (
     EXAMPLE_CREATOR_BASE_TOOLS + GET_LATEST_VERSION_TOOL
 )
-EXAMPLE_CREATOR_DEBUGGER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL # + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
+EXAMPLE_CREATOR_DEBUGGER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 
 EXAMPLE_CREATOR_PR_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 

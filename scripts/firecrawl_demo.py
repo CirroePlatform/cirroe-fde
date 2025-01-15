@@ -17,6 +17,7 @@ from include.constants import (
     FIRECRAWL_ORG_ID,
     GITHUB_API_BASE,
     MODEL_LIGHT,
+    MODEL_HEAVY
 )
 
 
@@ -67,7 +68,7 @@ def get_handler() -> NewStreamActionHandler:
         client=client,
         tools=EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
         tools_map=tools_map,
-        model=MODEL_LIGHT,
+        model=MODEL_HEAVY,
         action_classifier_prompt="include/prompts/example_builder/action_classifier.txt",
         execute_creation_prompt="include/prompts/example_builder/execute_creation.txt",
         execute_modification_prompt="include/prompts/example_builder/execute_modification.txt",
