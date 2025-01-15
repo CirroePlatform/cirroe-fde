@@ -453,7 +453,7 @@ class NewStreamActionHandler(BaseActionHandler):
                 messages=step_messages
             )
 
-            return response.content[0].text.lower() if "false" in response.content[0].text.lower() else None
+            return response.content[0].text.lower() if "false" not in response.content[0].text.lower() else None
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
@@ -573,7 +573,7 @@ class NewStreamActionHandler(BaseActionHandler):
                     self._cache_code_files(codefiles, title, description, commit_msg, branch_name)
 
                     return {"content": response}
-                elif PYTHON_KEYWORDS or TS_KEYWORDS in last_message: # Hallucination check
+                elif "<action>none</action>" not in last_message or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message): # Hallucination check
                     hallucination_response = self.hallucination_check(last_message, step_messages)
                     if hallucination_response:
                         last_message = hallucination_response
