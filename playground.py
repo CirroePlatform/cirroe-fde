@@ -74,15 +74,7 @@ def handle_discord_message(inbound_message: str, org_id: UUID):
 
 def poll_wrapper():
     orgs_to_tickets = {
-        # GRAVITL_ORG_ID: [3020, 3019],
-        # MITO_DS_ORG_ID: [1332],
-        # FLOWISE_ORG_ID: [3577],
-        # ARROYO_ORG_ID: [756, 728],
-        # MEM0AI_ORG_ID: [2079],
-        # CHROMA_ORG_ID: [2571],
-        # ARROYO_ORG_ID: [3265, 3292],
-        DAGSTER_ORG_ID: [2571],
-        # FIRECRAWL_ORG_ID: [2571],
+        FIRECRAWL_ORG_ID: [2571],
     }
 
     for org in orgs_to_tickets:
@@ -319,8 +311,4 @@ def test_debugger():
     handler.debug_example(json.dumps(code_files))
 
 if __name__ == "__main__":
-    # poll_wrapper()
-    # discord_wrapper()
-    test_sandbox()
-    # asyncio.run(test_webhook())
-    # test_diff()
+    poll_wrapper()
