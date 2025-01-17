@@ -23,14 +23,14 @@ In order to answer these questions, use the tools are your disposal as liberally
 5. Provide your response in the following format. You should output in tags ONLY the diff of the code you added or removed, and NOTHING ELSE. Follow the git diff format.
 
 <changed_code>
-<fpath_to_file_1>
+<fpath_/path/to/file>
 [the unified diff header for your code diff changes]
 [the code diff that you would like to apply to the code file, or just a single boolean false if no changes were made]
-</fpath_to_file_1>
-<fpath_to_file_2>
+</fpath_/path/to/file>
+<fpath_/path/to/file>
 [the unified diff header for your code diff changes]
 [another code diff that you would like to apply to a different code file]
-</fpath_to_file_2>
+</fpath_/path/to/file>
 ...
 </changed_code>
 
@@ -38,4 +38,38 @@ In order to answer these questions, use the tools are your disposal as liberally
 [A comment response to the reviewer if necessary, or just a single boolean false if no changes were made]
 </comment_response>
 
-Remember to consider the context of the entire code example and potential side effects of the changes.
+<commit_message>
+[A descriptive commit message explaining the changes made, or just a single boolean false if no changes were made]
+</commit_message>
+
+Remember to consider the context of the entire code example and potential side effects of the changes. Also, please remember to add the fpath_* prefex to all the file paths in the diffs, i will use this prefix to identify the code hunks from the overall text output. See below for an example of the format:
+
+
+<changed_code>
+<fpath_examples/kafka_docs_streaming/crawler.py>
+@@ -10,6 +10,9 @@ from kafka.errors import KafkaError
+ import logging
+ 
+ # Configure logging
++# Constants
++RETRY_DELAY_SECONDS = 60
++
+ logging.basicConfig(
+     level=logging.INFO,
+     format=\'%(asctime)s - %(name)s - %(levelname)s - %(message)s\'
+@@ -113,7 +116,7 @@ class DocsCrawler:
+             except Exception as e:
+                 logger.error(f"Error in crawler loop: {str(e)}")
+                 # Wait before retrying
+-                time.sleep(60)
++                time.sleep(RETRY_DELAY_SECONDS)
+</fpath_examples/kafka_docs_streaming/crawler.py>
+</changed_code>
+
+<comment_response>
+Applied the suggestion to make the 60-second retry delay a constant. Added `RETRY_DELAY_SECONDS` at the top of the file with other configurations.
+</comment_response>
+
+<commit_message>
+refactor: Extract retry delay into constant for better maintainability
+</commit_message>'

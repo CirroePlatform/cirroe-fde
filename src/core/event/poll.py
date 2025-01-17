@@ -5,6 +5,7 @@
 
 from include.constants import (
     POLL_INTERVAL,
+    GITHUB_API_BASE,
     BUG_LABELS,
     REQUIRES_DEV_TEAM_PROMPT,
     CIRROE_USERNAME,
@@ -228,7 +229,7 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     """
     Comments on an issue with the response.
     """
-    url = f"https://api.github.com/repos/{org_name}/{repo}/issues/{issue.ticket_number}/comments"
+    url = f"{GITHUB_API_BASE}/repos/{org_name}/{repo}/issues/{issue.ticket_number}/comments"
     
     headers = {
         "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
@@ -241,14 +242,27 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
 
-def comment_on_pr(org_name: str, repo: str, comment_id: int, response: str):
-    url = f"https://api.github.com/repos/{org_name}/{repo}/issues/comments/{comment_id}/replies"
-
+async def comment_on_pr(org_name: str, repo: str, pr_number: int, comment_id: int, response: str):
+    """
+    Comments on a PR comment with the response.
+    
+    Args:
+        org_name: The organization name
+        repo: The repository name 
+        pr_number: The PR number
+        comment_id: The ID of the comment to reply to
+        response: The response text to post
+    """
+    url = f"{GITHUB_API_BASE}/repos/{org_name}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies"
+    
     headers = {
         "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
         "Accept": "application/vnd.github+json",
     }
+
     data = {"body": response}
 
+    # Post the reply
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
+    

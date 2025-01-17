@@ -1,15 +1,18 @@
 from typing import Dict, List, Any, Tuple
 from src.model.issue import Issue, Comment
+import requests
 import asyncio
 import json
 from src.core.event.poll import comment_on_pr
 import os
-import time
 import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import (
+    GITHUB_API_BASE,
     EXAMPLE_CREATOR_CREATION_TOOLS,
+    MODEL_HEAVY,
     EXAMPLE_CREATOR_DEBUGGER_TOOLS,
+    MODEL_LIGHT,
     EXAMPLE_CREATOR_MODIFICATION_TOOLS,
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
     EXAMPLE_CREATOR_PR_TOOLS,
@@ -74,6 +77,9 @@ class NewStreamActionHandler(BaseActionHandler):
         )
         self.sandbox = Sandbox()
         self.preamble = None
+
+        self.plan_generation_prompt = None
+        self.thinking_model = "o1-mini"
 
     def __load_prompts(self):
         with open(self.action_classifier_prompt, "r") as f:
@@ -239,6 +245,143 @@ class NewStreamActionHandler(BaseActionHandler):
             logging.error(f"Failed to read cached code files: {str(e)}")
             return {}
 
+    def update_pr_with_changes(self, pr_webhook_payload: Dict[str, Any], file_path: str, code_hunk: str, commit_message: str):
+        """
+        Update a GitHub PR with new code changes using the GitHub REST API.
+        
+        Args:
+            pr_webhook_payload: PR webhook payload containing repository and PR information
+            file_path: Path to the file being modified relative to repo root
+            code_hunk: The new code content as a diff/patch
+            commit_message: Commit message for the change
+            
+        Returns:
+            str: The new commit SHA
+        """
+        # Extract repository information
+        repo = pr_webhook_payload.get("repository", {})
+        repo_full_name = repo.get("full_name")
+        if not repo_full_name:
+            raise ValueError("Repository information missing from webhook payload")
+
+        # Get PR details
+        head = pr_webhook_payload.get("pull_request", {}).get("head", {})
+        head_ref = head.get("ref")
+        head_sha = head.get("sha")
+        
+        if not (head_ref and head_sha):
+            raise ValueError("PR head reference or SHA missing from webhook payload")
+
+        # Get current file content
+        file_response = requests.get(
+            f'{GITHUB_API_BASE}/repos/{repo_full_name}/contents/{file_path}',
+            headers=self.github_kb.github_headers,
+            params={'ref': head_ref}
+        )
+        file_response.raise_for_status()
+        
+        # Decode current file content
+        current_content = file_response.json()
+        import base64
+        current_file_content = base64.b64decode(current_content['content']).decode('utf-8')
+        
+        # Parse the code hunk to get line numbers and changes
+        import re
+        hunk_header_pattern = r'@@ -(\d+),(\d+) \+(\d+),(\d+) @@'
+        match = re.search(hunk_header_pattern, code_hunk)
+        if not match:
+            raise ValueError("Invalid code hunk format - missing patch header")
+
+        start_line = int(match.group(3))  # Get the target start line
+        lines = current_file_content.splitlines()
+
+        # Extract the actual changes (remove the @@ line)
+        changes = code_hunk.split('\n')[1:]
+        
+        # Apply the changes to the file content
+        new_lines = lines[:start_line-1]  # Keep content up to the start line
+        
+        for change in changes:
+            if change.startswith('+'):
+                new_lines.append(" " + change[1:])  # Add new line, swap the + with a space
+            elif change.startswith('-'):
+                continue  # Skip removed line
+            elif change.startswith('\\'):
+                continue  # Skip "No newline" markers
+            else:
+                new_lines.append(change)  # Keep unchanged line
+                
+        new_lines.extend(lines[start_line-1+len([l for l in changes if not l.startswith('+') and not l.startswith('-')]):])
+        
+        # Join the lines back together
+        new_content = '\n'.join(new_lines)
+
+        # Create blob with new content
+        blob_data = {
+            'content': new_content,
+            'encoding': 'utf-8'
+        }
+        blob_response = requests.post(
+            f'{GITHUB_API_BASE}/repos/{repo_full_name}/git/blobs',
+            headers=self.github_kb.github_headers,
+            json=blob_data
+        )
+        blob_response.raise_for_status()
+        blob_sha = blob_response.json()['sha']
+        
+        # Get base tree
+        tree_response = requests.get(
+            f'{GITHUB_API_BASE}/repos/{repo_full_name}/git/trees/{head_sha}',
+            headers=self.github_kb.github_headers
+        )
+        tree_response.raise_for_status()
+        
+        # Create new tree
+        new_tree_data = {
+            'base_tree': tree_response.json()['sha'],
+            'tree': [{
+                'path': file_path,
+                'mode': '100644',
+                'type': 'blob',
+                'sha': blob_sha
+            }]
+        }
+        new_tree_response = requests.post(
+            f'{GITHUB_API_BASE}/repos/{repo_full_name}/git/trees',
+            headers=self.github_kb.github_headers,
+            json=new_tree_data
+        )
+        new_tree_response.raise_for_status()
+        new_tree_sha = new_tree_response.json()['sha']
+        
+        # Create commit
+        commit_data = {
+            'message': commit_message,
+            'tree': new_tree_sha,
+            'parents': [head_sha]
+        }
+        commit_response = requests.post(
+            f'{GITHUB_API_BASE}/repos/{repo_full_name}/git/commits',
+            headers=self.github_kb.github_headers,
+            json=commit_data
+        )
+        commit_response.raise_for_status()
+        new_commit_sha = commit_response.json()['sha']
+        
+        # Update reference
+        ref_data = {
+            'sha': new_commit_sha,
+            'force': True
+        }
+        ref_response = requests.patch(
+            f'{GITHUB_API_BASE}/repos/{repo_full_name}/git/refs/heads/{head_ref}',
+            headers=self.github_kb.github_headers,
+            json=ref_data
+        )
+        ref_response.raise_for_status()
+        
+        return new_commit_sha
+
     def _handle_pr_suggestions_output(self, response: Dict[str, Any], pr_webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle the output of the PR suggestions tool. This should do the following:
@@ -263,64 +406,26 @@ class NewStreamActionHandler(BaseActionHandler):
         final_response = response["response"]
         
         # Extract changed code and comment response using regex
-        changed_code_pattern = r"<changed_code>\s*(.*?)\s*</changed_code>"
-        comment_pattern = r"<comment_response>\s*(.*?)\s*</comment_response>"
+        changed_code_content = get_content_between_tags(final_response, "<changed_code>", "</changed_code>")
+        comment_response = get_content_between_tags(final_response, "<comment_response>", "</comment_response>")
+        commit_message = get_content_between_tags(final_response, "<commit_message>", "</commit_message>")
 
-        changed_code_match = re.search(changed_code_pattern, final_response, re.DOTALL)
-        comment_match = re.search(comment_pattern, final_response, re.DOTALL)
-        
-        if not changed_code_match:
+        if not changed_code_content:
             return response
 
-        # Extract file path and diff content
-        changed_code = {}
-        changed_code_content = changed_code_match.group(1)
-        
-        # Split the content by file paths, but keep the unified diff headers
-        file_sections = re.split(r'\n(?=\w+/.*?\n@@)', changed_code_content)
-        
-        for section in file_sections:
-            if not section.strip():
-                continue
-            # First line should be the file path
-            lines = section.strip().split('\n', 1)
-            if len(lines) < 2:
-                continue
-            file_path = lines[0].strip()
-            # Keep the entire diff including the unified header
-            file_diff = lines[1].strip()
-            if not file_diff.startswith("@@"):
-                continue
-            changed_code[file_path] = file_diff
-
-        comment_response = comment_match.group(1).strip() if comment_match else None
-
+        code_hunks = self.sandbox.parse_example_files(changed_code_content)
         # Handle changed code if not false
-        if changed_code and all(diff.lower() != "false" for diff in changed_code.values()):
-            # Cache the code files
-            cached_code_files = self._get_cached_code_files()
-            for file_path, file_diff in changed_code.items():
-                original = cached_code_files["code_files"][file_path] if file_path in cached_code_files["code_files"] else ""
-                cached_code_files["code_files"][file_path] = self.github_kb.apply_diff(original, file_diff)
+        if code_hunks and all(diff.lower() != "false" for diff in code_hunks.values()):
+            for file_path, file_diff in code_hunks.items():
+                self.update_pr_with_changes(pr_webhook_payload, file_path, file_diff, commit_message)
 
-            self._cache_code_files(cached_code_files, cached_code_files["title"], cached_code_files["description"], cached_code_files["commit_msg"], cached_code_files["branch_name"])
-
-            # Submit the revision
-            pr_number = pr_webhook_payload.get("number")
-            title = cached_code_files["title"]
-            description = cached_code_files["description"]
-            commit_msg = cached_code_files["commit_msg"]
-            branch_name = cached_code_files["branch_name"]
-            self.sandbox.create_github_pr(changed_code, "Cirr0e/firecrawl-examples", title, description, commit_msg, branch_name, pr_number)
-
-            response["changed_code"] = changed_code
-            
         # Handle comment response if not false    
         if comment_response and comment_response.lower() != "false":
             # Submit the comment after crafting the parameters correctly
             comment_id = pr_webhook_payload.get("comment", {}).get("id")
+            pr_number = pr_webhook_payload.get("pull_request", {}).get("number")
 
-            comment_on_pr("Cirr0e", "firecrawl-examples", comment_id, comment_response)
+            comment_on_pr("Cirr0e", "firecrawl-examples", pr_number, comment_id, comment_response)
             response["comment_response"] = comment_response
 
         return response
@@ -367,11 +472,13 @@ class NewStreamActionHandler(BaseActionHandler):
 
             self.tools = EXAMPLE_CREATOR_PR_TOOLS
 
+            self.model = MODEL_LIGHT
             response = super().handle_action(
                 [{"role": "user", "content": first_message}],
                 max_txt_completions=10,
-                system_prompt=handle_pr_suggestions_prompt_msg
+                system_prompt=handle_pr_suggestions_prompt_msg,
             )
+            self.model = MODEL_HEAVY
 
             return self._handle_pr_suggestions_output(response, feedback_payload)
 
@@ -455,6 +562,32 @@ class NewStreamActionHandler(BaseActionHandler):
 
             return response.content[0].text.lower() if "false" not in response.content[0].text.lower() else None
 
+    def generate_plan(self, action: str, step_messages: List[Dict[str, Any]]) -> str:
+        """
+        Generate a plan for the action.
+
+        Args:
+            action (str): The action to generate a plan for
+            step_messages (List[Dict[str, Any]]): The step messages from the tool calling chain
+
+        Returns:
+            str: The plan for the action
+        """
+        # 1. use the plan generation prompt to call o1 to generate a plan
+        plan_generation_prompt = format_prompt(self.plan_generation_prompt, preamble=self.preamble)
+        plan_generation_prompt_msg = [{
+            "role": "user",
+            "content": f"Based on the following action: {action}, generate a plan for the action."
+        }]
+        plan_response = self.client.messages.create(
+            model=self.model,
+            max_tokens=8192,
+            messages=plan_generation_prompt_msg
+        )
+        
+        # 2. Return the plan as a json object
+        pass
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
@@ -521,26 +654,25 @@ class NewStreamActionHandler(BaseActionHandler):
                 action = (
                     last_message.split("<action>")[1].split("</action>")[0].strip()
                 )
-
-            if action == "create":
-                logging.info("Creating new example...")
-                cur_prompt = self._handle_action_case(
-                    "create",
-                    self.execute_creation_prompt,
-                    EXAMPLE_CREATOR_CREATION_TOOLS,
-                    step_messages
-                )
-            elif action == "modify":
-                logging.info("Modifying existing example...")
-                cur_prompt = self._handle_action_case(
-                    "modify", 
-                    self.execute_modification_prompt,
-                    EXAMPLE_CREATOR_MODIFICATION_TOOLS,
-                    step_messages
-                )
-            elif action == "none":
-                logging.info("No action found, continuing...")
-                continue
+                if action == "create":
+                    logging.info("Creating new example...")
+                    cur_prompt = self._handle_action_case(
+                        "create",
+                        self.execute_creation_prompt,
+                        EXAMPLE_CREATOR_CREATION_TOOLS,
+                        step_messages
+                    )
+                elif action == "modify":
+                    logging.info("Modifying existing example...")
+                    cur_prompt = self._handle_action_case(
+                        "modify", 
+                        self.execute_modification_prompt,
+                        EXAMPLE_CREATOR_MODIFICATION_TOOLS,
+                        step_messages
+                    )
+                elif action == "none":
+                    logging.info("No action found, continuing...")
+                    continue
 
             if step_messages[-1]["role"] != "user":
                 step_messages += [
