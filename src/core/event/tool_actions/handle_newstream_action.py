@@ -1,6 +1,5 @@
 from typing import Dict, List, Any, Tuple
-from src.model.issue import Issue, Comment
-import asyncio
+import openai
 import json
 from src.core.event.poll import comment_on_pr
 import os
@@ -74,6 +73,10 @@ class NewStreamActionHandler(BaseActionHandler):
         )
         self.sandbox = Sandbox()
         self.preamble = None
+
+        self.plan_generation_prompt = None
+        self.thinking_model = "o1-mini"
+        self.thinking_client = openai.OpenAI()
 
     def __load_prompts(self):
         with open(self.action_classifier_prompt, "r") as f:
@@ -195,50 +198,6 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return response
 
-    def _cache_code_files(self, code_files: Dict[str, Any], title: str, description: str, commit_msg: str, branch_name: str) -> None:
-        """
-        Cache the code files dictionary to disk.
-
-        Args:
-            code_files: Dictionary containing the code files and their contents
-        """
-
-        cache_dir = "include/cache"
-        os.makedirs(cache_dir, exist_ok=True)
-        
-        cache_file = f"{cache_dir}/code_files_cache.json"
-        
-        try:
-            with open(cache_file, "w") as f:
-                json.dump({
-                    "code_files": code_files,
-                    "title": title,
-                    "description": description,
-                    "commit_msg": commit_msg,
-                    "branch_name": branch_name
-                }, f)
-        except Exception as e:
-            logging.error(f"Failed to cache code files: {str(e)}")
-
-    def _get_cached_code_files(self) -> Dict[str, Any]:
-        """
-        Read the cached code files from disk.
-
-        Returns:
-            Dict containing the cached code files, or empty dict if no cache exists
-        """
-        cache_file = "include/cache/code_files_cache.json"
-        
-        if not os.path.exists(cache_file):
-            return {}
-            
-        try:
-            with open(cache_file, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            logging.error(f"Failed to read cached code files: {str(e)}")
-            return {}
-
     def _handle_pr_suggestions_output(self, response: Dict[str, Any], pr_webhook_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle the output of the PR suggestions tool. This should do the following:
@@ -302,8 +261,6 @@ class NewStreamActionHandler(BaseActionHandler):
             for file_path, file_diff in changed_code.items():
                 original = cached_code_files["code_files"][file_path] if file_path in cached_code_files["code_files"] else ""
                 cached_code_files["code_files"][file_path] = self.github_kb.apply_diff(original, file_diff)
-
-            self._cache_code_files(cached_code_files, cached_code_files["title"], cached_code_files["description"], cached_code_files["commit_msg"], cached_code_files["branch_name"])
 
             # Submit the revision
             pr_number = pr_webhook_payload.get("number")
@@ -455,6 +412,21 @@ class NewStreamActionHandler(BaseActionHandler):
 
             return response.content[0].text.lower() if "false" not in response.content[0].text.lower() else None
 
+    def generate_design_and_implementation_plan(self, last_message: str) -> str:
+        """
+        Generate a design and implementation plan for the example.
+        """
+        with open("include/prompts/example_builder/plan_builder.txt", "r") as f:
+            plan_builder_prompt = f.read()
+            plan_builder_prompt = format_prompt(plan_builder_prompt, preamble=self.preamble, action_context=last_message)
+
+            response = self.thinking_client.chat.completions.create(
+                model=self.thinking_model,
+                messages=[{"role": "user", "content": plan_builder_prompt}]
+            )
+
+            return response.choices[0].message.content
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 15
     ) -> Dict[str, Any]:
@@ -472,22 +444,23 @@ class NewStreamActionHandler(BaseActionHandler):
 
         with open("include/prompts/example_builder/preamble.txt", "r") as f:
             preamble = f.read()
-            self.preamble = preamble
+            self.preamble = format_prompt(preamble, product_name=self.product_name)
+
             self.action_classifier_prompt = format_prompt(
                 self.action_classifier_prompt,
-                preamble=preamble,
+                preamble=self.preamble,
                 product_name=self.product_name,
                 product_readme=self.product_readme,
             )
             self.execute_creation_prompt = format_prompt(
                 self.execute_creation_prompt,
                 product_name=self.product_name,
-                preamble=preamble,
+                preamble=self.preamble,
             )
             self.execute_modification_prompt = format_prompt(
                 self.execute_modification_prompt,
                 product_name=self.product_name,
-                preamble=preamble,
+                preamble=self.preamble,
             )
 
         news_values = list(news_stream.values())
@@ -542,13 +515,13 @@ class NewStreamActionHandler(BaseActionHandler):
                 logging.info("No action found, continuing...")
                 continue
 
-            if step_messages[-1]["role"] != "user":
-                step_messages += [
-                    {
-                        "role": "user", 
-                        "content": f"We've identified a need to perform the '{action}' action, now let's continue to develop the example based on all previous information."
-                    }
-                ]
+            print(last_message)
+            step_messages += [
+                {
+                    "role": "user", 
+                    "content": self.generate_design_and_implementation_plan(last_message)
+                }
+            ]
 
             while max_tool_calls > 0:
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
@@ -567,10 +540,6 @@ class NewStreamActionHandler(BaseActionHandler):
                         commit_msg,
                         branch_name,
                     )
-
-                    # cache the code files for later...
-                    codefiles = self.sandbox.parse_example_files(last_message)
-                    self._cache_code_files(codefiles, title, description, commit_msg, branch_name)
 
                     return {"content": response}
                 elif "<action>none</action>" not in last_message or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message): # Hallucination check
