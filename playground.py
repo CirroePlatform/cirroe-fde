@@ -53,8 +53,8 @@ def evaluate(
     orchestrator.evaluate()
 
 
-def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
-    asyncio.run(setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url))
+async def index(org_id: UUID, org_name: str, repo_name: str, docu_url: str):
+    await setup_all_kbs_with_repo(org_id, org_name, repo_name, docu_url)
 
 
 def handle_discord_message(inbound_message: str, org_id: UUID):
@@ -74,11 +74,7 @@ def handle_discord_message(inbound_message: str, org_id: UUID):
 
 def poll_wrapper():
     orgs_to_tickets = {
-        # MEM0AI_ORG_ID: [2079],
-        # CHROMA_ORG_ID: [2571],
-        # ARROYO_ORG_ID: [3265, 3292],
-        DAGSTER_ORG_ID: [2571],
-        # FIRECRAWL_ORG_ID: [2571],
+        FIRECRAWL_ORG_ID: [2571],
     }
 
     for org in orgs_to_tickets:
@@ -101,7 +97,7 @@ def poll_wrapper():
 
 
 def discord_wrapper():
-    disc_msg = """"""
+    disc_msg = """something"""
     from rich.console import Console
     from rich.markdown import Markdown
 
