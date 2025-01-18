@@ -427,8 +427,28 @@ class NewStreamActionHandler(BaseActionHandler):
 
             return response.choices[0].message.content
 
+    def handle_code_files_pr_raise(self, last_message: str, step_messages: List[Dict[str, Any]]) -> str:
+        """
+        Handle the creation of a PR with the code files.
+        """
+        # Craft the PR title and body
+        title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
+            step_messages,
+        )
+        response = self.sandbox.create_github_pr(
+            last_message,
+            # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
+            "Cirr0e/firecrawl-examples",
+            title,
+            description,
+            commit_msg,
+            branch_name,
+        )
+        
+        return response
+
     def handle_action(
-        self, news_stream: Dict[str, News], max_tool_calls: int = 15
+        self, news_stream: Dict[str, News], max_tool_calls: int = 50
     ) -> Dict[str, Any]:
         """
         Handle processing a news stream to determine and execute appropriate action
@@ -524,29 +544,22 @@ class NewStreamActionHandler(BaseActionHandler):
             ]
 
             while max_tool_calls > 0:
+                time.sleep(60)
                 step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
                 last_message = step_response["response"]
                 if ("<code_files>" in last_message):
-                    # Craft the PR title and body
-                    title, description, commit_msg, branch_name = self.craft_pr_title_and_body(
-                        step_messages,
-                    )
-                    response = self.sandbox.create_github_pr(
-                        last_message,
-                        # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
-                        "Cirr0e/firecrawl-examples",
-                        title,
-                        description,
-                        commit_msg,
-                        branch_name,
-                    )
+                    response = self.handle_code_files_pr_raise(last_message, step_messages)
 
                     return {"content": response}
+
                 elif "<action>none</action>" not in last_message or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message): # Hallucination check
                     hallucination_response = self.hallucination_check(last_message, step_messages)
                     if hallucination_response:
                         last_message = hallucination_response
-                    break
+
+                    response = self.handle_code_files_pr_raise(last_message, step_messages)
+                    return {"content": response}
+
                 else:
                     logging.info(f"PR was not created, here's the last message: {last_message}")
                     break

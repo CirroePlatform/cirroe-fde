@@ -191,6 +191,8 @@ class Sandbox:
         """
         build_success = False
         setup_success = False
+        sandbox = None
+        result = None
         try:
             # Create E2B session
             sandbox = e2b_sandbox(
@@ -249,8 +251,10 @@ class Sandbox:
 
             result = CommandResult(stdout="", stderr=err, exit_code=1, error=err)
 
-        sandbox.kill()
-        return [], result
+        if sandbox is not None:
+            sandbox.kill()
+
+        return [], result if result is not None else []
 
     def create_github_pr(
         self,
