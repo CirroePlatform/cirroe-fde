@@ -41,7 +41,7 @@ class Sandbox:
             "Accept": "application/vnd.github.v3+json",
             "X-GitHub-Api-Version": "2022-11-28",
         }
-        self.sanbox_env_file = ".env" # This is just going to have a ton of different env variables. If an env variable is not found during execution, I need to be pinged to add it
+        self.sanbox_env_file = ".env"  # This is just going to have a ton of different env variables. If an env variable is not found during execution, I need to be pinged to add it
         self.sandbox_file_content = self.load_env_file()
 
     def load_env_file(self) -> str:
@@ -172,13 +172,21 @@ class Sandbox:
         with open(self.sanbox_env_file, "r") as f:
             for line in f:
                 # Skip empty lines or lines without =
-                if line.strip() and '=' in line and re.match(r'^\s*[\w\-\.]+\s*=\s*.+\s*$', line):
+                if (
+                    line.strip()
+                    and "=" in line
+                    and re.match(r"^\s*[\w\-\.]+\s*=\s*.+\s*$", line)
+                ):
                     key, value = line.strip().split("=")
                     env[key] = value
         return env
 
     def run_code_e2b(
-        self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None, timeout: int = 300
+        self,
+        code_files: str | Dict[str, str],
+        execution_command: str,
+        build_command: str = None,
+        timeout: int = 300,
     ) -> Tuple[List[ExecutionResult], str]:
         """
         Executes code in E2B sandbox environment
@@ -195,13 +203,11 @@ class Sandbox:
         execution_success = False
         sandbox = None
         result = None
-        err=""
+        err = ""
         try:
             # Create E2B session
             sandbox = e2b_sandbox(
-                timeout=timeout,
-                api_key=self.e2b_api_key,
-                envs=self.load_agent_env()
+                timeout=timeout, api_key=self.e2b_api_key, envs=self.load_agent_env()
             )
 
             # Create project directory structure and write files
@@ -256,8 +262,15 @@ class Sandbox:
         if sandbox is not None:
             sandbox.kill()
 
-        result = ExecutionResult(build_success=build_success, execution_success=execution_success, command_result=CommandResult(stdout="", stderr=err, exit_code=1, error=err))
-        return [result], f"Build success: {build_success}, Execution success: {execution_success}, stdout: {result.command_result.stdout}, stderr: {result.command_result.stderr}, exit_code: {result.command_result.exit_code}, error: {result.command_result.error} exit_code: {result.command_result.exit_code}"
+        result = ExecutionResult(
+            build_success=build_success,
+            execution_success=execution_success,
+            command_result=CommandResult(stdout="", stderr=err, exit_code=1, error=err),
+        )
+        return (
+            [result],
+            f"Build success: {build_success}, Execution success: {execution_success}, stdout: {result.command_result.stdout}, stderr: {result.command_result.stderr}, exit_code: {result.command_result.exit_code}, error: {result.command_result.error} exit_code: {result.command_result.exit_code}",
+        )
 
     def create_github_pr(
         self,
@@ -267,7 +280,7 @@ class Sandbox:
         body: str,
         commit_msg: str,
         branch_name: str,
-        pr_number: int | None = None
+        pr_number: int | None = None,
     ) -> str:
         """
         Creates a PR on GitHub with example code
@@ -313,7 +326,11 @@ class Sandbox:
                 if e.response.status_code == 422:  # Branch already exists
                     # Update existing branch to point to base_sha
                     url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
-                    response = requests.patch(url, headers=self.github_headers, json={"sha": base_sha, "force": True})
+                    response = requests.patch(
+                        url,
+                        headers=self.github_headers,
+                        json={"sha": base_sha, "force": True},
+                    )
                     response.raise_for_status()
                 else:
                     raise
@@ -324,76 +341,90 @@ class Sandbox:
             for file_path, content in files.items():
                 # Create a blob for each file
                 url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/blobs"
-                blob_payload = {
-                    "content": content,
-                    "encoding": "utf-8"
-                }
-                blob_response = requests.post(url, headers=self.github_headers, json=blob_payload)
+                blob_payload = {"content": content, "encoding": "utf-8"}
+                blob_response = requests.post(
+                    url, headers=self.github_headers, json=blob_payload
+                )
                 blob_response.raise_for_status()
                 blob_sha = blob_response.json()["sha"]
 
                 # Add file to tree
-                tree_items.append({
-                    "path": file_path,
-                    "mode": "100644",
-                    "type": "blob",
-                    "sha": blob_sha
-                })
+                tree_items.append(
+                    {
+                        "path": file_path,
+                        "mode": "100644",
+                        "type": "blob",
+                        "sha": blob_sha,
+                    }
+                )
 
             # Create a tree with all changes
             url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/trees"
-            tree_payload = {
-                "base_tree": base_sha,
-                "tree": tree_items
-            }
-            tree_response = requests.post(url, headers=self.github_headers, json=tree_payload)
+            tree_payload = {"base_tree": base_sha, "tree": tree_items}
+            tree_response = requests.post(
+                url, headers=self.github_headers, json=tree_payload
+            )
             tree_response.raise_for_status()
             new_tree_sha = tree_response.json()["sha"]
 
             # Check if commit with same message exists
             url = f"{GITHUB_API_BASE}/repos/{repo_name}/commits"
             params = {"sha": branch_name}
-            commits_response = requests.get(url, headers=self.github_headers, params=params)
+            commits_response = requests.get(
+                url, headers=self.github_headers, params=params
+            )
             commits_response.raise_for_status()
             commits = commits_response.json()
-            
+
             existing_commit = None
             for commit in commits:
                 if commit["commit"]["message"] == commit_msg:
                     existing_commit = commit["sha"]
                     break
-                    
+
             if existing_commit:
                 # Update existing commit with new tree
-                url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits/{existing_commit}"
+                url = (
+                    f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits/{existing_commit}"
+                )
                 commit_payload = {
                     "message": commit_msg,
                     "tree": new_tree_sha,
-                    "parents": [base_sha]
+                    "parents": [base_sha],
                 }
-                commit_response = requests.patch(url, headers=self.github_headers, json=commit_payload)
+                commit_response = requests.patch(
+                    url, headers=self.github_headers, json=commit_payload
+                )
                 commit_response.raise_for_status()
                 new_commit_sha = commit_response.json()["sha"]
             else:
                 # Create new commit
                 url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/commits"
                 commit_payload = {
-                    "message": commit_msg, 
+                    "message": commit_msg,
                     "tree": new_tree_sha,
-                    "parents": [base_sha]
+                    "parents": [base_sha],
                 }
-                commit_response = requests.post(url, headers=self.github_headers, json=commit_payload)
+                commit_response = requests.post(
+                    url, headers=self.github_headers, json=commit_payload
+                )
                 commit_response.raise_for_status()
                 new_commit_sha = commit_response.json()["sha"]
 
                 # Update branch reference to point to new commit
-                url = f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
+                url = (
+                    f"{GITHUB_API_BASE}/repos/{repo_name}/git/refs/heads/{branch_name}"
+                )
                 ref_payload = {"sha": new_commit_sha}
-                ref_response = requests.patch(url, headers=self.github_headers, json=ref_payload)
+                ref_response = requests.patch(
+                    url, headers=self.github_headers, json=ref_payload
+                )
                 ref_response.raise_for_status()
 
             if pr_number is None:
-                html_url = self.raise_pr(repo_name, title, body, branch_name, base_branch)
+                html_url = self.raise_pr(
+                    repo_name, title, body, branch_name, base_branch
+                )
 
             return html_url
 
@@ -402,7 +433,15 @@ class Sandbox:
             logging.error(f"GitHub PR creation error: {e}")
             return f"Error creating PR: {str(e)}"
 
-    def raise_pr(self, repo_name: str, title: str, body: str, branch_name: str, base_branch: str, pr_number: int | None = None) -> str:
+    def raise_pr(
+        self,
+        repo_name: str,
+        title: str,
+        body: str,
+        branch_name: str,
+        base_branch: str,
+        pr_number: int | None = None,
+    ) -> str:
         """
         Makes an API call to create a PR on GitHub
 
@@ -426,7 +465,12 @@ class Sandbox:
         }
 
         if pr_number:
-            response = requests.patch(url, headers=self.github_headers, params={"number": pr_number}, json=payload)
+            response = requests.patch(
+                url,
+                headers=self.github_headers,
+                params={"number": pr_number},
+                json=payload,
+            )
         else:
             response = requests.post(url, headers=self.github_headers, json=payload)
 
@@ -434,7 +478,7 @@ class Sandbox:
         pr_data = response.json()
 
         return pr_data["html_url"]
-    
+
     def parse_example_files(self, code_string: str) -> Dict[str, str]:
         """
         Parses example files from code string format

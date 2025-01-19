@@ -85,8 +85,4 @@ class SearchTools:
                 user_setup_details=setup_details,
             )
         elif knowledge_base == KnowledgeBaseType.WEB:
-            return self.web_kb.query(
-                query,
-                limit,
-                traceback
-            )
+            return self.web_kb.query(query, limit, traceback)

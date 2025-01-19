@@ -22,8 +22,12 @@ class CirroeDiscordBot(commands.Bot):
         self.post_channel_id = None  # Will be set during setup
         self.org_id = org_id
         self.discord_msg_handler = DiscordMessageHandler(org_id)
-        self.processing_threads: Dict[int, asyncio.Event] = {}  # Track threads being processed
-        self.pending_messages: Dict[int, List[discord.Message]] = {}  # Store pending messages per thread
+        self.processing_threads: Dict[int, asyncio.Event] = (
+            {}
+        )  # Track threads being processed
+        self.pending_messages: Dict[int, List[discord.Message]] = (
+            {}
+        )  # Store pending messages per thread
         self.processed_messages: Set[int] = set()  # Track processed message IDs
 
     async def setup_hook(self):
@@ -91,7 +95,7 @@ class CirroeDiscordBot(commands.Bot):
             # Start typing indicator
             async with thread.typing():
                 messages = await self.__construct_thread_messages(thread)
-                
+
                 # If no unprocessed messages, return
                 if not messages.strip():
                     return
@@ -103,7 +107,9 @@ class CirroeDiscordBot(commands.Bot):
 
                 # Check for empty response
                 if not response:
-                    await thread.send("I apologize, but I couldn't generate a response. Please try rephrasing your question.")
+                    await thread.send(
+                        "I apologize, but I couldn't generate a response. Please try rephrasing your question."
+                    )
                     return
 
                 # Send response in the thread
@@ -119,7 +125,9 @@ class CirroeDiscordBot(commands.Bot):
             traceback.print_exc()
             logging.error(f"Error in thread response: {e}")
             try:
-                await thread.send("I encountered an error processing your request. Please try again.")
+                await thread.send(
+                    "I encountered an error processing your request. Please try again."
+                )
             except Exception:
                 pass
 

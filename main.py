@@ -14,14 +14,17 @@ secret = "example-builder"
 
 ACTIONS = set(["created", "edited"])
 
+
 class GitHubWebhookPayload(BaseModel):
     """
     GitHub webhook payload
     """
+
     action: str
     comment: dict
     pull_request: dict
     repository: dict
+
 
 def verify_signature(request_body: bytes, signature: str):
     """
@@ -31,6 +34,7 @@ def verify_signature(request_body: bytes, signature: str):
     expected_signature = f"sha256={mac.hexdigest()}"
     if not hmac.compare_digest(expected_signature, signature):
         raise HTTPException(status_code=400, detail="Invalid signature")
+
 
 @app.post("/pr_changes")
 async def handle_pr_changes_webhook(request: Request):
@@ -46,10 +50,10 @@ async def handle_pr_changes_webhook(request: Request):
 
     try:
         # Decode bytes to string and parse JSON
-        body_str = request_body.decode('utf-8')
+        body_str = request_body.decode("utf-8")
         payload = json.loads(body_str)
 
-        if payload['action'] in ACTIONS and "pull_request" in payload:
+        if payload["action"] in ACTIONS and "pull_request" in payload:
 
             # Add logic to handle comments on specific spots
             handler = get_handler()
@@ -66,6 +70,7 @@ async def handle_pr_changes_webhook(request: Request):
         traceback.print_exc()
         logging.error(f"Error processing webhook: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     main()

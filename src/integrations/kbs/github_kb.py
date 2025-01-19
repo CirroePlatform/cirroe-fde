@@ -410,7 +410,11 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
             return []
 
     def fetch_contents(
-        self, repository: str, code_pages: List[CodePage] = [], path: str = "", include_dirs: bool = False
+        self,
+        repository: str,
+        code_pages: List[CodePage] = [],
+        path: str = "",
+        include_dirs: bool = False,
     ):
         """
         Recursively fetch contents of a repository from GitHub API
@@ -474,7 +478,7 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
                     code_pages.append(
                         CodePage(
                             primary_key=item["path"],
-                            content="", # TODO: we can add a summary of the directory contents.
+                            content="",  # TODO: we can add a summary of the directory contents.
                             org_id=str(self.org_id),
                             page_type=CodePageType.DIRECTORY,
                             sha=item["sha"],
@@ -676,30 +680,31 @@ class GithubKnowledgeBase(BaseKnowledgeBase):
 
     def apply_diff(self, original_code: str, diff_text: str) -> str:
         """Apply a git-style diff to original code."""
-        result = original_code.split('\n')
+        result = original_code.split("\n")
         current_line = 0
 
         # Parse diff header
-        for line in diff_text.split('\n'):
-            if line.startswith('@@'):
+        for line in diff_text.split("\n"):
+            if line.startswith("@@"):
                 # Parse diff location
                 _, old_range, new_range, *_ = line.split()
-                old_start = int(old_range.split(',')[0].lstrip('-'))
-                new_start = int(new_range.split(',')[0].lstrip('+'))
+                old_start = int(old_range.split(",")[0].lstrip("-"))
+                new_start = int(new_range.split(",")[0].lstrip("+"))
                 current_line = new_start - 1
                 continue
 
             # Apply changes
-            if line.startswith('+'):
+            if line.startswith("+"):
                 result.insert(current_line, line[1:])
                 current_line += 1
-            elif line.startswith('-'):
+            elif line.startswith("-"):
                 if current_line < len(result):
                     result.pop(current_line)
             else:
                 current_line += 1
 
-        return '\n'.join(result)
+        return "\n".join(result)
+
 
 # # Usage example
 # original = ""  # Empty string for new file

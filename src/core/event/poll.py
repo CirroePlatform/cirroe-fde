@@ -229,7 +229,7 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     Comments on an issue with the response.
     """
     url = f"https://api.github.com/repos/{org_name}/{repo}/issues/{issue.ticket_number}/comments"
-    
+
     headers = {
         "Authorization": f"Bearer {os.getenv('GITHUB_TEST_TOKEN')}",
         "Accept": "application/vnd.github+json",
@@ -240,6 +240,7 @@ async def comment_on_issue(org_name: str, repo: str, issue: Issue, response: str
     # Post the comment
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
+
 
 def comment_on_pr(org_name: str, repo: str, comment_id: int, response: str):
     url = f"https://api.github.com/repos/{org_name}/{repo}/issues/comments/{comment_id}/replies"

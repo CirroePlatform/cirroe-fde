@@ -78,12 +78,12 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                 },
                 "useAutoprompt": {
                     "type": "boolean",
-                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only."
+                    "description": "Autoprompt converts your query to an Exa query. Default false. Neural and auto search only.",
                 },
                 "type": {
                     "type": "string",
                     "enum": ["keyword", "neural", "auto"],
-                    "description": "The type of search. Default auto, which automatically decides between keyword and neural."
+                    "description": "The type of search. Default auto, which automatically decides between keyword and neural.",
                 },
                 "category": {
                     "type": "string",
@@ -96,24 +96,24 @@ EXAMPLE_CREATOR_SEARCH_WEB_TOOL = [
                         "tweet",
                         "personal site",
                         "linkedin profile",
-                        "financial report"
+                        "financial report",
                     ],
-                    "description": "A data category to focus on."
+                    "description": "A data category to focus on.",
                 },
                 "startPublishedDate": {
                     "type": "string",
-                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format."
+                    "description": "Only links with a published date after this will be returned. Must be specified in ISO 8601 format.",
                 },
                 "endPublishedDate": {
                     "type": "string",
-                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format."
+                    "description": "Only links with a published date before this will be returned. Must be specified in ISO 8601 format.",
                 },
             },
             "required": ["query"],
         },
     }
 ]
-        # "cache_control": {"type": "ephemeral"}
+# "cache_control": {"type": "ephemeral"}
 
 DOCUMENTATION_TOOL = [
     {
@@ -132,7 +132,7 @@ DOCUMENTATION_TOOL = [
                 },
             },
             "required": ["query", "limit"],
-        }
+        },
     }
 ]
 
@@ -161,11 +161,13 @@ CODE_TOOL = [
                 },
             },
             "required": ["query", "limit"],
-        }
+        },
     }
 ]
 
-EXAMPLE_CREATOR_BASE_TOOLS = DOCUMENTATION_TOOL + CODE_TOOL + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
+EXAMPLE_CREATOR_BASE_TOOLS = (
+    DOCUMENTATION_TOOL + CODE_TOOL + EXAMPLE_CREATOR_SEARCH_WEB_TOOL
+)
 
 GET_LATEST_VERSION_TOOL = [
     {
@@ -212,44 +214,50 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
     },
 ] + GET_LATEST_VERSION_TOOL
 
-EXAMPLE_CREATOR_CLASSIFIER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + [
-    {
-        "name": "get_existing_examples",
-        "description": "A function to get list of example filenames from the firecrawl/examples directory on GitHub",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        },
-    },
-    {
-        "name": "get_example_contents",
-        "description": "A function to recursively fetch contents of a repository from GitHub API",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "repository": {
-                    "type": "string",
-                    "description": "Repository name to fetch contents from",
-                },
-                "code_pages": {
-                    "type": "array",
-                    "description": "List to append CodePage objects to",
-                },
-                "path": {
-                    "type": "string",
-                    "description": "Current path being fetched in the repository",
-                },
+EXAMPLE_CREATOR_CLASSIFIER_TOOLS = (
+    EXAMPLE_CREATOR_BASE_TOOLS
+    + [
+        {
+            "name": "get_existing_examples",
+            "description": "A function to get list of example filenames from the firecrawl/examples directory on GitHub",
+            "input_schema": {
+                "type": "object",
+                "properties": {},
             },
-            "required": ["repository"],
         },
-    },
-] + EXAMPLE_CREATOR_RUN_CODE_TOOL
+        {
+            "name": "get_example_contents",
+            "description": "A function to recursively fetch contents of a repository from GitHub API",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "repository": {
+                        "type": "string",
+                        "description": "Repository name to fetch contents from",
+                    },
+                    "code_pages": {
+                        "type": "array",
+                        "description": "List to append CodePage objects to",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Current path being fetched in the repository",
+                    },
+                },
+                "required": ["repository"],
+            },
+        },
+    ]
+    + EXAMPLE_CREATOR_RUN_CODE_TOOL
+)
 
 EXAMPLE_CREATOR_MODIFICATION_TOOLS = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
 EXAMPLE_CREATOR_CREATION_TOOLS = (
     EXAMPLE_CREATOR_RUN_CODE_TOOL + EXAMPLE_CREATOR_BASE_TOOLS
 )
-EXAMPLE_CREATOR_DEBUGGER_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+EXAMPLE_CREATOR_DEBUGGER_TOOLS = (
+    EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
+)
 
 EXAMPLE_CREATOR_PR_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 
@@ -285,5 +293,88 @@ NEWSCHECK_INTERVAL_HOURS = 1
 SUBREDDIT_LIST = ["singularity", "aiagents", "LLMDevs", "LLM"]
 
 # keyworks that would find in code
-TS_KEYWORDS = ["ts", "js", "async", "function", "await", "promise", "import", "export", "class", "interface", "type", "enum", "const", "let", "var", "if", "else", "switch", "case", "default", "break", "continue", "return", "throw", "try", "catch", "finally", "while", "for", "do", "while", "of", "in", "from", "as", "async", "await", "yield", "async", "await", "yield", "async", "await", "yield"]
-PYTHON_KEYWORDS = ["import", "export", "class", "interface", "type", "enum", "const", "let", "var", "if", "elif", "else:", "default", "break", "continue", "return", "throw", "try", "catch", "finally", "while", "for", "do", "while", "of", "in", "from", "as", "async", "await", "yield", "async", "await", "yield", "async", "await", "yield"]
+TS_KEYWORDS = [
+    "ts",
+    "js",
+    "async",
+    "function",
+    "await",
+    "promise",
+    "import",
+    "export",
+    "class",
+    "interface",
+    "type",
+    "enum",
+    "const",
+    "let",
+    "var",
+    "if",
+    "else",
+    "switch",
+    "case",
+    "default",
+    "break",
+    "continue",
+    "return",
+    "throw",
+    "try",
+    "catch",
+    "finally",
+    "while",
+    "for",
+    "do",
+    "while",
+    "of",
+    "in",
+    "from",
+    "as",
+    "async",
+    "await",
+    "yield",
+    "async",
+    "await",
+    "yield",
+    "async",
+    "await",
+    "yield",
+]
+PYTHON_KEYWORDS = [
+    "import",
+    "export",
+    "class",
+    "interface",
+    "type",
+    "enum",
+    "const",
+    "let",
+    "var",
+    "if",
+    "elif",
+    "else:",
+    "default",
+    "break",
+    "continue",
+    "return",
+    "throw",
+    "try",
+    "catch",
+    "finally",
+    "while",
+    "for",
+    "do",
+    "while",
+    "of",
+    "in",
+    "from",
+    "as",
+    "async",
+    "await",
+    "yield",
+    "async",
+    "await",
+    "yield",
+    "async",
+    "await",
+    "yield",
+]

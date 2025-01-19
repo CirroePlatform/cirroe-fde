@@ -43,10 +43,10 @@ class BaseActionHandler:
     def _extract_examples(self, prompt: str) -> Tuple[str, List[Dict[str, str]]]:
         """
         Extract examples from the prompt and return the base prompt and examples separately.
-        
+
         Args:
             prompt: The full system prompt
-            
+
         Returns:
             Tuple of (base prompt, list of example dictionaries)
         """
@@ -58,13 +58,17 @@ class BaseActionHandler:
         for match in re.finditer(example_pattern, prompt, re.DOTALL):
             example_num = match.group(1)
             example_content = match.group(2)
-            examples.append({
-                "type": "text",
-                "text": example_content,
-                "cache_control": {"type": "ephemeral"}
-            })
+            examples.append(
+                {
+                    "type": "text",
+                    "text": example_content,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            )
             # Replace example in base prompt with placeholder
-            base_prompt = base_prompt.replace(match.group(0), f"[Example {example_num}]")
+            base_prompt = base_prompt.replace(
+                match.group(0), f"[Example {example_num}]"
+            )
 
         return base_prompt, examples
 
@@ -88,7 +92,9 @@ class BaseActionHandler:
             Dict containing final response and collected knowledge base responses
         """
         # Load system prompt
-        system_messages = system_prompt if system_prompt and isinstance(system_prompt, List) else None
+        system_messages = (
+            system_prompt if system_prompt and isinstance(system_prompt, List) else None
+        )
         if system_messages is None:
             if system_prompt:
                 raw_sysprompt = system_prompt
@@ -108,11 +114,8 @@ class BaseActionHandler:
             base_prompt, examples = self._extract_examples(raw_sysprompt)
             base_prompt += tool_guidance
 
-
             # Create system messages with caching
-            system_messages = [
-                {"type": "text", "text": base_prompt}
-            ] + examples
+            system_messages = [{"type": "text", "text": base_prompt}] + examples
 
         # Initialize response tracking
         kb_responses = []
@@ -126,7 +129,7 @@ class BaseActionHandler:
             tools=self.tools,
             tool_choice=tool_choice,
             messages=messages,
-            temperature=0.7
+            temperature=0.7,
         )
         max_txt_completions -= 1
 
@@ -280,5 +283,5 @@ class BaseActionHandler:
                             .strip()
                         )
                         break
-                    
+
         return final_response

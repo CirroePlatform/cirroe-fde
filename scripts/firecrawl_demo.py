@@ -17,7 +17,7 @@ from include.constants import (
     FIRECRAWL_ORG_ID,
     GITHUB_API_BASE,
     MODEL_LIGHT,
-    MODEL_HEAVY
+    MODEL_HEAVY,
 )
 
 

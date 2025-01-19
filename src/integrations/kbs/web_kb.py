@@ -43,13 +43,9 @@ class WebKnowledgeBase(BaseKnowledgeBase):
             "category": "company",
             "numResults": 10,
             "contents": {
-                "text": {
-                    "includeHtmlTags": True
-                },
-                "highlights": {
-                    "query": "<string>"
-                },
-            }
+                "text": {"includeHtmlTags": True},
+                "highlights": {"query": "<string>"},
+            },
         }
 
         response = requests.post(EXA_SEARCH_URL, headers=self.headers, json=payload)
