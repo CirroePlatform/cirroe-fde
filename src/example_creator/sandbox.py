@@ -4,7 +4,8 @@ This file is used to test the example creator tools by executing code examples i
 
 from include.constants import GITHUB_API_BASE
 from e2b import Sandbox as e2b_sandbox
-from typing import Tuple, Dict
+from src.model.code import ExecutionResult
+from typing import Tuple, Dict, List
 from e2b import CommandResult
 from enum import Enum
 import subprocess
@@ -178,7 +179,7 @@ class Sandbox:
 
     def run_code_e2b(
         self, code_files: str | Dict[str, str], execution_command: str, build_command: str = None, timeout: int = 300
-    ) -> CommandResult:
+    ) -> Tuple[List[ExecutionResult], str]:
         """
         Executes code in E2B sandbox environment
 
@@ -191,8 +192,10 @@ class Sandbox:
         """
         build_success = False
         setup_success = False
+        execution_success = False
         sandbox = None
         result = None
+        err=""
         try:
             # Create E2B session
             sandbox = e2b_sandbox(
@@ -214,9 +217,9 @@ class Sandbox:
                 if dir_path:
                     sandbox.files.write(dir_path, "")
 
-                # Write the file
-                # asyncio.run(sandbox.files.write(filepath, content))
-                sandbox.files.write(filepath, content)
+                # Write the file if its not an env file, since we load that from the local env file
+                if ".env" not in filepath:
+                    sandbox.files.write(filepath, content)
 
             # Install dependencies if package.json exists
             if "package.json" in code_files:
@@ -241,7 +244,8 @@ class Sandbox:
 
             logging.info(f"Executing code with command: {execution_command}")
             result = sandbox.commands.run(execution_command, timeout=timeout)
-            logging.info(f"Execution command successful")
+            execution_success = result.exit_code == 0
+            logging.info(f"Execution command successful: {execution_success}")
 
         except Exception as e:
             logging.error(f"E2B execution error: {e}")
@@ -249,16 +253,15 @@ class Sandbox:
             if not build_success and setup_success:
                 err = f"\nBuild command failed: {build_command}\n{err}"
 
-            result = CommandResult(stdout="", stderr=err, exit_code=1, error=err)
-
         if sandbox is not None:
             sandbox.kill()
 
-        return [], result if result is not None else []
+        result = ExecutionResult(build_success=build_success, execution_success=execution_success, command_result=CommandResult(stdout="", stderr=err, exit_code=1, error=err))
+        return [result], f"Build success: {build_success}, Execution success: {execution_success}, stdout: {result.command_result.stdout}, stderr: {result.command_result.stderr}, exit_code: {result.command_result.exit_code}, error: {result.command_result.error} exit_code: {result.command_result.exit_code}"
 
     def create_github_pr(
         self,
-        code_files: str | dict,
+        code_files: Dict[str, str],
         repo_name: str,
         title: str,
         body: str,
@@ -270,7 +273,7 @@ class Sandbox:
         Creates a PR on GitHub with example code
 
         Args:
-            code_string: Example code in format from execute_creation.txt
+            code_files: Dictionary mapping filenames to code content
             repo_name: Target repository name (format: owner/repo)
             title: Title of the PR
             body: Body of the PR
@@ -283,8 +286,6 @@ class Sandbox:
         try:
             # Parse files from code string
             files = code_files
-            if isinstance(code_files, str):
-                files = self.parse_example_files(code_files)
 
             if not files:
                 raise Exception("Error: No valid files found in code string")

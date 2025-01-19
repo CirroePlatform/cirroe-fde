@@ -1,6 +1,7 @@
 from typing import Dict, List, Any, Tuple
 import openai
 import json
+from cerebras.cloud.sdk import Cerebras
 from src.core.event.poll import comment_on_pr
 import os
 import time
@@ -77,6 +78,8 @@ class NewStreamActionHandler(BaseActionHandler):
         self.plan_generation_prompt = None
         self.thinking_model = "o1-mini"
         self.thinking_client = openai.OpenAI()
+        
+        self.cerebras_client = Cerebras(api_key=os.getenv("CEREBRAS_API_KEY"))
 
     def __load_prompts(self):
         with open(self.action_classifier_prompt, "r") as f:
@@ -427,7 +430,7 @@ class NewStreamActionHandler(BaseActionHandler):
 
             return response.choices[0].message.content
 
-    def handle_code_files_pr_raise(self, last_message: str, step_messages: List[Dict[str, Any]]) -> str:
+    def handle_code_files_pr_raise(self, code_files: Dict[str, str], step_messages: List[Dict[str, Any]]) -> str:
         """
         Handle the creation of a PR with the code files.
         """
@@ -436,7 +439,7 @@ class NewStreamActionHandler(BaseActionHandler):
             step_messages,
         )
         response = self.sandbox.create_github_pr(
-            last_message,
+            code_files,
             # f"{self.org_name}/{self.product_name}", TODO: change this back after we finish mocking the demo
             "Cirr0e/firecrawl-examples",
             title,
@@ -446,6 +449,42 @@ class NewStreamActionHandler(BaseActionHandler):
         )
         
         return response
+
+    def enforce_successful_sandbox_execution(self, code_files: Dict[str, str]) -> Tuple[bool, str]:
+        """
+        Enforce the successful execution of the sandbox from the agent output, by appending a new user message to the step messages 
+        after attemtting the sandbox execution.
+        
+        Returns true if the sandbox execution was successful, false otherwise.
+        """
+        # 1. find the readme file from the code files
+        readme_content = None
+        for fpath, content in code_files.items():
+            if "README.md" in fpath:
+                readme_content = content
+                break
+
+        # 2. use a small call to figure out the build command and the execution command
+        build_command = None
+        execution_command = None
+        new_message = f"Here is the README.md file for some code repo:\n{readme_content}\n\nPlease provide the build command and the execution command for the example. Return the build command in <build_command>[actual build command]</build_command> and the execution command in <execution_command>[actual execution command]</execution_command> tags. Return NOTHING ELSE."
+        chat_completion = self.cerebras_client.chat.completions.create(
+            messages=[{"role": "user", "content": new_message}],
+            model="llama3.1-8b",
+            max_tokens=4096,
+        )
+        response = chat_completion.choices[0].message.content
+        build_command = get_content_between_tags(response, "<build_command>", "</build_command>")
+        execution_command = get_content_between_tags(response, "<execution_command>", "</execution_command>")
+
+        # 3. run the code with the build command
+        results, str_results = self.sandbox.run_code_e2b(code_files, build_command, execution_command)
+
+        # 4. if it failes, then we return stderr + stdout and return false.
+        if not results[0].build_success or not results[0].execution_success:
+            return False, str_results
+
+        return True, str_results
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 50
@@ -535,7 +574,6 @@ class NewStreamActionHandler(BaseActionHandler):
                 logging.info("No action found, continuing...")
                 continue
 
-            print(last_message)
             step_messages += [
                 {
                     "role": "user", 
@@ -543,25 +581,34 @@ class NewStreamActionHandler(BaseActionHandler):
                 }
             ]
 
-            while max_tool_calls > 0:
-                time.sleep(60)
-                step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
-                last_message = step_response["response"]
-                if ("<code_files>" in last_message):
-                    response = self.handle_code_files_pr_raise(last_message, step_messages)
+            time.sleep(60)
 
+            step_response = super().handle_action(step_messages, max_tool_calls, system_prompt=cur_prompt)
+            last_message = step_response["response"]
+
+            if "<code_files>" not in last_message or "<action>none</action>" not in last_message or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message): # Hallucination check
+                hallucination_response = self.hallucination_check(last_message, step_messages)
+                if hallucination_response:
+                    last_message = hallucination_response
+            else:
+                code_files = self.sandbox.parse_example_files(last_message)
+                if "readme.md" not in last_message.lower():
+                    readme_section = self.handle_readme_generation(last_message, step_messages)
+                    if readme_section:
+                        code_files.update(readme_section)
+
+                success, str_results = self.enforce_successful_sandbox_execution(code_files)
+
+                if success:
+                    response = self.handle_code_files_pr_raise(code_files, step_messages)
                     return {"content": response}
-
-                elif "<action>none</action>" not in last_message or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message): # Hallucination check
-                    hallucination_response = self.hallucination_check(last_message, step_messages)
-                    if hallucination_response:
-                        last_message = hallucination_response
-
-                    response = self.handle_code_files_pr_raise(last_message, step_messages)
-                    return {"content": response}
-
                 else:
-                    logging.info(f"PR was not created, here's the last message: {last_message}")
-                    break
+                    step_messages += [
+                        {
+                            "role": "user", 
+                            "content": str_results
+                        }
+                    ]
+                    continue
 
-            return {"content": "Completed news stream processing after reaching max tool calls. PR was not created."}
+            return {"content": "Completed news stream processing, PR was not created."}

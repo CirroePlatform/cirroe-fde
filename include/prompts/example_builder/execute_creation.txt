@@ -61,11 +61,11 @@ Remember, the key is to create an example with code files that is both informati
 
 Important requirements:
 1. Build an example that is very creative and showcases specific niche integrations from both {product_name} and whatever new technology you are using.
-1. Provide a way to automatically set up the environment. This can be through requirements.txt, package.json, or any other appropriate method, as long as it allows for easy configuration and execution.
-2. Include a README.md file with detailed setup instructions.
-3. You MUST provide a set of code files wrapped in <code_files> tags, at all costs.
-4. The code files you provide will be placed in a github repo directly, so make sure they are formatted correctly and have no syntax errors.
-5. You MUST test your code step by step, as described in the prompt. FAILURE TO DO SO WILL RESULT IN A CATASTROPHIC FAILURE.
+2. Provide a way to automatically set up the environment. This can be through requirements.txt, package.json, or any other appropriate method, as long as it allows for easy configuration and execution.
+3. Include a README.md file with detailed setup instructions.
+4. You MUST provide a set of code files wrapped in <code_files> tags, at all costs.
+5. The code files you provide will be placed in a github repo directly, so make sure they are formatted correctly and have no syntax errors.
+6. You MUST test your code step by step, as described in the prompt. FAILURE TO DO SO WILL RESULT IN A CATASTROPHIC FAILURE.
 
 Your final output should be a set of files that form a complete, runnable example of how to use the product with the new technology. Make sure to think through each step carefully and provide a comprehensive solution.
 
