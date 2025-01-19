@@ -14,27 +14,17 @@ from src.core.event.poll import poll_for_issues
 from src.model.code import CodePage, CodePageType
 from typing import List
 from uuid import UUID
-import asyncio
 from src.core.event.tool_actions.handle_discord_message import DiscordMessageHandler
 from src.model.issue import DiscordMessage
 from include.constants import (
-    MEM0AI_ORG_ID,
     REPO_NAME,
-    VOYAGE_CODE_EMBED,
     QDRANT_ORG_ID,
-    GRAVITL_ORG_ID,
-    MITO_DS_ORG_ID,
-    FLOWISE_ORG_ID,
-    VIDEO_DB_ORG_ID,
-    ARROYO_ORG_ID,
-    PREDIBASE_ORG_ID,
-    CHROMA_ORG_ID,
-    DAGSTER_ORG_ID,
     FIRECRAWL_ORG_ID,
 )
 
 from src.example_creator.sandbox import Sandbox
 from src.core.tools import SearchTools
+
 
 def evaluate(
     org_id: UUID,
@@ -174,30 +164,37 @@ def collect_data_for_links():
     ]
     bulk_extract_github_links(links)
 
+
 def test_sandbox():
     sandbox = Sandbox()
     # Get the repository files
-    github_kb = GithubKnowledgeBase(UUID('00000000-0000-0000-0000-000000000000'), "Cirr0e")
+    github_kb = GithubKnowledgeBase(
+        UUID("00000000-0000-0000-0000-000000000000"), "Cirr0e"
+    )
     code_pages = github_kb.get_files("firecrawl-examples")
-    
+
     # Filter for files in the research_trend_ai_agent directory
     agent_files = [
-        page for page in code_pages 
-        if page.primary_key.startswith("research_trend_ai_agent/") 
+        page
+        for page in code_pages
+        if page.primary_key.startswith("research_trend_ai_agent/")
         and page.page_type == CodePageType.CODE
     ]
-    
+
     # Create code_files dictionary
-    code_files = {
-        page.primary_key.split("/")[-1]: page.content 
-        for page in agent_files
-    }
-    
+    code_files = {page.primary_key.split("/")[-1]: page.content for page in agent_files}
+
     print(code_files)
-    
-    print(sandbox.run_code_e2b(
-        code_files, "python research_agent.py --topic 'Generative Agents in 2025'", "pip install -r requirements.txt", timeout=300
-    ))
+
+    print(
+        sandbox.run_code_e2b(
+            code_files,
+            "python research_agent.py --topic 'Generative Agents in 2025'",
+            "pip install -r requirements.txt",
+            timeout=300,
+        )
+    )
+
 
 def get_example_contents_llm_readable(repo: str):
     search_tools = SearchTools(requestor_id=FIRECRAWL_ORG_ID)
@@ -206,8 +203,7 @@ def get_example_contents_llm_readable(repo: str):
     dirs: List[CodePage] = []
     search_tools.github.fetch_contents(repo, dirs, include_dirs=True)
     example_dirs = [
-        item.primary_key for item in dirs
-        if item.page_type == CodePageType.DIRECTORY
+        item.primary_key for item in dirs if item.page_type == CodePageType.DIRECTORY
     ]
     logging.info(f"Found {len(example_dirs)} example directories")
 
@@ -215,12 +211,14 @@ def get_example_contents_llm_readable(repo: str):
         # For each example directory, fetch all its contents
         codefiles: List[CodePage] = []
         search_tools.github.fetch_contents(repo, codefiles, example_dir)
-        
+
         # Create the formatted string for this example
-        codefile_str = "\n".join([
-            f"<fpath_{codefile.primary_key}>\n{codefile.content}\n</fpath_{codefile.primary_key}>" 
-            for codefile in codefiles
-        ])
+        codefile_str = "\n".join(
+            [
+                f"<fpath_{codefile.primary_key}>\n{codefile.content}\n</fpath_{codefile.primary_key}>"
+                for codefile in codefiles
+            ]
+        )
 
         # Write to a file named after the example. Create directory if it doesn't exist
         logging.info(f"Writing to file: {example_dir}")
@@ -228,6 +226,7 @@ def get_example_contents_llm_readable(repo: str):
         output_file = f"examples/{example_dir}.txt"
         with open(output_file, "w") as f:
             f.write(codefile_str)
+
 
 async def test_webhook():
     # Read the webhook payload from file
@@ -250,20 +249,24 @@ async def test_webhook():
         "type": "http",
         "method": "POST",
         "path": "/pr_changes",
-        "headers": [(k.encode(), v.encode()) for k, v in headers.items()]
+        "headers": [(k.encode(), v.encode()) for k, v in headers.items()],
     }
-    
+
     request = Request(scope=scope)
     # Set the request body
     request._body = payload.encode()
 
     # Import and call the webhook handler
     from main import handle_pr_changes_webhook
+
     response = await handle_pr_changes_webhook(request)
     print(f"Webhook response: {response}")
 
+
 def test_diff():
-    github_kb = GithubKnowledgeBase(UUID('00000000-0000-0000-0000-000000000000'), "Cirr0e")
+    github_kb = GithubKnowledgeBase(
+        UUID("00000000-0000-0000-0000-000000000000"), "Cirr0e"
+    )
     diff = """@@ -0,0 +1,96 @@
 +import os
 +import streamlit as st
@@ -292,23 +295,14 @@ def test_diff():
 +            # 2. Targeting Google search for job listings in a specific location
 +            scraped_data = self.firecrawl.crawl(
 +                urls=[f"https://www.google.com/search?q={query.replace(\' \', \'+\')}"],"""
-    
-    original = "import os\nimport streamlit as st\nimport pandas as pd\nimport plotly.express as px\nfrom firecrawl import FirecrawlApp\nfrom dotenv import load_dotenv\n\n# Load environment variables\nload_dotenv()\n\nclass JobMarketIntelligenceAgent:\n    def __init__(self):\n        # Initialize Firecrawl App\n        self.firecrawl = FirecrawlApp(api_key=os.getenv('FIRECRAWL_API_KEY'))\n\n    def scrape_job_listings(self, job_title, locations):\n        \"\"\"\n        Scrape job listings using Firecrawl\n        \"\"\"\n        results = []\n        for location in locations:\n            query = f\"{job_title} jobs in {location}\"\n            scraped_data = self.firecrawl.crawl(\n                urls=[f\"https://www.google.com/search?q={query.replace(' ', '+')}\"],\n                params={\n                    \"extractors\": {\n                        \"mode\": \"job_listings\"\n                    }\n                }\n            )\n            results.extend(scraped_data.get('data', []))\n        \n        return results\n\n    def analyze_job_market(self, job_title, locations):\n        \"\"\"\n        Analyze job market data\n        \"\"\"\n        job_listings = self.scrape_job_listings(job_title, locations)\n        \n        # Convert to DataFrame\n        df = pd.DataFrame(job_listings)\n        \n        # Basic analysis\n        salary_data = df[df['salary'].notna()]['salary']\n        \n        return {\n            'total_listings': len(job_listings),\n            'avg_salary': salary_data.mean() if not salary_data.empty else None,\n            'salary_distribution': salary_data.describe(),\n            'job_listings': job_listings\n        }\n\ndef main():\n    st.title(\"Job Market Intelligence Agent \ud83d\udd75\ufe0f\u200d\u2642\ufe0f\ud83d\udcca\")\n    \n    # Sidebar inputs\n    st.sidebar.header(\"Job Market Search\")\n    job_title = st.sidebar.text_input(\"Job Title\", \"Data Scientist\")\n    locations = st.sidebar.multiselect(\n        \"Locations\", \n        [\"New York\", \"San Francisco\", \"Austin\", \"Seattle\", \"Boston\"],\n        default=[\"New York\", \"San Francisco\"]\n    )\n    \n    if st.sidebar.button(\"Analyze Job Market\"):\n        agent = JobMarketIntelligenceAgent()\n        \n        try:\n            market_data = agent.analyze_job_market(job_title, locations)\n            \n            # Display results\n            st.subheader(f\"Job Market Analysis for {job_title}\")\n            \n            col1, col2 = st.columns(2)\n            with col1:\n                st.metric(\"Total Job Listings\", market_data['total_listings'])\n            with col2:\n                st.metric(\"Average Salary\", \n                    f\"${market_data['avg_salary']:,.2f}\" if market_data['avg_salary'] else \"N/A\"\n                )\n            \n            # Salary Distribution\n            if market_data['salary_distribution'] is not None:\n                st.subheader(\"Salary Distribution\")\n                st.write(market_data['salary_distribution'])\n            \n            # Job Listings Table\n            st.subheader(\"Job Listings\")\n            st.dataframe(market_data['job_listings'])\n        \n        except Exception as e:\n            st.error(f\"Error analyzing job market: {e}\")\n\nif __name__ == \"__main__\":\n    main()"
-    
-    original = str(original.encode('utf-8', errors='ignore'))
-    diff = str(diff.encode('utf-8', errors='ignore'))
-    
+
+    original = 'import os\nimport streamlit as st\nimport pandas as pd\nimport plotly.express as px\nfrom firecrawl import FirecrawlApp\nfrom dotenv import load_dotenv\n\n# Load environment variables\nload_dotenv()\n\nclass JobMarketIntelligenceAgent:\n    def __init__(self):\n        # Initialize Firecrawl App\n        self.firecrawl = FirecrawlApp(api_key=os.getenv(\'FIRECRAWL_API_KEY\'))\n\n    def scrape_job_listings(self, job_title, locations):\n        """\n        Scrape job listings using Firecrawl\n        """\n        results = []\n        for location in locations:\n            query = f"{job_title} jobs in {location}"\n            scraped_data = self.firecrawl.crawl(\n                urls=[f"https://www.google.com/search?q={query.replace(\' \', \'+\')}"],\n                params={\n                    "extractors": {\n                        "mode": "job_listings"\n                    }\n                }\n            )\n            results.extend(scraped_data.get(\'data\', []))\n        \n        return results\n\n    def analyze_job_market(self, job_title, locations):\n        """\n        Analyze job market data\n        """\n        job_listings = self.scrape_job_listings(job_title, locations)\n        \n        # Convert to DataFrame\n        df = pd.DataFrame(job_listings)\n        \n        # Basic analysis\n        salary_data = df[df[\'salary\'].notna()][\'salary\']\n        \n        return {\n            \'total_listings\': len(job_listings),\n            \'avg_salary\': salary_data.mean() if not salary_data.empty else None,\n            \'salary_distribution\': salary_data.describe(),\n            \'job_listings\': job_listings\n        }\n\ndef main():\n    st.title("Job Market Intelligence Agent \ud83d\udd75\ufe0f\u200d\u2642\ufe0f\ud83d\udcca")\n    \n    # Sidebar inputs\n    st.sidebar.header("Job Market Search")\n    job_title = st.sidebar.text_input("Job Title", "Data Scientist")\n    locations = st.sidebar.multiselect(\n        "Locations", \n        ["New York", "San Francisco", "Austin", "Seattle", "Boston"],\n        default=["New York", "San Francisco"]\n    )\n    \n    if st.sidebar.button("Analyze Job Market"):\n        agent = JobMarketIntelligenceAgent()\n        \n        try:\n            market_data = agent.analyze_job_market(job_title, locations)\n            \n            # Display results\n            st.subheader(f"Job Market Analysis for {job_title}")\n            \n            col1, col2 = st.columns(2)\n            with col1:\n                st.metric("Total Job Listings", market_data[\'total_listings\'])\n            with col2:\n                st.metric("Average Salary", \n                    f"${market_data[\'avg_salary\']:,.2f}" if market_data[\'avg_salary\'] else "N/A"\n                )\n            \n            # Salary Distribution\n            if market_data[\'salary_distribution\'] is not None:\n                st.subheader("Salary Distribution")\n                st.write(market_data[\'salary_distribution\'])\n            \n            # Job Listings Table\n            st.subheader("Job Listings")\n            st.dataframe(market_data[\'job_listings\'])\n        \n        except Exception as e:\n            st.error(f"Error analyzing job market: {e}")\n\nif __name__ == "__main__":\n    main()'
+
+    original = str(original.encode("utf-8", errors="ignore"))
+    diff = str(diff.encode("utf-8", errors="ignore"))
+
     print(github_kb.apply_diff(original, diff))
 
-def test_debugger():
-    from scripts.firecrawl_demo import get_handler
-    handler = get_handler()
-    
-    with open("include/cache/code_files_cache.json", "r") as f:
-        import json
-        code_files = json.load(f)
-
-    handler.debug_example(json.dumps(code_files))
 
 if __name__ == "__main__":
-    poll_wrapper()
+    test_sandbox()

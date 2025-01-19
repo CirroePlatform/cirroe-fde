@@ -1,4 +1,5 @@
 from src.core.event.tool_actions.handle_newstream_action import NewStreamActionHandler
+from src.core.event.tool_actions.handle_pr_feedback import PrFeedbackHandler
 from src.example_creator.sandbox import Sandbox
 from include.utils import get_latest_version
 from src.example_creator.crawl import Crawl
@@ -17,9 +18,10 @@ from include.constants import (
     FIRECRAWL_ORG_ID,
     GITHUB_API_BASE,
     MODEL_LIGHT,
-    MODEL_HEAVY,
+    EXAMPLE_CREATOR_PR_TOOLS,
 )
 
+ns_handler = None
 
 def get_firecrawl_existing_examples() -> Tuple[str, List[str]]:
     """Get list of example filenames from the firecrawl/examples directory on GitHub
@@ -47,9 +49,36 @@ def get_firecrawl_existing_examples() -> Tuple[str, List[str]]:
 
     return ", ".join(example_files), example_files
 
+def get_pr_feedback_handler() -> PrFeedbackHandler:
+    """
+    Get the PR feedback handler
+    """
+    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    search_tools = SearchTools(requestor_id=FIRECRAWL_ORG_ID)
+    sandbox = Sandbox()
+
+    tools_map = {
+        "search_web": search_tools.web_kb.query,
+        "search_code": search_tools.github.query,
+        "search_documentation": search_tools.documentation_kb.query,
+        "run_code_e2b": sandbox.run_code_e2b,
+        "get_latest_version": get_latest_version,
+    }
+
+    return PrFeedbackHandler(
+        client=client,
+        tools=EXAMPLE_CREATOR_PR_TOOLS,
+        tools_map=tools_map,
+        model=MODEL_LIGHT,
+    )
 
 def get_handler() -> NewStreamActionHandler:
-    """Initialize and return the NewStreamActionHandler"""
+    """
+    Initialize and return the NewStreamActionHandler
+    """
+    if ns_handler is not None:
+        return ns_handler
+
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     search_tools = SearchTools(requestor_id=FIRECRAWL_ORG_ID)
     sandbox = Sandbox()
@@ -65,7 +94,7 @@ def get_handler() -> NewStreamActionHandler:
     }
 
     # Initialize handler with required prompts and tools
-    handler = NewStreamActionHandler(
+    ns_handler = NewStreamActionHandler(
         client=client,
         tools=EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
         tools_map=tools_map,
@@ -78,7 +107,7 @@ def get_handler() -> NewStreamActionHandler:
         org_id=FIRECRAWL_ORG_ID,
     )
 
-    return handler
+    return ns_handler
 
 
 def get_crawler(debug: bool = False) -> Crawl:

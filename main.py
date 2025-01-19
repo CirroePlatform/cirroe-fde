@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
-from scripts.firecrawl_demo import get_handler
+from scripts.firecrawl_demo import get_pr_feedback_handler
 from scripts.firecrawl_demo import main
 from pydantic import BaseModel
 import traceback
@@ -56,7 +56,7 @@ async def handle_pr_changes_webhook(request: Request):
         if payload["action"] in ACTIONS and "pull_request" in payload:
 
             # Add logic to handle comments on specific spots
-            handler = get_handler()
+            handler = get_pr_feedback_handler()
             response = handler.handle_pr_feedback(payload)
             logging.info(f"Response: {response}")
 
