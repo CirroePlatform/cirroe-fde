@@ -1,5 +1,6 @@
 from typing import Dict, List, Any, Tuple
 import openai
+from pydantic import BaseModel
 import json
 from cerebras.cloud.sdk import Cerebras
 from src.core.event.poll import comment_on_pr
@@ -340,17 +341,48 @@ class NewStreamActionHandler(BaseActionHandler):
         """
         Populates the code files stepwise, by calling the sandbox and testing the code files.
         """
+        class Feature(BaseModel):
+            """
+            A class to represent a feature to implement.
+            """
+            feature_description: str
+            files_to_edit: List[str]
+            success_command: str
+            success_criteria: str
+        
         # 1. First, based on the plan, we need to figure out implementation steps. i.e. which functions to 
         # implement in which batches, and how to test some very simple cases for them.
-        
+        def __get_feature_implementation_list() -> List[Feature]:
+            """
+            Generate the list of features to implement, where each feature has the following:
+                1. What the specific step will implement, at a high level descriptions
+                2. which files and functions to edit
+                3. the success critereon for the step being complete, i.e. a specific command to run to test the success and the output we should see.
+            """
+            return []
+
+        features = __get_feature_implementation_list()
+
         # 2. Next, we need to iterate through each step, populate the relevant code file, and trigger the 
         # test in the sandbox appropriately.
+        code_changelog = [code_files]
+        for feature in features:
+            current_code_files = code_changelog[-1]
+
+            while True:
+                # a) use tools call to get the newly implemented functions
+                feature_description = feature.feature_description
+
+                # b) edit the current_code_files with the new functions, and setup the sandbox
+
+                # c) use the success command + criteria to assert whether we should continue to the next feature or not.
+
+                # d) TODO: not sure if this is a great idea or not, but if the model outputs a 'revert' tag, then we revert the code files to the last snapshot and let it try with the existing context.
+                pass
+
+            code_changelog += [current_code_files]
         
-        # 3. Once the test is complete, we need to append the results to the step messages and continue.
-        
-        # 4. Once the entire codefile generation is complete, we need to return the code files.
-        
-        return {}
+        return code_changelog[-1]
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 50
@@ -433,42 +465,3 @@ class NewStreamActionHandler(BaseActionHandler):
             response = self.handle_code_files_pr_raise(code_files, step_messages)
 
             return {"content": response}
-
-            # step_response = super().handle_action(
-            #     step_messages, max_tool_calls, system_prompt=cur_prompt
-            # )
-            # last_message = step_response["response"]
-
-            # if (
-            #     "<code_files>" not in last_message
-            #     or "<action>none</action>" not in last_message
-            #     or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message)
-            # ):  # Hallucination check
-            #     hallucination_response = self.hallucination_check(
-            #         last_message, step_messages
-            #     )
-            #     if hallucination_response:
-            #         last_message = hallucination_response
-            # else:
-            #     code_files = self.sandbox.parse_example_files(last_message)
-            #     if "readme.md" not in last_message.lower():
-            #         readme_section = self.handle_readme_generation(
-            #             last_message, step_messages
-            #         )
-            #         if readme_section:
-            #             code_files.update(readme_section)
-
-            #     success, str_results = self.enforce_successful_sandbox_execution(
-            #         code_files
-            #     )
-
-            #     if success:
-            #         response = self.handle_code_files_pr_raise(
-            #             code_files, step_messages
-            #         )
-            #         return {"content": response}
-            #     else:
-            #         step_messages += [{"role": "user", "content": str_results}]
-            #         continue
-
-            # return {"content": "Completed news stream processing, PR was not created."}
