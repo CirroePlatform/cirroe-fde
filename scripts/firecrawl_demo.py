@@ -9,7 +9,7 @@ from typing import List, Tuple
 import anthropic
 import requests
 import logging
-import click
+
 import os
 
 from include.constants import (
@@ -76,6 +76,7 @@ def get_handler() -> NewStreamActionHandler:
     """
     Initialize and return the NewStreamActionHandler
     """
+    global ns_handler
     if ns_handler is not None:
         return ns_handler
 

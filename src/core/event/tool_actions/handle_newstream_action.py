@@ -158,7 +158,9 @@ class NewStreamActionHandler(BaseActionHandler):
         return title, description, commit_msg, branch_name
 
     def _handle_action_case(self, action_type, prompt, tools, step_messages):
-        """Helper function to handle create/modify action cases"""
+        """
+        Helper function to handle create/modify action cases
+        """
         self.tools = tools
         cur_prompt = prompt
         if step_messages[-1]["role"] != "user":
@@ -188,13 +190,15 @@ class NewStreamActionHandler(BaseActionHandler):
             + [
                 {
                     "role": "user",
-                    "content": f"Based on these code files, and previous messages, generate a README.md file:\n{code_files}",
+                    "content": f"Based on these code files, and previous messages, generate a README.md file if it doesn't already exist. If it does, just return <false>:\n{code_files}",
                 }
             ],
         )
 
         # Extract README content between fpath tags
         readme_content = readme_response.content[0].text
+        if "<false>" in readme_content.lower():
+            return None
 
         # Find any README.md file path tag
         readme_tag_start = None
@@ -215,30 +219,6 @@ class NewStreamActionHandler(BaseActionHandler):
             return readme_section
 
         return None
-
-    def hallucination_check(
-        self, last_message: str, step_messages: List[Dict[str, Any]]
-    ) -> str | None:
-        """
-        If the last message has some code keywords but no tags, we need to enforce the tag creation.
-        """
-        if PYTHON_KEYWORDS or TS_KEYWORDS in last_message:
-            step_messages += [
-                {
-                    "role": "user",
-                    "content": f"Looks like your message contains code, but I don't see the <code_files> tag or the <fpath_[actual file path]> tags anywhere, can you wrap your codefiles in those tags if you haven't already? If there are no codefiles, that's ok JUST return false and NOTHING ELSE.",
-                }
-            ]
-
-            response = self.client.messages.create(
-                model=self.model, max_tokens=8192, messages=step_messages
-            )
-
-            return (
-                response.content[0].text.lower()
-                if "false" not in response.content[0].text.lower()
-                else None
-            )
 
     def generate_design_and_implementation_plan(self, last_message: str) -> str:
         """
@@ -323,6 +303,55 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return True, str_results
 
+    def handle_env_setup(self, code_files: Dict[str, str]):
+        """
+        Handle the env setup for the workflow. alters the code files to include the env setup.
+        """
+        # 1. Generate the requirements.txt or package.json file, based on the code files + headers.
+        # 2. Given the setup requirements or package.json, append it/replace it in the code files.
+        # 3. copy the code files to the sandbox and run a build command.
+        # 4. Try this in a loop with the debug tools until success. Success means we successfully build the code, and have a requirements.txt or package.json file.
+        pass
+
+    def workflow_primer(self, last_message: str, step_messages: List[Dict[str, Any]]) -> Dict[str, str]:
+        """
+        Crafts the plan for the workflow, and returns the code files. appends the plan to the step messages.
+        
+        Also, handles the env setup for the workflow.
+        """
+        # 1. Generate the design and implementation plan
+        plan = self.generate_design_and_implementation_plan(last_message)
+        step_messages += [
+            {
+                "role": "user",
+                "content": plan,
+            }
+        ]
+
+        # 2. get the code files from the plan
+        code_files = self.sandbox.parse_example_files(plan)
+
+        # 3. handle the env setup for the workflow
+        self.handle_env_setup(code_files)
+
+        return code_files
+
+    def populate_code_files_stepwise(self, step_messages: List[Dict[str, Any]], code_files: Dict[str, str]) -> Dict[str, str]:
+        """
+        Populates the code files stepwise, by calling the sandbox and testing the code files.
+        """
+        # 1. First, based on the plan, we need to figure out implementation steps. i.e. which functions to 
+        # implement in which batches, and how to test some very simple cases for them.
+        
+        # 2. Next, we need to iterate through each step, populate the relevant code file, and trigger the 
+        # test in the sandbox appropriately.
+        
+        # 3. Once the test is complete, we need to append the results to the step messages and continue.
+        
+        # 4. Once the entire codefile generation is complete, we need to return the code files.
+        
+        return {}
+
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 50
     ) -> Dict[str, Any]:
@@ -386,52 +415,60 @@ class NewStreamActionHandler(BaseActionHandler):
                 logging.info("No action found, continuing...")
                 continue
 
-            step_messages += [
-                {
-                    "role": "user",
-                    "content": self.generate_design_and_implementation_plan(
-                        last_message
-                    ),
-                }
-            ]
-
             time.sleep(60)
+            code_files = self.workflow_primer(last_message, step_messages)
+            # At this point, the code files are good to go, and the build command is set.
+            # If in the future the env needs to change, i.e. the specific packages, we can
+            # create 2 new tools, an "add_package" tool, and a "remove_package" tool.
 
-            step_response = super().handle_action(
-                step_messages, max_tool_calls, system_prompt=cur_prompt
-            )
-            last_message = step_response["response"]
+            code_files = self.populate_code_files_stepwise(step_messages, code_files)
 
-            if (
-                "<code_files>" not in last_message
-                or "<action>none</action>" not in last_message
-                or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message)
-            ):  # Hallucination check
-                hallucination_response = self.hallucination_check(
-                    last_message, step_messages
-                )
-                if hallucination_response:
-                    last_message = hallucination_response
-            else:
-                code_files = self.sandbox.parse_example_files(last_message)
-                if "readme.md" not in last_message.lower():
-                    readme_section = self.handle_readme_generation(
-                        last_message, step_messages
-                    )
-                    if readme_section:
-                        code_files.update(readme_section)
+            # At this point, we assume that only the readme is missing, and the pr raise. 
+            # Only thing left is to raise the PR.
+            readme_path_to_content = self.handle_readme_generation(code_files, step_messages)
+            if readme_path_to_content:
+                code_files.update(readme_path_to_content)
 
-                success, str_results = self.enforce_successful_sandbox_execution(
-                    code_files
-                )
+            # raise the pr
+            response = self.handle_code_files_pr_raise(code_files, step_messages)
 
-                if success:
-                    response = self.handle_code_files_pr_raise(
-                        code_files, step_messages
-                    )
-                    return {"content": response}
-                else:
-                    step_messages += [{"role": "user", "content": str_results}]
-                    continue
+            return {"content": response}
 
-            return {"content": "Completed news stream processing, PR was not created."}
+            # step_response = super().handle_action(
+            #     step_messages, max_tool_calls, system_prompt=cur_prompt
+            # )
+            # last_message = step_response["response"]
+
+            # if (
+            #     "<code_files>" not in last_message
+            #     or "<action>none</action>" not in last_message
+            #     or (PYTHON_KEYWORDS or TS_KEYWORDS in last_message)
+            # ):  # Hallucination check
+            #     hallucination_response = self.hallucination_check(
+            #         last_message, step_messages
+            #     )
+            #     if hallucination_response:
+            #         last_message = hallucination_response
+            # else:
+            #     code_files = self.sandbox.parse_example_files(last_message)
+            #     if "readme.md" not in last_message.lower():
+            #         readme_section = self.handle_readme_generation(
+            #             last_message, step_messages
+            #         )
+            #         if readme_section:
+            #             code_files.update(readme_section)
+
+            #     success, str_results = self.enforce_successful_sandbox_execution(
+            #         code_files
+            #     )
+
+            #     if success:
+            #         response = self.handle_code_files_pr_raise(
+            #             code_files, step_messages
+            #         )
+            #         return {"content": response}
+            #     else:
+            #         step_messages += [{"role": "user", "content": str_results}]
+            #         continue
+
+            # return {"content": "Completed news stream processing, PR was not created."}

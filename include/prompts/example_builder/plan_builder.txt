@@ -2,13 +2,36 @@
 
 Your job is to create a design and implementation plan for implementing a new coding example, given a few news sources as well as a decision on whether we should 'create' a new example or 'modify' an existing one.
 
+Here is the action to take, and the reasoning behind it:
+<action_context>
+{action_context}
+</action_context>
+
 Generate a design and implementation document that outlines the following sections:
 1. The codng language to use, based on the news sources. Restrict to either Python or Typescript.
 2. How this example will integrate the existing codebase with the relevant news sources.
-3. The code file structure for the example
-4. The various function headers and descriptions for the example
+3. The code file structure for the example, as well as module imports for each file.
+4. The various function headers and descriptions for the example.
 5. How we will test this example incrementally, given that we have a tool that can run or build the example in a sandbox environment.
 
-<action_context>
-{{action_context}}
-</action_context>
+Remember, output the code file structure and function headers in <code_files> tags, with each file in seperate <file_path> tags. See below for an example.
+
+<code_files>
+
+<fpath_examples/some_file.py>
+
+[function header 1 and description]
+
+[function header 2 and description]
+...
+</fpath_examples/some_file.py>
+
+<fpath_examples/some_other_file.py>
+
+[function header 1 and description]
+
+[function header 2 and description]
+...
+</fpath_examples/some_other_file.py>
+
+</code_files>
