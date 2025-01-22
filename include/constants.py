@@ -198,7 +198,7 @@ EXAMPLE_CREATOR_RUN_CODE_TOOL = [
                 },
                 "execution_command": {
                     "type": "string",
-                    "description": "The command to only execute the code, without building it",
+                    "description": "The command to only execute or build the code",
                 },
                 "build_command": {
                     "type": "string",
@@ -258,7 +258,6 @@ EXAMPLE_CREATOR_CREATION_TOOLS = (
 EXAMPLE_CREATOR_DEBUGGER_TOOLS = (
     EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 )
-
 EXAMPLE_CREATOR_PR_TOOLS = EXAMPLE_CREATOR_BASE_TOOLS + EXAMPLE_CREATOR_RUN_CODE_TOOL
 
 # Embedding models

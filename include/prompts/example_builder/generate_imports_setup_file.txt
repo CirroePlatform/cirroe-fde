@@ -1,0 +1,17 @@
+{preamble}
+
+You will be provided with a list of code files, function headers, and a design plan. You will need to generate a requirements.txt or package.json file, and a build command that will be used to install the dependencies for the code files. 
+
+Make sure to generate a requirements.txt if the code files are python, and a package.json if the code files are in typescript. Output the file within the tags <requirements.txt>[setup file path]</requirements.txt> (or <package.json>[setup file path]</package.json> if typescript), and the build command within the tags <buildcommand>[build command]</buildcommand>.
+
+The code files are:
+<code_files>
+{code_files}
+</code_files>
+
+The design plan is:
+<plan>
+{plan}
+</plan>
+
+IMPORTANT NOTE: Use the tools at your disposal to test whether your setup files are working well in conjunction with the code files. Ensure all imported functions from libraries are called correctly, and with best practices.
