@@ -102,17 +102,8 @@ class BaseActionHandler:
                 with open(self.system_prompt_file, "r", encoding="utf8") as fp:
                     raw_sysprompt = fp.read()
 
-            tool_guidance = """
-            IMPORTANT: Before providing a final response, carefully consider if any of the available tools would help gather necessary information:
-            1. Use execute_search to find relevant code snippets, documentation, previous issues, or web search results, in order to find relevant code snippets of the framework to determine how to implement the solution.
-            2. Use get_latest_version to check package compatibility between the framework and the new technology.
-            3. Use run_code_e2b to validate solutions and ensure they work, each step of the way, both in the setup/build and execution process.
-            Always explain your reasoning before using tools or providing final answers.
-            """
-
             # Extract base prompt and examples
             base_prompt, examples = self._extract_examples(raw_sysprompt)
-            base_prompt += tool_guidance
 
             # Create system messages with caching
             system_messages = [{"type": "text", "text": base_prompt}] + examples

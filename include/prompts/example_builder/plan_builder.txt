@@ -13,17 +13,3 @@ Generate a design and implementation document that outlines the following sectio
 3. The code file structure for the example, as well as module imports for each file.
 4. The various function headers and descriptions for the example.
 5. How we will test this example incrementally, given that we have a tool that can run or build the example in a sandbox environment.
-
-Remember, output the code file structure and function headers in <code_files> tags, with each file in seperate <file_[path_to_file]> tags. See below for an example.
-
-<code_files>
-
-<fpath_examples/kubernetes/main.py>
-[function headers and descriptions of the main.py file]
-</fpath_examples/kubernetes/main.py>
-
-<fpath_examples/kubernetes/helper.py>
-[function headers and descriptions of the helper.py file]
-</fpath_examples/kubernetes/helper.py>
-
-</code_files>

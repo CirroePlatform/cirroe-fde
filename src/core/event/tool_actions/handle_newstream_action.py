@@ -10,7 +10,7 @@ import logging
 from .handle_base_action import BaseActionHandler
 from include.constants import (
     EXAMPLE_CREATOR_CREATION_TOOLS,
-    EXAMPLE_CREATOR_DEBUGGER_TOOLS,
+    EXAMPLE_CREATOR_RUN_CODE_TOOL,
     EXAMPLE_CREATOR_MODIFICATION_TOOLS,
     EXAMPLE_CREATOR_CLASSIFIER_TOOLS,
     EXAMPLE_CREATOR_PR_TOOLS,
@@ -304,15 +304,80 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return True, str_results
 
-    def handle_env_setup(self, code_files: Dict[str, str]):
+    def handle_env_setup(self, plan: str) -> Dict[str, str]:
         """
-        Handle the env setup for the workflow. alters the code files to include the env setup.
+        Handle the env setup for the workflow. Returns whatever setup files are generated.
         """
+
+        def __parse_setup_file_and_build_command(response: str) -> Tuple[str, str, str]:
+            """
+            Parse the response to get the setup file and the build command.
+            
+            returns the path, content, and build command.
+            """
+            path = None
+            content = None
+            if "<requirements.txt>" in response:
+                path = "requirements.txt"
+                content = get_content_between_tags(response, "<requirements.txt>", "</requirements.txt>")
+            elif "<package.json>" in response:
+                path = "package.json"
+                content = get_content_between_tags(response, "<package.json>", "</package.json>")
+            else:
+                raise ValueError("No setup file found in the response")
+            build_command = get_content_between_tags(response, "<buildcommand>", "</buildcommand>")
+
+            return path, content, build_command
+
         # 1. Generate the requirements.txt or package.json file, based on the code files + headers.
+        with open("include/prompts/example_builder/generate_imports_setup_file.txt", "r") as f:
+            generate_imports_setup_file_prompt = f.read()
+            generate_imports_setup_file_prompt = format_prompt(
+                generate_imports_setup_file_prompt,
+                preamble=self.preamble,
+                plan=plan,
+            )
+
         # 2. Given the setup requirements or package.json, append it/replace it in the code files.
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": generate_imports_setup_file_prompt}],
+        )
+
         # 3. copy the code files to the sandbox and run a build command.
-        # 4. Try this in a loop with the debug tools until success. Success means we successfully build the code, and have a requirements.txt or package.json file.
-        pass
+        path, content, build_command = __parse_setup_file_and_build_command(response.content[0].text)
+        code_files = {path: content}
+        exec_results, response = self.sandbox.run_code_e2b(code_files, build_command)
+        messages = []
+        while not exec_results[0].execution_success:
+            messages += [
+                {
+                    "role": "user",
+                    "content": f"""Here is the build command:
+<build_command>{build_command}</build_command>
+
+This is the output from the last sandbox run:
+<sandbox_output>{response}</sandbox_output>
+
+Use this to modify the {path} file such that the build command succeeds."""
+                }
+            ]
+
+            cached_tools = self.tools
+            self.tools = EXAMPLE_CREATOR_RUN_CODE_TOOL
+            response = super().handle_action(
+                messages,
+                max_txt_completions=10,
+                system_prompt=generate_imports_setup_file_prompt,
+            )["response"]
+            self.tools = cached_tools
+
+            path, content, build_command = __parse_setup_file_and_build_command(response)
+            code_files = {path: content}
+            exec_results, response = self.sandbox.run_code_e2b(code_files, build_command)
+
+        return code_files
 
     def workflow_primer(self, last_message: str, step_messages: List[Dict[str, Any]]) -> Dict[str, str]:
         """
@@ -329,13 +394,10 @@ class NewStreamActionHandler(BaseActionHandler):
             }
         ]
 
-        # 2. get the code files from the plan
-        code_files = self.sandbox.parse_example_files(plan)
-
         # 3. handle the env setup for the workflow
-        self.handle_env_setup(code_files)
+        setup_files = self.handle_env_setup(plan)
 
-        return code_files
+        return setup_files
 
     def populate_code_files_stepwise(self, step_messages: List[Dict[str, Any]], code_files: Dict[str, str]) -> Dict[str, str]:
         """
