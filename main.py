@@ -45,12 +45,12 @@ if __name__ == "__main__":
 
     # Initialize bot
     bot = CirroeDiscordBot(intents=intents, org_id=VIDEO_DB_ORG_ID)
-    
-    # Add the periodic indexing task to the bot's event loop
-    @bot.event
-    async def on_ready():
-        logging.info(f"Logged in as {bot.user.name}")
-        bot.loop.create_task(periodic_index())
+
+    # Add the periodic indexing task to the bot's event loop (removed for now until we solve the zilliz issue)
+    # @bot.event
+    # async def on_ready():
+    #     logging.info(f"Logged in as {bot.user.name}")
+    #     bot.loop.create_task(periodic_index())
 
     # Run the bot
     bot.run(os.getenv("DISCORD_BOT_TOKEN"))
