@@ -380,7 +380,7 @@ Use this to modify the {path} file such that the build command succeeds."""
         return code_files, build_command
 
     @file_cache()
-    def workflow_primer(self, last_message: str, step_messages: List[Dict[str, Any]]) -> Tuple[Dict[str, str], str, str]:
+    def workflow_primer(self, last_message: str) -> Tuple[Dict[str, str], str, str]:
         """
         Crafts the plan for the workflow, and returns the code files. appends the plan to the step messages.
         
@@ -388,12 +388,6 @@ Use this to modify the {path} file such that the build command succeeds."""
         """
         # 1. Generate the design and implementation plan
         plan = self.generate_design_and_implementation_plan(last_message)
-        step_messages += [
-            {
-                "role": "user",
-                "content": plan,
-            }
-        ]
 
         # 2. handle the env setup for the workflow
         setup_files, build_command = self.handle_env_setup(plan)
@@ -406,7 +400,7 @@ Use this to modify the {path} file such that the build command succeeds."""
         """
         class Stage(BaseModel):
             """
-            A class to represent a feature to implement.
+            A class to represent a stage to implement.
             """
             stage_description: str
             files_to_edit: List[str]
@@ -415,9 +409,10 @@ Use this to modify the {path} file such that the build command succeeds."""
 
         # 1. First, based on the plan, we need to figure out implementation steps. i.e. which functions to 
         # implement in which batches, and how to test some very simple cases for them.
-        def __get_feature_implementation_list() -> List[Stage]:
+        @file_cache()
+        def __get_stage_implementation_list(step_messages: List[Dict[str, Any]], code_files: Dict[str, str], build_command: str) -> List[Stage] | List[Dict[str, Any]]:
             """
-            Generate the list of features to implement, where each feature has the following:
+            Generate the list of stages to implement, where each stage has the following:
                 1. What the specific step will implement, at a high level descriptions
                 2. Which files and functions to edit
                 3. The success critereon for the step being complete, i.e. a specific command to run to test the success and the output we should see.
@@ -428,20 +423,23 @@ Use this to modify the {path} file such that the build command succeeds."""
                 prompt = format_prompt(
                     prompt,
                     preamble=self.preamble,
+                    code_files=json.dumps(code_files),
+                    build_command=build_command,
                 )
 
-            # 2. Call the model and get the feature list
+            # 2. Call the model and get the stage list
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=4096,
                 messages=step_messages + [{"role": "user", "content": prompt}],
             )
-            step_messages += {"role": "assistant", "content": response.content[0].text}
+            response_text = response.content[0].text
+            step_messages += [{"role": "assistant", "content": response_text}]
 
-            # 3. Load each one into the feature class
-            features = []
+            # 3. Load each one into the stage class
+            stages = []
             stage_pattern = r"<stage_\d+>(.*?)</stage_\d+>"
-            stage_matches = re.findall(stage_pattern, response, re.DOTALL)
+            stage_matches = re.findall(stage_pattern, response_text, re.DOTALL)
 
             for stage_content in stage_matches:
                 desc = get_content_between_tags(stage_content, "<stage_description>", "</stage_description>")
@@ -457,26 +455,28 @@ Use this to modify the {path} file such that the build command succeeds."""
                     success_command=success_cmd,
                     success_criteria=success_crit
                 )
-                features.append(stage)
+                stages.append(stage)
 
-            # 4. Return the list of features
-            return features
+            # 4. Return the list of stagess
+            return stages if DISABLE_CACHE else [stage.model_dump() for stage in stages]
 
-        features = __get_feature_implementation_list()
+        stages = __get_stage_implementation_list(step_messages, code_files, build_command)
+        if not isinstance(stages, Stage):
+            stages = [Stage(**stage) for stage in stages]
 
         # 2. Next, we need to iterate through each step, populate the relevant code file, and trigger the 
         # test in the sandbox appropriately.
         code_changelog = [code_files]
-        for feature in features:
+        for stage in stages:
             current_code_files = code_changelog[-1]
 
             while True:
                 # a) use tools call to get the newly implemented functions
-                feature_description = feature.feature_description
+                stage_description = stage.stage_description
 
                 # b) edit the current_code_files with the new functions, and setup the sandbox
 
-                # c) use the success command + criteria to assert whether we should continue to the next feature or not.
+                # c) use the success command + criteria to assert whether we should continue to the next stage or not.
 
                 # d) TODO: not sure if this is a great idea or not, but if the model outputs a 'revert' tag, then we revert the code files to the last snapshot and let it try with the existing context.
                 pass
@@ -558,11 +558,8 @@ Use this to modify the {path} file such that the build command succeeds."""
         self.__load_prompts()
 
         news_values = list(news_stream.values())
-        
         # If we're in debug mode, we don't want to shuffle the stream.
-        if DISABLE_CACHE:
-            random.shuffle(news_values)
-
+        random.shuffle(news_values) if DISABLE_CACHE else None
         news_string = "\n".join([news.model_dump_json() for news in news_values])
         step_size = len(news_string) // 3
         self.tools = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
@@ -574,8 +571,14 @@ Use this to modify the {path} file such that the build command succeeds."""
             if action == "none":
                 continue
 
-            time.sleep(60)
-            setup_code_files, build_command = self.workflow_primer(last_message, step_messages)
+            time.sleep(60) if DISABLE_CACHE else None
+            setup_code_files, build_command, plan = self.workflow_primer(last_message)
+            step_messages += [
+                {
+                    "role": "user",
+                    "content": plan,
+                }
+            ]
             # At this point, the code files are good to go, and the build command is set.
             # If in the future the env needs to change, i.e. the specific packages, we can
             # create 2 new tools, an "add_package" tool, and a "remove_package" tool.

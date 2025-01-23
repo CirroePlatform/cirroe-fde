@@ -10,6 +10,12 @@ success_command (str): A command to run over the code to test the success of the
 
 success_criteria (str): A description of the success criteria for the stage, i.e. what the output should be when running the success command.
 
+Here are some preliminary files that have been created that are successfully built with the command `{build_command}`:
+
+<code_files>
+{code_files}
+</code_files>
+
 Please output the list of stages in tags, with each stage being a tag. Below you can find an example of a list of stages.
 
 <stage_1>
