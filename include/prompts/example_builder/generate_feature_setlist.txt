@@ -1,0 +1,35 @@
+{preamble}
+
+Your job is to generate a list of stages based on the design plan provided in the context. The point of each stage is to implement a simple set of basic functionality for the example, based on the provided files and headers from the design plan. You should shoot for a list of about 5-10 features. Each stage should have the following:
+
+stage_description (str): A high level description of what this stage will implement correctly
+
+files_to_edit (List[str]): A list of files that will be edited in this stage.
+
+success_command (str): A command to run over the code to test the success of the stage.
+
+success_criteria (str): A description of the success criteria for the stage, i.e. what the output should be when running the success command.
+
+Please output the list of stages in tags, with each stage being a tag. Below you can find an example of a list of stages.
+
+<stage_1>
+    <stage_description>
+    [the high level description]
+    </stage_description>
+
+    <files_to_edit>
+    [file_to_edit_1, file_to_edit_2, ...]
+    </files_to_edit>
+
+    <success_command>
+    [the actual success command]
+    </success_command>
+
+    <success_criteria>
+    [The description of the success command]
+    </success_criteria>
+</stage_1>
+
+<stage_2>
+// follow the same format for stage 2 and beyond
+</stage_2>

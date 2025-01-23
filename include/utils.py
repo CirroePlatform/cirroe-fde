@@ -10,6 +10,8 @@ import re
 import httpx
 import base64
 
+
+
 load_dotenv()
 
 

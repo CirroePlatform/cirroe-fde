@@ -5,7 +5,6 @@ from pydantic import BaseModel
 import traceback
 import logging
 import hashlib
-import uvicorn
 import json
 import hmac
 

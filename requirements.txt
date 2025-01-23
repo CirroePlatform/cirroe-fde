@@ -24,3 +24,4 @@ voyageai
 praw==7.7.1  # Reddit API wrapper
 e2b
 uvicorn
+loguru

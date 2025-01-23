@@ -4,6 +4,7 @@ Crawl for user sentiment on exmaples to create
 
 import time
 from typing import List, Dict
+from include.file_cache import file_cache
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from src.model.news import News, NewsSource, RedditNews
@@ -75,6 +76,7 @@ class Crawl:
             else:
                 break
 
+    @file_cache()
     def crawl_reddit(self, subreddit_list: List[str]) -> Dict[str, News]:
         """
         Crawl reddit for a list of posts and their content.
@@ -99,6 +101,7 @@ class Crawl:
 
         return reddit_news
 
+    @file_cache()
     def crawl_github_trending(self) -> Dict[str, News]:
         """
         Crawl github trending for a list of repos and their content.

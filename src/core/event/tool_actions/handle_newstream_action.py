@@ -3,7 +3,7 @@ import openai
 from pydantic import BaseModel
 import json
 from cerebras.cloud.sdk import Cerebras
-from src.core.event.poll import comment_on_pr
+from include.file_cache import file_cache, DISABLE_CACHE
 import os
 import time
 import logging
@@ -304,9 +304,9 @@ class NewStreamActionHandler(BaseActionHandler):
 
         return True, str_results
 
-    def handle_env_setup(self, plan: str) -> Dict[str, str]:
+    def handle_env_setup(self, plan: str) -> Tuple[Dict[str, str], str]:
         """
-        Handle the env setup for the workflow. Returns whatever setup files are generated.
+        Handle the env setup for the workflow. Returns whatever setup files are generated, and the build command.
         """
 
         def __parse_setup_file_and_build_command(response: str) -> Tuple[str, str, str]:
@@ -377,13 +377,14 @@ Use this to modify the {path} file such that the build command succeeds."""
             code_files = {path: content}
             exec_results, response = self.sandbox.run_code_e2b(code_files, build_command)
 
-        return code_files
+        return code_files, build_command
 
-    def workflow_primer(self, last_message: str, step_messages: List[Dict[str, Any]]) -> Dict[str, str]:
+    @file_cache()
+    def workflow_primer(self, last_message: str, step_messages: List[Dict[str, Any]]) -> Tuple[Dict[str, str], str, str]:
         """
         Crafts the plan for the workflow, and returns the code files. appends the plan to the step messages.
         
-        Also, handles the env setup for the workflow.
+        Also, handles the env setup for the workflow. Returns the code files, build command, and the plan.
         """
         # 1. Generate the design and implementation plan
         plan = self.generate_design_and_implementation_plan(last_message)
@@ -394,34 +395,72 @@ Use this to modify the {path} file such that the build command succeeds."""
             }
         ]
 
-        # 3. handle the env setup for the workflow
-        setup_files = self.handle_env_setup(plan)
+        # 2. handle the env setup for the workflow
+        setup_files, build_command = self.handle_env_setup(plan)
 
-        return setup_files
+        return setup_files, build_command, plan
 
-    def populate_code_files_stepwise(self, step_messages: List[Dict[str, Any]], code_files: Dict[str, str]) -> Dict[str, str]:
+    def populate_code_files_stepwise(self, step_messages: List[Dict[str, Any]], code_files: Dict[str, str], build_command: str) -> Dict[str, str]:
         """
         Populates the code files stepwise, by calling the sandbox and testing the code files.
         """
-        class Feature(BaseModel):
+        class Stage(BaseModel):
             """
             A class to represent a feature to implement.
             """
-            feature_description: str
+            stage_description: str
             files_to_edit: List[str]
-            success_command: str
             success_criteria: str
-        
+            success_command: str
+
         # 1. First, based on the plan, we need to figure out implementation steps. i.e. which functions to 
         # implement in which batches, and how to test some very simple cases for them.
-        def __get_feature_implementation_list() -> List[Feature]:
+        def __get_feature_implementation_list() -> List[Stage]:
             """
             Generate the list of features to implement, where each feature has the following:
                 1. What the specific step will implement, at a high level descriptions
-                2. which files and functions to edit
-                3. the success critereon for the step being complete, i.e. a specific command to run to test the success and the output we should see.
+                2. Which files and functions to edit
+                3. The success critereon for the step being complete, i.e. a specific command to run to test the success and the output we should see.
             """
-            return []
+            # 1. Load the prompt file + format it properly
+            with open("include/prompts/example_builder/generate_feature_setlist.txt", "r") as fp:
+                prompt = fp.read()
+                prompt = format_prompt(
+                    prompt,
+                    preamble=self.preamble,
+                )
+
+            # 2. Call the model and get the feature list
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=4096,
+                messages=step_messages + [{"role": "user", "content": prompt}],
+            )
+            step_messages += {"role": "assistant", "content": response.content[0].text}
+
+            # 3. Load each one into the feature class
+            features = []
+            stage_pattern = r"<stage_\d+>(.*?)</stage_\d+>"
+            stage_matches = re.findall(stage_pattern, response, re.DOTALL)
+
+            for stage_content in stage_matches:
+                desc = get_content_between_tags(stage_content, "<stage_description>", "</stage_description>")
+                files = get_content_between_tags(stage_content, "<files_to_edit>", "</files_to_edit>")
+                success_cmd = get_content_between_tags(stage_content, "<success_command>", "</success_command>")
+                success_crit = get_content_between_tags(stage_content, "<success_criteria>", "</success_criteria>")
+
+                files_list = [f.strip() for f in files.strip("[]").split(",")]
+
+                stage = Stage(
+                    stage_description=desc,
+                    files_to_edit=files_list, 
+                    success_command=success_cmd,
+                    success_criteria=success_crit
+                )
+                features.append(stage)
+
+            # 4. Return the list of features
+            return features
 
         features = __get_feature_implementation_list()
 
@@ -443,8 +482,65 @@ Use this to modify the {path} file such that the build command succeeds."""
                 pass
 
             code_changelog += [current_code_files]
-        
+
         return code_changelog[-1]
+
+    @file_cache()
+    def determine_action(self, news_chunk: str, step_messages: List[Dict[str, Any]]) -> Tuple[str, str, List[Dict[str, Any]]]:
+        """
+        Determine what action to take based on the news chunk.
+        
+        Args:
+            news_chunk: A chunk of news to analyze
+            step_messages: The current message history
+            
+        Returns:
+            Tuple containing:
+            - action: The determined action ('create', 'modify', or 'none')
+            - last_message: The final message from the llm call
+            - messages: Updated step messages
+        """
+        step_messages = [
+            {
+                "role": "user",
+                "content": f"<news>{news_chunk}</news>",
+            }
+        ]
+
+        step_response = super().handle_action(
+            step_messages, 
+            max_txt_completions=5, 
+            system_prompt=self.action_classifier_prompt
+        )
+        last_message = step_response["response"]
+
+        action = None
+        prompt = self.action_classifier_prompt # TODO: unclear whether we still need the create example prompt, might have to remove this.
+
+        if "<action>" in last_message:
+            action = last_message.split("<action>")[1].split("</action>")[0].strip()
+
+            if action == "create":
+                logging.info("Creating new example...")
+                prompt = self._handle_action_case(
+                    "create",
+                    self.execute_creation_prompt,
+                    EXAMPLE_CREATOR_CREATION_TOOLS,
+                    step_messages,
+                )
+            elif action == "modify":
+                logging.info("Modifying existing example...")
+                prompt = self._handle_action_case(
+                    "modify",
+                    self.execute_modification_prompt,
+                    EXAMPLE_CREATOR_MODIFICATION_TOOLS,
+                    step_messages,
+                )
+            else:
+                action = "none"
+                logging.info("No action found")
+
+        return action, last_message, step_messages
 
     def handle_action(
         self, news_stream: Dict[str, News], max_tool_calls: int = 50
@@ -462,62 +558,31 @@ Use this to modify the {path} file such that the build command succeeds."""
         self.__load_prompts()
 
         news_values = list(news_stream.values())
-        random.shuffle(news_values)
+        
+        # If we're in debug mode, we don't want to shuffle the stream.
+        if DISABLE_CACHE:
+            random.shuffle(news_values)
+
         news_string = "\n".join([news.model_dump_json() for news in news_values])
         step_size = len(news_string) // 3
-        cur_prompt = self.action_classifier_prompt
         self.tools = EXAMPLE_CREATOR_CLASSIFIER_TOOLS
 
         for i in range(0, len(news_string), step_size):
-            step_messages = [
-                {
-                    "role": "user",
-                    "content": f"<news>{news_string[i : i + step_size]}</news>",
-                }
-            ]
+            news_chunk = news_string[i : i + step_size]
+            action, last_message, step_messages = self.determine_action(news_chunk, [])
 
-            step_response = super().handle_action(
-                step_messages, max_tool_calls, system_prompt=cur_prompt
-            )
-            last_message = step_response["response"]
-
-            # 1. if the response has the <action></action> tag in the last message, then we can reset the correct prompt and tools
-            action: str | None = None
-            if (
-                cur_prompt == self.action_classifier_prompt
-                and "<action>" in last_message
-            ):
-                action = last_message.split("<action>")[1].split("</action>")[0].strip()
-
-            if action == "create":
-                logging.info("Creating new example...")
-                cur_prompt = self._handle_action_case(
-                    "create",
-                    self.execute_creation_prompt,
-                    EXAMPLE_CREATOR_CREATION_TOOLS,
-                    step_messages,
-                )
-            elif action == "modify":
-                logging.info("Modifying existing example...")
-                cur_prompt = self._handle_action_case(
-                    "modify",
-                    self.execute_modification_prompt,
-                    EXAMPLE_CREATOR_MODIFICATION_TOOLS,
-                    step_messages,
-                )
-            elif action == "none":
-                logging.info("No action found, continuing...")
+            if action == "none":
                 continue
 
             time.sleep(60)
-            code_files = self.workflow_primer(last_message, step_messages)
+            setup_code_files, build_command = self.workflow_primer(last_message, step_messages)
             # At this point, the code files are good to go, and the build command is set.
             # If in the future the env needs to change, i.e. the specific packages, we can
             # create 2 new tools, an "add_package" tool, and a "remove_package" tool.
 
-            code_files = self.populate_code_files_stepwise(step_messages, code_files)
+            code_files = self.populate_code_files_stepwise(step_messages, setup_code_files, build_command)
 
-            # At this point, we assume that only the readme is missing, and the pr raise. 
+            # At this point, we assume that only the readme is potentially missing, and the pr raise is nessecary.
             # Only thing left is to raise the PR.
             readme_path_to_content = self.handle_readme_generation(code_files, step_messages)
             if readme_path_to_content:
