@@ -3,7 +3,7 @@
 This repository contains the source code for a project that interacts with users through a system like Discord and utilizes AI to process and respond to their messages.
 
 Directory Structure:
-
+```
 ./
 ├── include
 │   └── utils.py
@@ -36,6 +36,7 @@ Directory Structure:
 │   │   └── vector.py
 │   └── __init__.py
 └── main.py
+```
 Files:
 
 /include/utils.py
